@@ -38,8 +38,9 @@ def main():
     主執行函數
     """
     print("\n" + "="*80)
+    _load_str = f"{SYSTEM_COINCIDENT_PEAK_KW:.0f} kW" if SYSTEM_COINCIDENT_PEAK_KW else "實測值"
     print(f"情境 {ACTIVE_SCENARIO} - 校園電力系統潮流分析")
-    print(f"負載情境: {SYSTEM_PEAK_PERIOD} ({SYSTEM_COINCIDENT_PEAK_KW:.0f} kW)")
+    print(f"負載情境: {SYSTEM_PEAK_PERIOD} ({_load_str})")
     print("="*80 + "\n")
     
     try:

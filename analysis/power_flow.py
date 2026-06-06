@@ -355,10 +355,13 @@ def _print_powerflow_summary(net, results: Dict):
 
 def get_bus_summary(net) -> Dict:
     """
-    獲取所有母線的摘要信息
+    獲取所有母線的摘要信息 (含 PQ/PV/Slack 分類)
     """
+    # 母線類型: 有 ext_grid → Slack;有電壓控制發電機(gen)→ PV;其餘 → PQ
+    slack_buses = set(net.ext_grid["bus"].tolist()) if len(net.ext_grid) > 0 else set()
+    pv_buses = set(net.gen["bus"].tolist()) if len(net.gen) > 0 else set()
+
     summary = []
-    
     for idx in net.bus.index:
         bus_name = net.bus.at[idx, "name"]
         bus_vn = net.bus.at[idx, "vn_kv"]
@@ -367,8 +370,16 @@ def get_bus_summary(net) -> Dict:
         p_kw = net.res_bus.at[idx, "p_mw"] * 1000
         q_kvar = net.res_bus.at[idx, "q_mvar"] * 1000
 
+        if idx in slack_buses:
+            bus_type = "Slack"
+        elif idx in pv_buses:
+            bus_type = "PV"
+        else:
+            bus_type = "PQ"
+
         summary.append({
             "bus_name": bus_name,
+            "bus_type": bus_type,
             "vn_kv": bus_vn,
             "vm_pu": vm_pu,
             "va_degree": va_degree,
@@ -376,7 +387,7 @@ def get_bus_summary(net) -> Dict:
             "q_kvar": q_kvar,
             "s_kva": np.sqrt(p_kw**2 + q_kvar**2)
         })
-    
+
     return summary
 
 

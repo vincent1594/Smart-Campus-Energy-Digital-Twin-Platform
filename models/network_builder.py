@@ -16,7 +16,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from data.network_structure import FEEDERS, MAIN_NETWORK, CABLE_PARAMETERS, TRANSFORMER_IMPEDANCE
 from data.load_data import DEFAULT_BUILDING_LOADS
 from data.parameters import (SYSTEM_PARAMS, CABLE_PARAMS, TRANSFORMER_PARAMS, PANDAPOWER_CONFIG,
-                             LOAD_PARAMS, SYSTEM_COINCIDENT_PEAK_KW, get_transformer_loss)
+                             LOAD_PARAMS, SYSTEM_COINCIDENT_PEAK_KW, SYSTEM_LOAD_METHOD,
+                             SYSTEM_LOAD_TIMESTAMP, SYSTEM_PV_FACTOR, get_transformer_loss)
+from data.area_loads import compute_area_loads
+from data.ems_loads import compute_ems_loads, compute_ems_profile_loads
 
 # 配置日誌
 logging.basicConfig(level=logging.INFO)
@@ -38,15 +41,36 @@ def build_network_s1_baseline():
     logger.info("開始構建 S1 Baseline PandaPower 網路")
     logger.info("=" * 70)
 
-    # 計算分散係數：各台「平均負載」為非同時值，整體縮放到系統同時尖峰
-    raw_total_kw = sum(ld["p_kw"] for ld in DEFAULT_BUILDING_LOADS.values())
-    if SYSTEM_COINCIDENT_PEAK_KW and raw_total_kw > 0:
-        load_scale = SYSTEM_COINCIDENT_PEAK_KW / raw_total_kw
-        logger.info(f"負載基礎: 各台實載加總 {raw_total_kw:.1f} kW → 系統同時負載 "
-                    f"{SYSTEM_COINCIDENT_PEAK_KW:.0f} kW (分散係數 {load_scale:.3f})")
+    # 負載分配: ems=EMS實測各饋線、area=樓地板面積×用途密度、否則=各台平均負載×分散係數
+    preset_loads = None
+    load_scale = 1.0
+    if SYSTEM_LOAD_METHOD == "xgboost":
+        from analysis.xgb_forecast import compute_xgb_loads
+        preset_loads = compute_xgb_loads(SYSTEM_LOAD_TIMESTAMP, SYSTEM_PV_FACTOR)
+        logger.info(f"負載基礎: XGBoost 預測各饋線 @ {SYSTEM_LOAD_TIMESTAMP} (PV×{SYSTEM_PV_FACTOR}),"
+                    f"總量 {sum(preset_loads.values()):.0f} kW")
+    elif SYSTEM_LOAD_METHOD == "xgboost_profile":
+        from analysis.xgb_forecast import compute_xgb_profile_loads
+        preset_loads = compute_xgb_profile_loads(SYSTEM_COINCIDENT_PEAK_KW, SYSTEM_LOAD_TIMESTAMP, SYSTEM_PV_FACTOR)
+        logger.info(f"負載基礎: XGBoost 預測占比 @ {SYSTEM_LOAD_TIMESTAMP} × {SYSTEM_COINCIDENT_PEAK_KW:.0f} kW (PV×{SYSTEM_PV_FACTOR})")
+    elif SYSTEM_LOAD_METHOD == "ems":
+        preset_loads = compute_ems_loads(SYSTEM_LOAD_TIMESTAMP, SYSTEM_PV_FACTOR)
+        logger.info(f"負載基礎: EMS 實測各饋線 @ {SYSTEM_LOAD_TIMESTAMP} (PV×{SYSTEM_PV_FACTOR}),"
+                    f"總量 {sum(preset_loads.values()):.0f} kW")
+    elif SYSTEM_LOAD_METHOD == "ems_profile":
+        preset_loads = compute_ems_profile_loads(SYSTEM_COINCIDENT_PEAK_KW, pv_factor=SYSTEM_PV_FACTOR)
+        logger.info(f"負載基礎: EMS 平日半尖峰占比 × {SYSTEM_COINCIDENT_PEAK_KW:.0f} kW (PV×{SYSTEM_PV_FACTOR})")
+    elif SYSTEM_LOAD_METHOD == "area":
+        preset_loads = compute_area_loads(SYSTEM_COINCIDENT_PEAK_KW)
+        logger.info(f"負載基礎: 面積×用途密度法,總負載 {SYSTEM_COINCIDENT_PEAK_KW:.0f} kW")
     else:
-        load_scale = 1.0
-        logger.info(f"負載基礎: 各台實載加總 {raw_total_kw:.1f} kW (未套用分散係數)")
+        raw_total_kw = sum(ld["p_kw"] for ld in DEFAULT_BUILDING_LOADS.values())
+        if SYSTEM_COINCIDENT_PEAK_KW and raw_total_kw > 0:
+            load_scale = SYSTEM_COINCIDENT_PEAK_KW / raw_total_kw
+            logger.info(f"負載基礎: 各台實載加總 {raw_total_kw:.1f} kW → 系統同時負載 "
+                        f"{SYSTEM_COINCIDENT_PEAK_KW:.0f} kW (分散係數 {load_scale:.3f})")
+        else:
+            logger.info(f"負載基礎: 各台實載加總 {raw_total_kw:.1f} kW (未套用分散係數)")
     
     # 1. 創建新的 PandaPower 網路
     net = pp.create_empty_network(
@@ -66,11 +90,35 @@ def build_network_s1_baseline():
     hv_bus_by_name = {}  # HV 母線名稱 -> 索引 (供 parent_bus 掛接查詢)
 
     for vcb_name, vcb_def in FEEDERS.items():
-        if vcb_name == "VCB12":
-            # VCB12 特殊處理（只有電容器，暫時跳過）
-            logger.warning(f"⚠ {vcb_name} 未完全定義（只有電容器），跳過")
+        if "shunt_feeder" in vcb_def:
+            # 純電容補償饋線 (如 VCB12): 主母線 →電纜→ CB_BUS →並聯電容
+            sf = vcb_def["shunt_feeder"]
+            cb_bus = _add_hv_bus(net, sf["bus"], sf.get("bus_vn_kv", 11.4))
+            c = sf["cable"]
+            qty = c.get("quantity", 1)
+            amp = CABLE_PARAMS.get(c["cross_section"], {}).get("rating_a", 418) * qty
+            li = pp.create_line_from_parameters(
+                net, main_bus, cb_bus,
+                length_km=c.get("length", 100) / 1000.0,
+                r_ohm_per_km=c["resistance"] / qty,
+                x_ohm_per_km=c["reactance"] / qty,
+                c_nf_per_km=0, max_i_ka=amp / 1000,
+                name=f"{vcb_name}_{sf['bus']}"
+            )
+            net.line.at[li, "cross_section_mm2"] = c["cross_section"]
+            net.line.at[li, "length_unknown"] = bool(c.get("length_unknown", False))
+            line_count += 1
+            cap = sf["capacitor"]
+            pp.create_shunt(
+                net, cb_bus, q_mvar=-cap["rating"] / 1000.0,
+                vn_kv=cap.get("rated_kv", sf.get("bus_vn_kv", 11.4)),
+                name=cap["name"]
+            )
+            hv_bus_by_name[sf["bus"]] = cb_bus
+            logger.info(f"\n[{vcb_name}] {vcb_def['name']}: {sf['bus']} 並聯電容 "
+                        f"{cap['name']} {cap['rating']}kVAr@{cap.get('rated_kv')}kV")
             continue
-        
+
         logger.info(f"\n[{vcb_name}] 開始構建 {vcb_def['name']}")
         
         # 檢查是否有 cable_to_bus（中間電纜連接）
@@ -137,10 +185,13 @@ def build_network_s1_baseline():
                 for load_name in trafo.get("loads", []):
                     if load_name in DEFAULT_BUILDING_LOADS:
                         load_data = DEFAULT_BUILDING_LOADS[load_name]
-                        p_kw = load_data["p_kw"] * load_scale  # 套用分散係數縮放至同時尖峰
-                        # 依各負載運轉功因推算 Q = P * tan(acos(pf))；
-                        # 無 pf 時退回系統預設功率因數
-                        if load_data.get("q_kvar"):
+                        # 有功: 預設法(ems/area)用 preset_loads;否則用平均負載×分散係數
+                        if preset_loads is not None:
+                            p_kw = preset_loads.get(load_name, 0.0)
+                        else:
+                            p_kw = load_data["p_kw"] * load_scale
+                        # 無功: 依各負載運轉功因 (沿用各棟 pf) 推算 Q = P*tan(acos(pf))
+                        if preset_loads is None and load_data.get("q_kvar"):
                             q_kvar = load_data["q_kvar"] * load_scale
                         else:
                             pf = load_data.get("pf", LOAD_PARAMS["default_power_factor"])

@@ -225,8 +225,9 @@ DEFAULT_BUILDING_LOADS = {
     "LOAD_V2": {"p_kw": 309.6, "pf": 0.98},  # TR-41 V棟能源工程館
 
     # VCB7
-    "LOAD_C": {"p_kw": 46.8, "pf": 0.90},    # 歧義 (真實僅 D館 TR-3 34kW, 無獨立 C 棟)
-    "LOAD_D": {"p_kw": 46.8, "pf": 0.90},    # 歧義
+    # TR_CD = D管理與資訊館 TR-3 (300kVA, 34kW, pf0.95)，一台供 C/D 兩棟，均分 17kW
+    "LOAD_C": {"p_kw": 17.0, "pf": 0.95},    # TR-3 D管資館 (C 棟)
+    "LOAD_D": {"p_kw": 17.0, "pf": 0.95},    # TR-3 D管資館 (D 棟)
 
     # VCB8
     "LOAD_S1": {"p_kw": 245.2, "pf": 0.99},  # TR-16 S管科大樓
