@@ -362,10 +362,17 @@ FEEDERS = {
     },
 
     "VCB12": {
-        "name": "VCB12 - P_BUS 13.8kV",
-        "bus_id": "P_BUS",
-        "voltage": 13.8,
-        "capacitors": [{"name": "CAP_P", "rating": 600}],
+        "name": "VCB12 - 電容補償饋線",
+        "bus_id": "CU_BUS",
+        # 純電容補償饋線: 主母線 →[250mm²×3 電纜]→ CB_BUS → 並聯電容 CAP_VB
+        "shunt_feeder": {
+            "bus": "CB_BUS",
+            "bus_vn_kv": 11.4,   # CB_BUS 電氣電壓 (與系統同;13.8 為電容額定)
+            "cable": {"cross_section": 250, "quantity": 3,
+                      "resistance": 0.09, "reactance": 0.07,
+                      "length": 100, "length_unknown": True},  # 長度未知，假設值
+            "capacitor": {"name": "CAP_VB", "rating": 600, "rated_kv": 13.8},  # kVAr @ 13.8kV
+        },
     }
 }
 

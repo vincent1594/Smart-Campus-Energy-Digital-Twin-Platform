@@ -133,9 +133,17 @@ def get_transformer_loss(trafo_type, capacity_kva):
 #
 # 多情境定義: key = 情境代號, period = 期間/情境名, load_kw = 系統同時負載 (None=不縮放)
 SCENARIOS = {
-    "S1":   {"period": "2018年5月 半尖峰", "load_kw": 4608.0},
-    "S1.1": {"period": "2018年5月 離峰",   "load_kw": 3848.0},
-    "S1.2": {"period": "2018年5月 週六半尖峰", "load_kw": 2432.0},
+    # method: "transformer"(變壓器平均負載比例,預設)、"area"(樓地板面積×用途密度)、"ems"(EMS實測各饋線)
+    "S0":   {"period": "EMS實測尖峰 2023/06/08 14:00", "load_kw": None, "method": "ems",
+             "timestamp": "2023-06-08 14:00", "pv_factor": 0.8},     # 夏季尖峰
+    "S1":   {"period": "2023/03/01 半尖峰", "load_kw": 1860.0, "method": "xgboost_profile",
+             "timestamp": "2023-03-01 14:00", "pv_factor": 0.4},      # 3月冬陽,較低
+    "S1.1": {"period": "2026年6月8號 14:00", "load_kw": 3400.0, "method": "xgboost_profile",
+             "timestamp": "2026-06-08 14:00", "pv_factor": 0.75},     # 夏季午後,日照強
+    "S1.2": {"period": "2026年6月8號 09:00", "load_kw": 2470.0, "method": "xgboost_profile",
+             "timestamp": "2026-06-08 09:00", "pv_factor": 0.5},      # 夏季上午,日照中等
+    "S2":   {"period": "XGBoost預測 2026/06/08 14:00", "load_kw": None, "method": "xgboost",
+             "timestamp": "2026-06-08 14:00", "pv_factor": 0.8},      # ML 預測各饋線(5月訓練)
 }
 # 執行時以環境變數 BAYESGRID_SCENARIO 選擇 (預設 S1);run_s1_baseline.py 可由命令列帶入
 import os as _os
@@ -145,6 +153,9 @@ if ACTIVE_SCENARIO not in SCENARIOS:
 _sc = SCENARIOS[ACTIVE_SCENARIO]
 SYSTEM_COINCIDENT_PEAK_KW = _sc["load_kw"]
 SYSTEM_PEAK_PERIOD = _sc["period"]
+SYSTEM_LOAD_METHOD = _sc.get("method", "transformer")  # transformer / area / ems
+SYSTEM_LOAD_TIMESTAMP = _sc.get("timestamp")           # ems 法用的實測時刻
+SYSTEM_PV_FACTOR = _sc.get("pv_factor", 0.8)           # PV 出力係數 (容量×此值)
 
 # ============================================================================
 # 電容器參數
