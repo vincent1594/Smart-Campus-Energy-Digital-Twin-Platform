@@ -30,8 +30,20 @@
 │
 ├── utils/                     # 🛠️ 工具層 (預留)
 │
-└── results/                   # 各情境輸出
-    ├── S1/   S1.1/   S1.2/     # 每情境:報告 .md/.txt + 4 個 .csv
+├── results/                   # 各情境輸出
+│   ├── S1/   S1.1/   S1.2/     # 每情境:報告 .md/.txt + 4 個 .csv
+│
+├── webapi/                    # 🌐 數位孿生平台 — FastAPI 後端 (包覆上述研究模型)
+│   ├── main.py  config.py  state.py
+│   ├── engine.py              # 橋接 build_network_s1_baseline / power_flow + 解析 domain
+│   ├── domain.py  schemas.py  # 業務實體 / 對外 DTO
+│   ├── powerflow.py  topology.py
+│   ├── mappers/               # ★ 翻譯層 (唯一碰 pandapower 欄位)
+│   ├── services/  routes/     # 查詢彙總 / HTTP 端點
+│
+├── webui/                     # 💻 前端 (React/TS/AntD,待建)
+│
+└── tools/verify_engine.py     # 平台驗收腳本
 ```
 
 ---
@@ -135,10 +147,37 @@ export_s1_results(net, results, output_dir="results/S1")
 
 ---
 
+## 數位孿生平台 (Campus Digital Twin V1)
+
+`webapi/` 是給營繕組使用的 Web 平台後端,**包覆**上述研究模型當底層計算引擎,
+對外只暴露業務語意欄位(看不到 pandapower 原始欄位)。研究碼 0 改動,僅被 import。
+
+```powershell
+# 從 repo 根啟動 (原生 import data/models/analysis,無 sys.path hack)
+python -m uvicorn webapi.main:app --reload --port 8126
+# API 文件:http://127.0.0.1:8126/docs
+# 驗收:python -m tools.verify_engine
+```
+
+| 端點 | 說明 |
+|------|------|
+| `GET /api/dashboard` | 9 個 KPI + 系統狀態 |
+| `GET /api/buildings[/{id}]` | 建築搜尋 / 詳情 + 供電路徑 |
+| `GET /api/assets/{transformers\|vcbs\|feeders}[/{id}]` | 設備查詢 |
+| `GET /api/topology` | React Flow 拓樸 (112 節點) |
+| `GET /api/powerflow` | 潮流結果 |
+| `POST /api/scenario/run` | 情境模擬 before/after |
+
+分層:`routes → services → mappers(翻譯)→ engine(橋接既有 builder)`。
+Scenario 一律 `deepcopy(base_net)` 後改 clone 再 runpp,base 永不被汙染。
+前端 `webui/` 待建。
+
+---
+
 ## 技術棧
 
-- **框架**: PandaPower 3.4.0
-- **數據處理**: Pandas, NumPy
+- **計算引擎**: PandaPower 3.4.0｜**數據處理**: Pandas, NumPy, NetworkX
+- **平台後端**: FastAPI + Uvicorn｜**前端**(待建): React, TypeScript, Ant Design, React Flow, ECharts
 - **語言**: Python 3.12
 
 ---

@@ -23,6 +23,11 @@ graphviz>=0.16
 python-dotenv>=0.19.0
 pyyaml>=5.4.0
 
+# Web Platform (Campus Digital Twin V1 — webapi/)
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+
 # Development (optional)
 pytest>=7.0.0
 pytest-cov>=3.0.0

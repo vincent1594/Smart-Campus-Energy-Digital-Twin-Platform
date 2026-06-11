@@ -1,0 +1,48 @@
+from fastapi import APIRouter, HTTPException
+
+from webapi.schemas import FeederDetail, TransformerDetail, VcbDetail
+from webapi.services import asset_service
+
+router = APIRouter(prefix="/api/assets", tags=["assets"])
+
+
+# ---------- Transformer ----------
+@router.get("/transformers", response_model=list[TransformerDetail])
+def list_transformers():
+    return asset_service.list_transformers()
+
+
+@router.get("/transformers/{transformer_id}", response_model=TransformerDetail)
+def get_transformer(transformer_id: str):
+    detail = asset_service.get_transformer(transformer_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"查無變壓器:{transformer_id}")
+    return detail
+
+
+# ---------- VCB ----------
+@router.get("/vcbs", response_model=list[VcbDetail])
+def list_vcbs():
+    return asset_service.list_vcbs()
+
+
+@router.get("/vcbs/{vcb_id}", response_model=VcbDetail)
+def get_vcb(vcb_id: str):
+    detail = asset_service.get_vcb(vcb_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"查無 VCB:{vcb_id}")
+    return detail
+
+
+# ---------- Feeder ----------
+@router.get("/feeders", response_model=list[FeederDetail])
+def list_feeders():
+    return asset_service.list_feeders()
+
+
+@router.get("/feeders/{feeder_id}", response_model=FeederDetail)
+def get_feeder(feeder_id: str):
+    detail = asset_service.get_feeder(feeder_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"查無饋線:{feeder_id}")
+    return detail
