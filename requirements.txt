@@ -11,7 +11,7 @@ pandapower>=3.0,<4.0    # 程式使用 3.x API (runpp / p_mw)，請勿降到 2.x
 networkx>=2.6.0
 
 # Data Processing
-openpyxl>=3.7.0           # Excel support
+openpyxl>=3.1.5           # Excel support
 xlrd>=2.0.0               # Excel reading
 
 # Visualization
