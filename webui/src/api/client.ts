@@ -11,9 +11,10 @@ import type {
   TransformerDetail,
   VcbDetail,
 } from "./types";
+const API_BASE_URL = "https://smart-campus-energy-digital-twin.onrender.com";
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path);
+  const res = await fetch(`${API_BASE_URL}${path}`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { detail?: string }).detail || `HTTP ${res.status}`);
@@ -22,7 +23,7 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function post<T>(path: string, payload: unknown): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
