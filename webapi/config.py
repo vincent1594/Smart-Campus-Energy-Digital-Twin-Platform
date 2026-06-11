@@ -15,4 +15,4 @@ SYSTEM_HV_KV = 11.4
 SOURCE_NAME = "台電 (TPC) 11.4kV"
 
 # 前端開發 server 來源 (CORS)
-FRONTEND_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+FRONTEND_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173","https://smart-campus-energy-digital-twin-71ut.onrender.com"]
