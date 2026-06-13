@@ -29,7 +29,7 @@ export default function BuildingExplorer() {
   };
 
   return (
-    <Card>
+    <Card style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
       <Input.Search
         placeholder="輸入建築名稱或編號 (例如 LOAD_T)"
         allowClear
@@ -41,7 +41,8 @@ export default function BuildingExplorer() {
         rowKey="id"
         loading={loading}
         dataSource={rows}
-        pagination={{ pageSize: 12 }}
+        pagination={{ pageSize: 8 }}
+        scroll={{ y: "calc(100vh - 250px)" }}
         onRow={(r) => ({ onClick: () => { openDetail(r.id); setFocus({ kind: "building", id: r.id, label: r.name }); }, style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "id", width: 120 },

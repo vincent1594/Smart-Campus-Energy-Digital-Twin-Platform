@@ -17,7 +17,7 @@ function Transformers() {
   return (
     <>
       <Table<TransformerDetail>
-        rowKey="id" loading={loading} dataSource={rows} pagination={{ pageSize: 12 }}
+        rowKey="id" loading={loading} dataSource={rows} pagination={{ pageSize: 8 }} scroll={{ y: "calc(100vh - 290px)" }}
         onRow={(r) => ({ onClick: () => { setDetail(r); setFocus({ kind: "transformer", id: r.id, label: r.name }); }, style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "id" },
@@ -46,7 +46,7 @@ function Vcbs() {
   const { setFocus } = useFocus();
   useEffect(() => { api.vcbs().then(setRows).catch((e) => message.error(String(e.message ?? e))); }, []);
   return (
-    <Table<VcbDetail> rowKey="id" dataSource={rows} pagination={false}
+    <Table<VcbDetail> rowKey="id" dataSource={rows} pagination={{ pageSize: 8 }} scroll={{ y: "calc(100vh - 290px)" }}
       onRow={(r) => ({ onClick: () => setFocus({ kind: "vcb", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
       columns={[
         { title: "編號", dataIndex: "id" },
@@ -65,7 +65,7 @@ function Feeders() {
   const { setFocus } = useFocus();
   useEffect(() => { api.feeders().then(setRows).catch((e) => message.error(String(e.message ?? e))); }, []);
   return (
-    <Table<FeederDetail> rowKey="id" dataSource={rows} pagination={{ pageSize: 12 }}
+    <Table<FeederDetail> rowKey="id" dataSource={rows} pagination={{ pageSize: 8 }} scroll={{ y: "calc(100vh - 290px)" }}
       onRow={(r) => ({ onClick: () => setFocus({ kind: "feeder", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
       columns={[
         { title: "編號", dataIndex: "id" },
@@ -81,7 +81,7 @@ function Feeders() {
 
 export default function AssetExplorer() {
   return (
-    <Card>
+    <Card style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
       <Tabs
         items={[
           { key: "tr", label: "變壓器", children: <Transformers /> },
