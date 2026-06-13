@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import type { BuildingDetail, BuildingSummary, DashboardSummary, FeederDetail, SupplyPathNode, TransformerDetail, VcbDetail } from "../api/types";
 import { type Focus, useFocus } from "../focus/FocusContext";
 import { buildingLetter } from "../lib/campusPositions";
+import { useActiveScenario } from "../scenario/ActiveScenarioContext";
 import LoadRatioTag from "./LoadRatioTag";
 
 const kindStep: Record<string, string> = { source: "台電進線", vcb: "VCB", feeder: "饋線", transformer: "變壓器", building: "建築" };
@@ -40,6 +41,12 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
   const [tr, setTr] = useState<TransformerDetail | null>(null);
   const [fd, setFd] = useState<FeederDetail | null>(null);
   const [vcb, setVcb] = useState<VcbDetail | null>(null);
+
+  const { scenario } = useActiveScenario();
+  const sTrafo = useMemo(() => new Map(scenario?.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]) ?? []), [scenario]);
+  const sFeeder = useMemo(() => new Map(scenario?.feeder_loadings.map((f) => [f.feeder_id, f.load_ratio_percent]) ?? []), [scenario]);
+  const trRatio = (id: string, base: number | null) => (scenario ? sTrafo.get(id) ?? base : base);
+  const fdRatio = (id: string, base: number | null) => (scenario ? sFeeder.get(id) ?? base : base);
 
   const trafoByName = useMemo(() => new Map(trafos.map((t) => [t.name, t])), [trafos]);
   const letterOfTrafo = (name: string) => {
@@ -77,7 +84,7 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
     const trafoNames = [...new Set(zoneBuildings.map((b) => b.transformer_name))];
     const zoneTrafos = trafoNames.map((n) => trafoByName.get(n)).filter(Boolean) as TransformerDetail[];
     const totalLoad = zoneBuildings.reduce((s, b) => s + b.estimated_load_kw, 0);
-    const maxRatio = Math.max(0, ...zoneTrafos.map((t) => t.load_ratio_percent ?? 0));
+    const maxRatio = Math.max(0, ...zoneTrafos.map((t) => trRatio(t.id, t.load_ratio_percent) ?? 0));
     const vcbName = zoneTrafos[0]?.vcb_name ?? "—";
     return (
       <>
@@ -91,11 +98,11 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
         <List size="small" dataSource={zoneTrafos} renderItem={(t) => (
           <List.Item style={{ cursor: "pointer" }} onClick={() => setFocus({ kind: "transformer", id: t.id, label: t.name })}>
             <span>{t.name}（{t.capacity_kva} kVA）</span>
-            <LoadRatioTag ratio={t.load_ratio_percent} />
+            <LoadRatioTag ratio={trRatio(t.id, t.load_ratio_percent)} />
           </List.Item>
         )} />
         <Divider orientation="left" style={{ margin: "8px 0" }}>供電路徑</Divider>
-        <PathView nodes={bd?.supply_path ?? []} onPick={setFocus} />
+        <PathView nodes={(bd?.supply_path ?? []).map((n) => n.kind === "transformer" ? { ...n, load_ratio_percent: trRatio(n.id, n.load_ratio_percent ?? null) } : n.kind === "feeder" ? { ...n, load_ratio_percent: fdRatio(n.id, n.load_ratio_percent ?? null) } : n)} onPick={setFocus} />
         <Button type="primary" ghost size="small" style={{ marginTop: 8 }} onClick={() => navigate("/scenario")}>規劃模擬</Button>
       </>
     );
@@ -114,13 +121,13 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
           <Descriptions.Item label="容量">{tr.capacity_kva} kVA</Descriptions.Item>
           <Descriptions.Item label="一次/二次側">11.4 kV / {tr.lv_kv === 0.38 ? "380-220V" : `${tr.lv_kv * 1000}V`}</Descriptions.Item>
           <Descriptions.Item label="型式">{tr.trafo_type}式</Descriptions.Item>
-          <Descriptions.Item label="負載率"><LoadRatioTag ratio={tr.load_ratio_percent} /></Descriptions.Item>
+          <Descriptions.Item label="負載率"><LoadRatioTag ratio={trRatio(tr.id, tr.load_ratio_percent)} /></Descriptions.Item>
           <Descriptions.Item label="所屬饋線">
             {tr.feeder_id ? <a onClick={() => setFocus({ kind: "feeder", id: tr.feeder_id!, label: tr.feeder_name ?? tr.feeder_id! })}>{tr.feeder_name}</a> : <Tag>開關耦合</Tag>}
           </Descriptions.Item>
           <Descriptions.Item label="所屬 VCB">{tr.vcb_name}</Descriptions.Item>
           <Descriptions.Item label="連接建築">{tr.connected_building_count} 棟 / {tr.total_connected_load_kw} kW</Descriptions.Item>
-          <Descriptions.Item label="運轉狀態">{(tr.load_ratio_percent ?? 0) > 100 ? <Tag color="red">過載</Tag> : <Tag color="green">正常</Tag>}</Descriptions.Item>
+          <Descriptions.Item label="運轉狀態">{(trRatio(tr.id, tr.load_ratio_percent) ?? 0) > 100 ? <Tag color="red">過載</Tag> : <Tag color="green">正常</Tag>}</Descriptions.Item>
         </Descriptions>
         <Button type="primary" ghost size="small" onClick={() => navigate("/scenario")}>規劃模擬</Button>
       </>
@@ -134,8 +141,8 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
         <Descriptions.Item label="所屬 VCB">{fd.vcb_name}</Descriptions.Item>
         <Descriptions.Item label="線徑">{fd.cross_section_mm2 ?? "—"} mm²</Descriptions.Item>
         <Descriptions.Item label="長度">{fd.length_m.toFixed(0)} m</Descriptions.Item>
-        <Descriptions.Item label="負載率"><LoadRatioTag ratio={fd.load_ratio_percent} /></Descriptions.Item>
-        <Descriptions.Item label="狀態">{fd.overloaded ? <Tag color="red">過載</Tag> : <Tag color="green">正常</Tag>}</Descriptions.Item>
+        <Descriptions.Item label="負載率"><LoadRatioTag ratio={fdRatio(fd.id, fd.load_ratio_percent)} /></Descriptions.Item>
+        <Descriptions.Item label="狀態">{(fdRatio(fd.id, fd.load_ratio_percent) ?? 0) > 100 ? <Tag color="red">過載</Tag> : <Tag color="green">正常</Tag>}</Descriptions.Item>
         <Descriptions.Item label="供電">{fd.transformer_count} 台變壓器 / {fd.connected_building_count} 棟 / {fd.total_connected_load_kw} kW</Descriptions.Item>
       </Descriptions>
     );

@@ -32,7 +32,7 @@ export default function Alarms() {
   if (!pf) return <Spin size="large" style={{ display: "block", marginTop: 120 }} />;
 
   return (
-    <Card title="告警紀錄" size="small"
+    <Card title="告警紀錄" size="small" style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}
       extra={<span style={{ color: "#999", fontSize: 12 }}>潮流即時快照的越限項目(非歷史事件流);點一筆可在地圖定位</span>}>
       <Table<Alarm> rowKey={(r) => r.kind + r.id} size="small" dataSource={alarms} pagination={false}
         locale={{ emptyText: "目前無告警 — 所有設備負載率 < 80%、電壓正常" }}

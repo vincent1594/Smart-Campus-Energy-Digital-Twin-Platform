@@ -1,10 +1,9 @@
-// 固定校園地圖:純 CSS 疊圖。標記預設透明(不遮地圖),支援「焦點 + 高亮群組」連動:
-//  focusLetter = 目前關注的棟(藍實心)
-//  highlight   = 同供電群 / 受影響的棟(藍框),其餘變淡
-// 右上「顯示負載」開關可改疊彩色負載率環。圓點隨容器縮放永遠對齊棟位。
+// 校園地圖(照片底 + SVG 多邊形疊圖)。各棟為「不規則多邊形」,發光描邊依負載率,中心透明。
+// 顯示:focusLetter/highlight 連動、dark 深色發光、showConnectors 受電站→棟連線。
+// 編輯(editable):拖頂點移動、雙擊多邊形邊加頂點、雙擊頂點刪除;onPolyChange 回拋。
 import { Switch } from "antd";
-import { useState } from "react";
-import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, ratioColor } from "../lib/campusPositions";
+import { useEffect, useRef, useState } from "react";
+import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, type Pt, centroid, ratioColor } from "../lib/campusPositions";
 
 export interface MapMarker {
   letter: string;
@@ -12,60 +11,119 @@ export interface MapMarker {
   ratio: number | null;
 }
 
+function distSeg(p: Pt, a: Pt, b: Pt): number {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+  const cx = a[0] + t * dx, cy = a[1] + t * dy;
+  return Math.hypot(p[0] - cx, p[1] - cy);
+}
+
 export default function CampusMapStatic({
-  markers,
-  focusLetter,
-  highlight,
-  onSelect,
+  markers, focusLetter, highlight, onSelect, dark = false, showConnectors = false,
+  editable = false, polys, onPolyChange, fitHeight = false,
 }: {
   markers: MapMarker[];
   focusLetter?: string | null;
   highlight?: Set<string>;
   onSelect?: (letter: string) => void;
+  dark?: boolean;
+  showConnectors?: boolean;
+  editable?: boolean;
+  polys?: Record<string, Pt[]>;
+  onPolyChange?: (letter: string, pts: Pt[]) => void;
+  fitHeight?: boolean; // 依高度縮放(置中、不溢出)
 }) {
   const [showLoad, setShowLoad] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ letter: string; idx: number } | null>(null);
+  const POS = polys ?? BUILDING_POS;
+  const lit = dark || showLoad;
   const hasFocus = !!focusLetter || (highlight?.size ?? 0) > 0;
+  const xc = POS.X ? centroid(POS.X) : null;
+
+  const toImg = (e: PointerEvent | React.MouseEvent): Pt => {
+    const r = ref.current!.getBoundingClientRect();
+    return [(e.clientX - r.left) * (MAP_W / r.width), (e.clientY - r.top) * (MAP_H / r.height)];
+  };
+
+  useEffect(() => {
+    if (!editable) return;
+    const mv = (e: PointerEvent) => {
+      const d = drag.current; if (!d || !POS[d.letter]) return;
+      const np = POS[d.letter].map((p, i) => (i === d.idx ? (toImg(e).map(Math.round) as Pt) : p));
+      onPolyChange?.(d.letter, np);
+    };
+    const up = () => { drag.current = null; };
+    window.addEventListener("pointermove", mv);
+    window.addEventListener("pointerup", up);
+    return () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); };
+  }, [editable, POS, onPolyChange]);
+
+  const addVertex = (letter: string, pts: Pt[], at: Pt) => {
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < pts.length; i++) { const d = distSeg(at, pts[i], pts[(i + 1) % pts.length]); if (d < bd) { bd = d; best = i; } }
+    const np = [...pts]; np.splice(best + 1, 0, [Math.round(at[0]), Math.round(at[1])]);
+    onPolyChange?.(letter, np);
+  };
 
   return (
-    <div style={{ position: "relative", width: "100%", lineHeight: 0 }}>
-      <style>{`.campus-marker{transition:transform .12s, box-shadow .12s; background:transparent;}
-        .campus-marker:hover{transform:scale(1.25); box-shadow:0 0 0 2px rgba(22,119,255,.55), 0 0 6px rgba(0,0,0,.3);}`}</style>
+    <div ref={ref} style={{ position: "relative", lineHeight: 0, touchAction: editable ? "none" : undefined, ...(fitHeight ? { height: "100%", display: "inline-block" } : { width: "100%" }) }}>
+      <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.85)" : "none", ...(fitHeight ? { height: "100%", width: "auto" } : { width: "100%" }) }} />
 
-      <img src={MAP_IMAGE} alt="校園地圖" style={{ width: "100%", display: "block", borderRadius: 8 }} />
+      {!editable && (
+        <div style={{ position: "absolute", top: 8, right: 8, background: dark ? "rgba(0,0,0,.5)" : "rgba(255,255,255,.85)", color: dark ? "#fff" : "#000", borderRadius: 6, padding: "2px 8px", zIndex: 30 }}>
+          <span style={{ fontSize: 12, marginInlineEnd: 6 }}>顯示負載</span>
+          <Switch size="small" checked={lit} disabled={dark} onChange={setShowLoad} />
+        </div>
+      )}
 
-      <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(255,255,255,.85)", borderRadius: 6, padding: "2px 8px", zIndex: 10 }}>
-        <span style={{ fontSize: 12, marginInlineEnd: 6 }}>顯示負載</span>
-        <Switch size="small" checked={showLoad} onChange={setShowLoad} />
-      </div>
+      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} preserveAspectRatio="none"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+        <defs>
+          <filter id="cmsGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
 
-      {markers.map((m) => {
-        const p = BUILDING_POS[m.letter];
-        if (!p) return null;
-        const c = ratioColor(m.ratio);
-        const isFocus = m.letter === focusLetter;
-        const isHi = !!highlight?.has(m.letter);
-        const size = isFocus ? 32 : 26;
+        {/* 受電站 → 各棟 發光連線 */}
+        {showConnectors && xc && markers.filter((m) => m.letter !== "X" && POS[m.letter]).map((m) => {
+          const c = centroid(POS[m.letter]);
+          return <line key={"l" + m.letter} x1={xc[0]} y1={xc[1]} x2={c[0]} y2={c[1]}
+            stroke={ratioColor(m.ratio).border} strokeWidth={2} opacity={dark ? 0.5 : 0.3} filter={dark ? "url(#cmsGlow)" : undefined} pointerEvents="none" />;
+        })}
 
-        let border = "2px solid transparent";
-        let background = "transparent";
-        if (isFocus) { border = "4px solid #1677ff"; background = "rgba(22,119,255,.40)"; }
-        else if (isHi) { border = "3px solid #1677ff"; background = "rgba(22,119,255,.18)"; }
-        else if (showLoad) { border = `3px solid ${c.border}`; }
-
-        const dim = hasFocus && !isFocus && !isHi;
-        const outline = isFocus || isHi || showLoad ? "0 0 0 1.5px rgba(255,255,255,.9)" : "none";
-
-        return (
-          <div key={m.letter} style={{ position: "absolute", left: `${(p.x / MAP_W) * 100}%`, top: `${(p.y / MAP_H) * 100}%`, transform: "translate(-50%, -50%)", zIndex: isFocus ? 7 : isHi ? 5 : 3, opacity: dim ? 0.2 : 1 }}>
-            <button
-              className="campus-marker"
-              onClick={() => onSelect?.(m.letter)}
-              title={`${m.letter}棟 ${m.name}${m.ratio != null ? `｜負載率 ${m.ratio.toFixed(0)}%` : ""}`}
-              style={{ width: size, height: size, borderRadius: "50%", border, background, boxShadow: outline, cursor: "pointer", padding: 0 }}
-            />
-          </div>
-        );
-      })}
+        {/* 各棟多邊形 */}
+        {markers.map((m) => {
+          const pts = POS[m.letter]; if (!pts) return null;
+          const c = ratioColor(m.ratio);
+          const cen = centroid(pts);
+          const isFocus = m.letter === focusLetter;
+          const isHi = !!highlight?.has(m.letter);
+          let stroke = "transparent", fill = "transparent";
+          if (editable) { stroke = "#1677ff"; fill = "rgba(22,119,255,.18)"; }
+          else if (isFocus) { stroke = "#1677ff"; fill = "rgba(22,119,255,.3)"; }
+          else if (isHi) { stroke = "#1677ff"; fill = "rgba(22,119,255,.12)"; }
+          else if (lit) { stroke = c.border; fill = `${c.bg}${dark ? "33" : "55"}`; }
+          const dim = !editable && hasFocus && !isFocus && !isHi ? 0.25 : 1;
+          const glow = !editable && dark && (isFocus || isHi || (lit && m.ratio != null));
+          return (
+            <g key={m.letter} opacity={dim} style={{ cursor: editable ? "default" : "pointer" }}
+              filter={glow ? "url(#cmsGlow)" : undefined}>
+              <title>{`${m.letter}棟 ${m.name}${m.ratio != null ? `｜負載率 ${m.ratio.toFixed(0)}%` : ""}`}</title>
+              <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={fill} stroke={stroke} strokeWidth={isFocus ? 2.5 : 2}
+                onClick={editable ? undefined : () => onSelect?.(m.letter)}
+                onDoubleClick={editable ? (e) => { e.stopPropagation(); addVertex(m.letter, pts, toImg(e)); } : undefined} />
+              <text x={cen[0]} y={cen[1]} textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={700}
+                fill={lit || editable ? "#fff" : "#333"} stroke={lit || editable ? "rgba(0,0,0,.6)" : "none"} strokeWidth={lit || editable ? 0.5 : 0} pointerEvents="none">{m.letter}</text>
+              {editable && pts.map((p, i) => (
+                <circle key={i} cx={p[0]} cy={p[1]} r={4} fill="#fff" stroke="#1677ff" strokeWidth={1.5} style={{ cursor: "grab" }}
+                  onPointerDown={(e) => { e.stopPropagation(); (e.target as Element).setPointerCapture?.(e.pointerId); drag.current = { letter: m.letter, idx: i }; }}
+                  onDoubleClick={(e) => { e.stopPropagation(); if (pts.length > 3) onPolyChange?.(m.letter, pts.filter((_, j) => j !== i)); }} />
+              ))}
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }

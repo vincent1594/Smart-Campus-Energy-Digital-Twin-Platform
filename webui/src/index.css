@@ -1,0 +1,7 @@
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+body { font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; }
+
+/* 全站隱藏捲動軸(內容仍可滾動,只是不顯示軸) */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { width: 0; height: 0; display: none; }
