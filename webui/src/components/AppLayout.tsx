@@ -50,7 +50,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <Layout style={{ height: "100vh" }}>
-      <Header style={{ background: "#001529", paddingInline: 20, display: "flex", alignItems: "center", gap: 24 }}>
+      <Header style={{ background: "#001529", paddingInline: 20, display: "flex", alignItems: "center", gap: 62 }}>
         <img src="/stust-logo.png" alt="STUST" style={{ height: 30, display: "block" }} />
         <Menu theme="dark" mode="horizontal" selectedKeys={[topSelected]} onClick={({ key }) => navigate(key)}
           items={topNav.map((i) => ({ key: i.key, icon: topIcon[i.key], label: i.label }))}
