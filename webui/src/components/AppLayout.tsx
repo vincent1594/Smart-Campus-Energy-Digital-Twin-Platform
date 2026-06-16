@@ -54,7 +54,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <img src="/stust-logo.png" alt="STUST" style={{ height: 30, display: "block" }} />
         <Menu theme="dark" mode="horizontal" selectedKeys={[topSelected]} onClick={({ key }) => navigate(key)}
           items={topNav.map((i) => ({ key: i.key, icon: topIcon[i.key], label: i.label }))}
-          style={{ flex: 1, minWidth: 0, background: "transparent", borderBottom: "none", justifyContent: "center" }} />
+          style={{ flex: 1, minWidth: 0, background: "transparent", borderBottom: "none" }} />
         <Space size={18} style={{ color: "#fff" }}>
           <Space size={6}><CloudOutlined style={{ color: "#69b1ff" }} /><span>28°C</span><span style={{ color: "#8c8c8c", fontSize: 12 }}>{now}</span></Space>
           <Space size={6}><UserOutlined /><span>總務處 admin</span></Space>
