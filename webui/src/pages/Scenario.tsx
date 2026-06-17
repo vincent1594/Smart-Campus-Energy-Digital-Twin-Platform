@@ -118,56 +118,57 @@ export default function Scenario() {
     <div style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr 320px", gap: 10 }}>
       {/* 左:情境設定 */}
       <Card size="small" title="情境設定" style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
-        <div style={{ color: "#888", fontSize: 12, marginBottom: 6 }}>模擬時間點(XGBoost 預測)</div>
-        <DatePicker showTime format="YYYY-MM-DD HH:mm" style={{ width: "100%", marginBottom: 6 }}
+        <div style={{ color: "#888", fontSize: 12, marginBottom: 4 }}>模擬時間點(XGBoost 預測)</div>
+        <DatePicker showTime format="YYYY-MM-DD HH:mm" size="small" style={{ width: "100%", marginBottom: 6 }}
           placeholder="選日期 + 時段" minuteStep={30}
           onChange={(_, ds) => setTs(typeof ds === "string" ? ds : undefined)} />
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <span style={{ color: "#888", fontSize: 12, whiteSpace: "nowrap" }}>太陽能出力</span>
-          <Slider style={{ flex: 1 }} min={0} max={1} step={0.05} value={pvf} onChange={setPvf}
-            marks={{ 0: "0", 0.5: "0.5", 1: "1" }} tooltip={{ formatter: (v) => `×${v}` }} />
+          <Slider style={{ flex: 1, margin: "0 4px" }} min={0} max={1} step={0.05} value={pvf} onChange={setPvf} tooltip={{ formatter: (v) => `×${v}` }} />
+          <span style={{ fontSize: 12, color: "#666", width: 30, textAlign: "right" }}>×{pvf}</span>
         </div>
         <Button type="primary" block loading={running} onClick={runForecast}>預測並模擬</Button>
-        <div style={{ color: "#aaa", fontSize: 11, margin: "6px 0 4px" }}>用 XGBoost 預測該時刻各饋線負載並模擬,結果連動總覽。</div>
-        <Divider style={{ margin: "10px 0" }} />
-        <div style={{ color: "#888", fontSize: 12, marginBottom: 4 }}>總負載(依各棟現況比例分配)</div>
+
+        <Divider style={{ margin: "8px 0" }} orientation="left" plain>手動 what-if</Divider>
+        <div style={{ color: "#888", fontSize: 12, marginBottom: 2 }}>總負載</div>
         <InputNumber size="small" style={{ width: "100%" }} addonAfter="kW" min={0} value={Math.round(total)} onChange={(v) => setTotal(v ?? 0)} />
-        <Slider min={0.5} max={3} step={0.05} value={base.total_load_kw ? total / base.total_load_kw : 1}
+        <Slider min={0.5} max={3} step={0.05} value={base.total_load_kw ? total / base.total_load_kw : 1} style={{ margin: "2px 4px 20px" }}
           onChange={(f) => setTotal(Math.round(base.total_load_kw * f))} marks={{ 1: "現況", 2: "×2", 3: "×3" }} tooltip={{ formatter: (f) => `×${f?.toFixed(2)}` }} />
 
-        <Divider style={{ margin: "10px 0" }}>單區負載</Divider>
-        <Select size="small" style={{ width: "100%", marginBottom: 6 }} placeholder="選區域(棟)" allowClear showSearch optionFilterProp="label"
+        <Divider style={{ margin: "6px 0" }} orientation="left" plain>單區負載</Divider>
+        <Select size="small" style={{ width: "100%", marginBottom: 4 }} placeholder="選區域(棟)" allowClear showSearch optionFilterProp="label"
           value={zone} onChange={(v) => { setZone(v); setZoneKw(v ? (zones.get(v)?.total ?? null) : null); }}
           options={[...zones.values()].map((z) => ({ value: z.letter, label: `${z.name}（${z.letter}棟,${z.loads.length}台）` }))} />
         <InputNumber size="small" style={{ width: "100%" }} addonAfter="kW" min={0} value={zoneKw} onChange={setZoneKw} disabled={!zone} placeholder="區域總負載 kW" />
 
-        <Divider style={{ margin: "10px 0" }}>變壓器容量</Divider>
-        <Select size="small" style={{ width: "100%", marginBottom: 6 }} placeholder="選變壓器" allowClear showSearch optionFilterProp="label"
+        <Divider style={{ margin: "6px 0" }} orientation="left" plain>變壓器容量</Divider>
+        <Select size="small" style={{ width: "100%", marginBottom: 4 }} placeholder="選變壓器" allowClear showSearch optionFilterProp="label"
           value={tr} onChange={(v) => { setTr(v); setTrKva(trafos.find((t) => t.id === v)?.capacity_kva ?? null); }}
           options={trafos.map((t) => ({ value: t.id, label: `${t.name}（${t.capacity_kva}kVA）` }))} />
         <InputNumber size="small" style={{ width: "100%" }} addonAfter="kVA" min={0} value={trKva} onChange={setTrKva} disabled={!tr} placeholder="容量 kVA" />
 
-        <Divider style={{ margin: "10px 0" }}>饋線長度</Divider>
-        <Select size="small" style={{ width: "100%", marginBottom: 6 }} placeholder="選饋線" allowClear showSearch optionFilterProp="label"
+        <Divider style={{ margin: "6px 0" }} orientation="left" plain>饋線長度</Divider>
+        <Select size="small" style={{ width: "100%", marginBottom: 4 }} placeholder="選饋線" allowClear showSearch optionFilterProp="label"
           value={fd} onChange={(v) => { setFd(v); setFdM(feeders.find((f) => f.id === v)?.length_m ?? null); }}
           options={feeders.map((f) => ({ value: f.id, label: `${f.name}（${f.length_m.toFixed(0)}m）` }))} />
         <InputNumber size="small" style={{ width: "100%" }} addonAfter="m" min={0} value={fdM} onChange={setFdM} disabled={!fd} placeholder="長度 m" />
 
-        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           <Button type="primary" block loading={running} onClick={run}>執行模擬</Button>
           <Button onClick={reset}>重設</Button>
         </div>
-        <div style={{ color: "#aaa", fontSize: 11, marginTop: 8 }}>未填的項目沿用現況;模擬不影響原始模型。執行後結果會同步到「校園總覽」,可在那裡還原現況。</div>
       </Card>
 
       {/* 中:地圖(過載標紅) */}
       <Card size="small" title={cmp ? "模擬後負載分布" : "現況負載分布"} style={{ height: "100%" }}
-        styles={{ body: { padding: 8, height: "calc(100% - 39px)", display: "flex", flexDirection: "column" } }}>
+        styles={{ body: { padding: 8, height: "calc(100% - 39px)", display: "flex", flexDirection: "column" } }}
+        extra={
+          <span style={{ fontSize: 12, color: "#999" }}>
+            <Tag color="#52c41a">正常</Tag><Tag color="#fadb14">中載</Tag><Tag color="#fa8c16">吃緊</Tag><Tag color="#ff4d4f">過載&gt;100%</Tag>
+          </span>
+        }>
         <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center" }}>
           {shown && <CampusMapStatic markers={markers} fitHeight />}
-        </div>
-        <div style={{ marginTop: 6, fontSize: 12, color: "#999" }}>
-          <Tag color="#52c41a">正常</Tag><Tag color="#fadb14">中載</Tag><Tag color="#fa8c16">吃緊</Tag><Tag color="#ff4d4f">過載&gt;100%</Tag>
         </div>
       </Card>
 
