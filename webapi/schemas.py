@@ -39,6 +39,7 @@ class PowerFlowResult(BaseModel):
     total_load_kvar: float = 0.0
     system_loss_kw: float
     system_loss_kvar: float = 0.0
+    grid_import_kw: float = 0.0   # 市電(台電)進線實功率
     min_voltage_pu: float
     min_voltage_building_id: Optional[str] = None
     min_voltage_building_name: Optional[str] = None
@@ -51,7 +52,8 @@ class PowerFlowResult(BaseModel):
 
 # ---------- Dashboard ----------
 class DashboardSummary(BaseModel):
-    building_count: int
+    building_count: int        # 低壓負載點數(含合併負載,目前 40)
+    substation_count: int = 0  # 變電站母線數 = 實際供電建築數(北電錶 23)
     transformer_count: int
     feeder_count: int
     vcb_count: int
@@ -59,6 +61,7 @@ class DashboardSummary(BaseModel):
     total_load_kvar: float = 0.0
     system_loss_kw: float
     system_loss_kvar: float = 0.0
+    grid_import_kw: float = 0.0   # 市電(台電)進線實功率
     min_voltage_pu: float
     max_transformer_load_ratio_percent: float
     max_feeder_load_ratio_percent: float
@@ -204,3 +207,9 @@ class ScenarioRequest(BaseModel):
 class ScenarioComparison(BaseModel):
     base: PowerFlowResult
     scenario: PowerFlowResult
+
+
+# 模擬時間點:用 XGBoost 預測該時刻各饋線負載後模擬
+class ForecastRequest(BaseModel):
+    timestamp: str                        # "YYYY-MM-DD HH:MM"
+    pv_factor: float = 0.8                # 太陽能出力係數(日照強弱)

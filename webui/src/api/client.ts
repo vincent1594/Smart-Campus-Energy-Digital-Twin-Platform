@@ -5,6 +5,7 @@ import type {
   DashboardSummary,
   FeederDetail,
   PowerFlowResult,
+  ForecastRequest,
   ScenarioComparison,
   ScenarioRequest,
   TopologyGraph,
@@ -51,4 +52,5 @@ export const api = {
   topology: () => get<TopologyGraph>("/api/topology"),
   powerflow: () => get<PowerFlowResult>("/api/powerflow"),
   runScenario: (req: ScenarioRequest) => post<ScenarioComparison>("/api/scenario/run", req),
+  runForecast: (req: ForecastRequest) => post<ScenarioComparison>("/api/scenario/forecast", req),
 };

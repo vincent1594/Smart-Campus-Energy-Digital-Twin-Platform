@@ -19,7 +19,7 @@ function distSeg(p: Pt, a: Pt, b: Pt): number {
 }
 
 export default function CampusMapStatic({
-  markers, focusLetter, highlight, onSelect, onClear, dark = false, showConnectors = false,
+  markers, focusLetter, highlight, onSelect, onClear, dark = false,
   editable = false, polys, onPolyChange, fitHeight = false,
 }: {
   markers: MapMarker[];
@@ -28,19 +28,17 @@ export default function CampusMapStatic({
   onSelect?: (letter: string) => void;
   onClear?: () => void;   // 點地圖空白處 → 取消選取
   dark?: boolean;
-  showConnectors?: boolean;
   editable?: boolean;
   polys?: Record<string, Pt[]>;
   onPolyChange?: (letter: string, pts: Pt[]) => void;
   fitHeight?: boolean; // 依高度縮放(置中、不溢出)
 }) {
-  const [showLoad, setShowLoad] = useState(false);
+  const [showBox, setShowBox] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ letter: string; idx: number } | null>(null);
   const POS = polys ?? BUILDING_POS;
-  const lit = dark || showLoad;
   const hasFocus = !!focusLetter || (highlight?.size ?? 0) > 0;
-  const xc = POS.X ? centroid(POS.X) : null;
+  const accent = dark ? "#00e5ff" : "#1677ff";
 
   const toImg = (e: PointerEvent | React.MouseEvent): Pt => {
     const r = ref.current!.getBoundingClientRect();
@@ -79,8 +77,8 @@ export default function CampusMapStatic({
 
       {!editable && (
         <div style={{ position: "absolute", top: 8, right: 8, background: dark ? "rgba(0,0,0,.5)" : "rgba(255,255,255,.85)", color: dark ? "#fff" : "#000", borderRadius: 6, padding: "2px 8px", zIndex: 30 }}>
-          <span style={{ fontSize: 12, marginInlineEnd: 6 }}>顯示負載</span>
-          <Switch size="small" checked={lit} disabled={dark} onChange={setShowLoad} />
+          <span style={{ fontSize: 12, marginInlineEnd: 6 }}>顯示範圍框</span>
+          <Switch size="small" checked={showBox} disabled={dark} onChange={setShowBox} />
         </div>
       )}
 
@@ -90,6 +88,17 @@ export default function CampusMapStatic({
           <filter id="cmsGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
+          {/* 羽化邊緣,讓聚光燈挖洞柔順 */}
+          <filter id="cmsSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="8" /></filter>
+          {/* 聚光燈遮罩:白=暗幕生效,黑=挖洞(該棟保持明亮) */}
+          <mask id="cmsSpot">
+            <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="#fff" />
+            <g filter="url(#cmsSoft)">
+              {markers.filter((m) => (m.letter === focusLetter || highlight?.has(m.letter)) && POS[m.letter]).map((m) => (
+                <polygon key={"mk" + m.letter} points={POS[m.letter].map((p) => p.join(",")).join(" ")} fill="#000" />
+              ))}
+            </g>
+          </mask>
         </defs>
 
         {/* 背景:點空白處取消選取(編輯模式不啟用) */}
@@ -98,38 +107,42 @@ export default function CampusMapStatic({
             style={{ cursor: "default" }} onClick={() => onClear?.()} />
         )}
 
-        {/* 受電站 → 各棟 發光連線 */}
-        {showConnectors && xc && markers.filter((m) => m.letter !== "X" && POS[m.letter]).map((m) => {
-          const c = centroid(POS[m.letter]);
-          return <line key={"l" + m.letter} x1={xc[0]} y1={xc[1]} x2={c[0]} y2={c[1]}
-            stroke={ratioColor(m.ratio).border} strokeWidth={2} opacity={dark ? 0.5 : 0.3} filter={dark ? "url(#cmsGlow)" : undefined} pointerEvents="none" />;
-        })}
+        {/* 聚光燈:其餘變暗,只有焦點棟+同供電群保持明亮全彩 */}
+        {!editable && !showBox && hasFocus && (
+          <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="#0a1830" opacity={0.58} mask="url(#cmsSpot)" pointerEvents="none" />
+        )}
+        {/* 焦點棟:一抹柔和色光,與同群區分 */}
+        {!editable && !showBox && focusLetter && POS[focusLetter] && (
+          <polygon points={POS[focusLetter].map((p) => p.join(",")).join(" ")} fill={accent} opacity={0.14} pointerEvents="none" />
+        )}
 
-        {/* 各棟多邊形 */}
+        {/* 各棟:多邊形(無框模式下透明,僅當點擊熱區);showBox/編輯模式才顯示框與字 */}
         {markers.map((m) => {
           const pts = POS[m.letter]; if (!pts) return null;
           const c = ratioColor(m.ratio);
           const cen = centroid(pts);
           const isFocus = m.letter === focusLetter;
           const isHi = !!highlight?.has(m.letter);
+          const showShape = editable || showBox;   // 是否顯示範圍框與字母
           let stroke = "transparent", fill = "transparent";
-          if (editable) { stroke = "#1677ff"; fill = "rgba(22,119,255,.18)"; }
-          else if (isFocus) { stroke = "#1677ff"; fill = "rgba(22,119,255,.3)"; }
-          else if (isHi) { stroke = "#1677ff"; fill = "rgba(22,119,255,.12)"; }
-          else if (lit) { stroke = c.border; fill = `${c.bg}${dark ? "33" : "55"}`; }
-          const dim = !editable && hasFocus && !isFocus && !isHi ? 0.25 : 1;
-          const glow = !editable && dark && (isFocus || isHi || (lit && m.ratio != null));
+          if (showShape) {
+            if (editable) { stroke = accent; fill = "rgba(22,119,255,.18)"; }
+            else if (isFocus) { stroke = accent; fill = "rgba(22,119,255,.3)"; }
+            else if (isHi) { stroke = accent; fill = "rgba(22,119,255,.12)"; }
+            else { stroke = c.border; fill = `${c.bg}${dark ? "33" : "55"}`; }
+          }
           return (
-            <g key={m.letter} opacity={dim} style={{ cursor: editable ? "default" : "pointer" }}
-              filter={glow ? "url(#cmsGlow)" : undefined}>
+            <g key={m.letter} style={{ cursor: editable ? "default" : "pointer" }}>
               <title>{`${m.letter}棟 ${m.name}${m.ratio != null ? `｜負載率 ${m.ratio.toFixed(0)}%` : ""}`}</title>
-              <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={fill} stroke={stroke} strokeWidth={isFocus ? 2.5 : 2}
+              <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={showShape ? fill : "transparent"} stroke={showShape ? stroke : "none"} strokeWidth={isFocus ? 5 : 4}
                 onClick={editable ? undefined : () => onSelect?.(m.letter)}
                 onDoubleClick={editable ? (e) => { e.stopPropagation(); addVertex(m.letter, pts, toImg(e)); } : undefined} />
-              <text x={cen[0]} y={cen[1]} textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={700}
-                fill={lit || editable ? "#fff" : "#333"} stroke={lit || editable ? "rgba(0,0,0,.6)" : "none"} strokeWidth={lit || editable ? 0.5 : 0} pointerEvents="none">{m.letter}</text>
+              {showShape && (
+                <text x={cen[0]} y={cen[1]} textAnchor="middle" dominantBaseline="central" fontSize={26} fontWeight={700}
+                  fill="#fff" stroke="rgba(0,0,0,.6)" strokeWidth={1} pointerEvents="none">{m.letter}</text>
+              )}
               {editable && pts.map((p, i) => (
-                <circle key={i} cx={p[0]} cy={p[1]} r={4} fill="#fff" stroke="#1677ff" strokeWidth={1.5} style={{ cursor: "grab" }}
+                <circle key={i} cx={p[0]} cy={p[1]} r={9} fill="#fff" stroke={accent} strokeWidth={3} style={{ cursor: "grab" }}
                   onPointerDown={(e) => { e.stopPropagation(); (e.target as Element).setPointerCapture?.(e.pointerId); drag.current = { letter: m.letter, idx: i }; }}
                   onDoubleClick={(e) => { e.stopPropagation(); if (pts.length > 3) onPolyChange?.(m.letter, pts.filter((_, j) => j !== i)); }} />
               ))}

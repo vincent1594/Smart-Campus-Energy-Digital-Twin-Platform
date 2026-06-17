@@ -17,6 +17,8 @@ export default function CampusMapPage() {
   const [polys, setPolys] = useState<Record<string, Pt[]>>(() => JSON.parse(JSON.stringify(BUILDING_POS)));
   const [exportOpen, setExportOpen] = useState(false);
   const { setFocus } = useFocus();
+  // 預設一律隱藏編輯;只有網址帶 ?edit=1 才開放(校正用)
+  const allowEdit = new URLSearchParams(window.location.search).has("edit");
 
   useEffect(() => { api.buildings().then(setBuildings); api.transformers().then(setTrafos); }, []);
 
@@ -50,23 +52,25 @@ export default function CampusMapPage() {
       <Col xs={24} lg={17} style={{ height: "100%" }}>
         <Card size="small" title="校園供電地圖" style={{ height: "100%" }}
           styles={{ body: { padding: 8, height: "calc(100% - 39px)", display: "flex", flexDirection: "column" } }}
-          extra={
+          extra={allowEdit ? (
             <Space>
               <span style={{ fontSize: 12 }}>編輯位置/大小</span>
               <Switch size="small" checked={editable} onChange={setEditable} />
               {editable && <Button size="small" type="primary" onClick={() => setExportOpen(true)}>匯出座標</Button>}
             </Space>
-          }>
+          ) : undefined}>
           <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center" }}>
             <CampusMapStatic
               markers={markers} polys={polys} fitHeight
-              editable={editable}
+              editable={allowEdit && editable}
               onPolyChange={(letter, pts) => setPolys((p) => ({ ...p, [letter]: pts }))}
               onSelect={(L) => { setSel(L); const z = zones.get(L); if (z?.buildings[0]) setFocus({ kind: "building", id: z.buildings[0].id, label: z.name.replace(/\s*\(.*\)/, "") }); }}
             />
           </div>
           <div style={{ marginTop: 6, fontSize: 12, color: "#999" }}>
-            {editable ? "拖頂點移動、雙擊邊加頂點、雙擊頂點刪除 → 完成按「匯出座標」貼回給我" : "點棟別查看該區設備;右上開「編輯」可拉成不規則形狀"}
+            {allowEdit
+              ? (editable ? "拖頂點移動、雙擊邊加頂點、雙擊頂點刪除 → 完成按「匯出座標」貼回給我" : "點棟別查看該區設備;右上開「編輯」可拉成不規則形狀")
+              : "點棟別查看該區設備"}
           </div>
         </Card>
       </Col>

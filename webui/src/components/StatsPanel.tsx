@@ -12,19 +12,30 @@ const TREND_SHAPE = [1900, 1500, 1300, 1400, 2600, 3800, 4200, 4300, 4100, 3600,
 // 南臺科技大學(台南永康)
 const LAT = 22.9925, LON = 120.2255;
 
-interface EnvData { temp?: number; humidity?: number; wind?: number; pm25?: number; live: boolean }
+// 台灣電力排碳係數(經濟部能源署 2023 年公告)kg CO₂e/kWh
+const CO2_EF = 0.494;
+
+// PV 導向環境:即時氣溫、雲量、日照(GHI),並估算模組溫度
+interface EnvData { temp?: number; cloud?: number; ghi?: number; live: boolean }
+
+// 模組溫度估算(NOCT 法):T_module ≈ T_ambient + (NOCT-20)/800 × GHI,NOCT≈45°C
+function moduleTemp(temp?: number, ghi?: number): number | undefined {
+  if (temp == null || ghi == null) return undefined;
+  return temp + ((45 - 20) / 800) * ghi;
+}
 
 function useEnv(): EnvData {
   const [env, setEnv] = useState<EnvData>({ live: false });
   useEffect(() => {
     let alive = true;
-    const w = fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,wind_speed_10m&wind_speed_unit=ms&timezone=auto`).then((r) => r.json());
-    const a = fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${LAT}&longitude=${LON}&current=pm2_5&timezone=auto`).then((r) => r.json());
-    Promise.all([w, a]).then(([wd, ad]) => {
-      if (!alive) return;
-      const c = wd?.current ?? {};
-      setEnv({ temp: c.temperature_2m, humidity: c.relative_humidity_2m, wind: c.wind_speed_10m, pm25: ad?.current?.pm2_5, live: true });
-    }).catch(() => { /* 保持示意 */ });
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,cloud_cover,shortwave_radiation&timezone=auto`)
+      .then((r) => r.json())
+      .then((wd) => {
+        if (!alive) return;
+        const c = wd?.current ?? {};
+        setEnv({ temp: c.temperature_2m, cloud: c.cloud_cover, ghi: c.shortwave_radiation, live: true });
+      })
+      .catch(() => { /* 保持未連線 */ });
     return () => { alive = false; };
   }, []);
   return env;
@@ -78,6 +89,12 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
 
   const statusColor = dash.status === "OK" ? "#52c41a" : dash.status === "WARNING" ? "#faad14" : "#ff4d4f";
 
+  // 系統總功因 = P / √(P²+Q²);台電 ≥0.8 才不罰款
+  const sysPf = dash.total_load_kw > 0
+    ? dash.total_load_kw / Math.sqrt(dash.total_load_kw ** 2 + dash.total_load_kvar ** 2)
+    : 0;
+  const pfColor = sysPf >= 0.9 ? "#52c41a" : sysPf >= 0.8 ? "#faad14" : "#ff4d4f";
+
   // 環境監測單格
   const Env = ({ icon, value, label }: { icon: string; value: React.ReactNode; label: string }) => (
     <div style={{ textAlign: "center", flex: 1 }}>
@@ -105,8 +122,8 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
         <Kpi label="最大變壓器" value={dash.max_transformer_load_ratio_percent} unit="%" accent="#faad14" extra={maxTr?.transformer_name} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <Kpi label="今日用電量" value={"18,620"} unit="kWh" accent="#9254de" demo />
-        <Kpi label="碳排減量" value={"328"} unit="kg" accent="#52c41a" demo />
+        <Kpi label="系統總功因" value={sysPf.toFixed(2)} accent={pfColor} />
+        <Kpi label="目前碳排放" value={Math.round((dash.grid_import_kw || 0) * CO2_EF).toLocaleString()} unit="kg/h" accent="#9e7d4e" />
       </div>
 
       {/* 日負載曲線 */}
@@ -134,19 +151,19 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
         <div><div style={{ color: "#1677ff", fontSize: 12 }}>● 注意</div><div style={{ fontSize: 20, color: C.text }}>{alerts.note}</div></div>
       </div>
 
-      {/* 環境監測(Open-Meteo 即時) */}
+      {/* 環境監測:PV 導向(Open-Meteo 即時日照/氣溫/雲量 + 估算模組溫度) */}
       <div style={{ ...panel, padding: "10px 12px" }}>
         <div style={{ color: C.muted, fontSize: 12, marginBottom: 6 }}>環境監測
           {env.live
             ? <Tag color="green" style={{ marginInlineStart: 4, fontSize: 10 }}>即時</Tag>
-            : Demo}
+            : <Tag style={{ marginInlineStart: 4, fontSize: 10, color: C.muted, borderColor: C.border, background: "transparent" }}>連線中</Tag>}
           <span style={{ color: C.muted, fontSize: 10, marginInlineStart: 2 }}>· Open-Meteo</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <Env icon="🌡" value={`${n1(env.temp, 1) ?? "28"}°C`} label="溫度" />
-          <Env icon="💧" value={`${n1(env.humidity) ?? "62"}%`} label="濕度" />
-          <Env icon="🌬" value={`${n1(env.wind, 1) ?? "2.1"} m/s`} label="風速" />
-          <Env icon="🟤" value={`${n1(env.pm25) ?? "18"}`} label="PM2.5" />
+          <Env icon="☀️" value={`${n1(env.ghi) ?? "—"} W/m²`} label="日照" />
+          <Env icon="🌡" value={`${n1(env.temp, 1) ?? "—"}°C`} label="氣溫" />
+          <Env icon="☁️" value={`${n1(env.cloud) ?? "—"}%`} label="雲量" />
+          <Env icon="🔆" value={`${n1(moduleTemp(env.temp, env.ghi), 1) ?? "—"}°C`} label="模組溫度" />
         </div>
       </div>
     </div>
