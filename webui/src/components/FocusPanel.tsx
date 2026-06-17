@@ -72,7 +72,10 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
       <Descriptions title="台電受電站(X棟)" bordered column={1} size="small">
         <Descriptions.Item label="進線">台電 11.4kV</Descriptions.Item>
         <Descriptions.Item label="VCB">{dash?.vcb_count ?? "—"} 路(皆於 X棟匯集)</Descriptions.Item>
-        <Descriptions.Item label="供電建築">{dash?.building_count ?? "—"} 棟</Descriptions.Item>
+        <Descriptions.Item label="供電建築">
+          {dash?.substation_count != null ? dash.substation_count + 1 : "—"} 棟
+          <span style={{ color: "#999", fontSize: 12, marginInlineStart: 4 }}>(含受電站 X棟)</span>
+        </Descriptions.Item>
         <Descriptions.Item label="北側總負載">{dash?.total_load_kw ?? "—"} kW</Descriptions.Item>
         <Descriptions.Item label="停電影響">此處停電 → 整個北側系統停電</Descriptions.Item>
       </Descriptions>

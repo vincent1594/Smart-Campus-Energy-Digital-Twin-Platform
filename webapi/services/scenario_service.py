@@ -13,7 +13,10 @@ from __future__ import annotations
 
 import copy
 
+import models.network_builder as _nb  # type: ignore
+
 from webapi import state
+from webapi.engine import _build_index
 from webapi.powerflow import solve_net
 from webapi.schemas import ScenarioComparison, ScenarioRequest
 
@@ -64,3 +67,31 @@ def run_scenario(req: ScenarioRequest) -> ScenarioComparison:
 
     scenario_result = solve_net(model, net, index)
     return ScenarioComparison(base=base_result, scenario=scenario_result)
+
+
+# ---------- 依時間點 XGBoost 預測並模擬 ----------
+_forecast_cache: dict[str, object] = {}  # "timestamp|pv" -> scenario PowerFlowResult
+
+
+def _build_net_at(timestamp: str, pv_factor: float):
+    """暫時覆寫 builder 常數,以 XGBoost 預測該時刻負載建一個 net,再還原(base 不受影響)。"""
+    saved = (_nb.SYSTEM_LOAD_METHOD, _nb.SYSTEM_LOAD_TIMESTAMP, _nb.SYSTEM_PV_FACTOR, _nb.SYSTEM_COINCIDENT_PEAK_KW)
+    try:
+        _nb.SYSTEM_LOAD_METHOD = "xgboost"          # 直接預測各饋線實際負載
+        _nb.SYSTEM_LOAD_TIMESTAMP = timestamp
+        _nb.SYSTEM_PV_FACTOR = pv_factor
+        _nb.SYSTEM_COINCIDENT_PEAK_KW = None
+        return _nb.build_network_s1_baseline()
+    finally:
+        (_nb.SYSTEM_LOAD_METHOD, _nb.SYSTEM_LOAD_TIMESTAMP,
+         _nb.SYSTEM_PV_FACTOR, _nb.SYSTEM_COINCIDENT_PEAK_KW) = saved
+
+
+def run_forecast(timestamp: str, pv_factor: float = 0.8) -> ScenarioComparison:
+    base = state.get_base()
+    base_result = state.get_base_result()
+    ck = f"{timestamp}|{pv_factor}"
+    if ck not in _forecast_cache:
+        net = _build_net_at(timestamp, pv_factor)
+        _forecast_cache[ck] = solve_net(base.model, net, _build_index(net))
+    return ScenarioComparison(base=base_result, scenario=_forecast_cache[ck])  # type: ignore[arg-type]

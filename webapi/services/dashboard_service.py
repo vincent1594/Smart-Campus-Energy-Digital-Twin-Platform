@@ -16,6 +16,7 @@ def get_summary() -> DashboardSummary:
     result = state.get_base_result()
     return DashboardSummary(
         building_count=len(model.buildings),
+        substation_count=len({t.substation_bus for t in model.transformers}),
         transformer_count=len(model.transformers),
         feeder_count=len(model.feeders),
         vcb_count=len(model.vcbs),
@@ -23,6 +24,7 @@ def get_summary() -> DashboardSummary:
         total_load_kvar=result.total_load_kvar,
         system_loss_kw=result.system_loss_kw,
         system_loss_kvar=result.system_loss_kvar,
+        grid_import_kw=result.grid_import_kw,
         min_voltage_pu=result.min_voltage_pu,
         max_transformer_load_ratio_percent=result.max_transformer_load_ratio_percent,
         max_feeder_load_ratio_percent=result.max_feeder_load_ratio_percent,

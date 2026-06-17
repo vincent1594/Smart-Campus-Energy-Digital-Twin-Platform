@@ -1,5 +1,5 @@
 // 規劃模擬:讀焦點帶入 → 改負載/容量/線長 → Run(/api/scenario/run)→ 前後對比 + 地圖過載標紅。
-import { Button, Card, Divider, Empty, InputNumber, Select, Slider, Spin, Tag, message } from "antd";
+import { Button, Card, DatePicker, Divider, Empty, InputNumber, Select, Slider, Spin, Tag, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import type { BuildingSummary, DashboardSummary, FeederDetail, PowerFlowResult, ScenarioComparison, ScenarioRequest, TransformerDetail } from "../api/types";
@@ -52,12 +52,21 @@ export default function Scenario() {
 
   const [cmp, setCmp] = useState<ScenarioComparison | null>(null);
   const [running, setRunning] = useState(false);
+  const [ts, setTs] = useState<string>();          // 模擬時間點 "YYYY-MM-DD HH:mm"
+  const [pvf, setPvf] = useState<number>(0.8);     // 太陽能出力係數
 
   useEffect(() => {
     Promise.all([api.dashboard(), api.powerflow(), api.buildings(), api.transformers(), api.feeders()])
       .then(([d, p, b, t, f]) => { setBase(d); setBasePf(p); setBuildings(b); setTrafos(t); setFeeders(f); setTotal(d.total_load_kw); })
       .catch((e) => message.error(String(e.message ?? e)));
   }, []);
+
+  const runForecast = () => {
+    if (!ts) { message.warning("請先選擇模擬時間點"); return; }
+    setRunning(true);
+    api.runForecast({ timestamp: ts, pv_factor: pvf }).then((c) => { setCmp(c); setScenario(c.scenario); })
+      .catch((e) => message.error(String(e.message ?? e))).finally(() => setRunning(false));
+  };
 
   // 區域彙總(棟別 → 該區所有負載 + 現況總和)
   const zones = useMemo(() => {
@@ -92,7 +101,7 @@ export default function Scenario() {
     setRunning(true);
     api.runScenario(req).then((c) => { setCmp(c); setScenario(c.scenario); }).catch((e) => message.error(String(e.message ?? e))).finally(() => setRunning(false));
   };
-  const reset = () => { setTotal(base?.total_load_kw ?? 0); setZone(undefined); setZoneKw(null); setTr(undefined); setTrKva(null); setFd(undefined); setFdM(null); setCmp(null); setScenario(null); };
+  const reset = () => { setTotal(base?.total_load_kw ?? 0); setZone(undefined); setZoneKw(null); setTr(undefined); setTrKva(null); setFd(undefined); setFdM(null); setCmp(null); setScenario(null); setTs(undefined); };
 
   const shown = cmp ? cmp.scenario : basePf;
   const markers = useMemo(() => (shown ? markersFrom(shown, buildings) : []), [shown, buildings]);
@@ -109,6 +118,18 @@ export default function Scenario() {
     <div style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr 320px", gap: 10 }}>
       {/* 左:情境設定 */}
       <Card size="small" title="情境設定" style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
+        <div style={{ color: "#888", fontSize: 12, marginBottom: 6 }}>模擬時間點(XGBoost 預測)</div>
+        <DatePicker showTime format="YYYY-MM-DD HH:mm" style={{ width: "100%", marginBottom: 6 }}
+          placeholder="選日期 + 時段" minuteStep={30}
+          onChange={(_, ds) => setTs(typeof ds === "string" ? ds : undefined)} />
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <span style={{ color: "#888", fontSize: 12, whiteSpace: "nowrap" }}>太陽能出力</span>
+          <Slider style={{ flex: 1 }} min={0} max={1} step={0.05} value={pvf} onChange={setPvf}
+            marks={{ 0: "0", 0.5: "0.5", 1: "1" }} tooltip={{ formatter: (v) => `×${v}` }} />
+        </div>
+        <Button type="primary" block loading={running} onClick={runForecast}>預測並模擬</Button>
+        <div style={{ color: "#aaa", fontSize: 11, margin: "6px 0 4px" }}>用 XGBoost 預測該時刻各饋線負載並模擬,結果連動總覽。</div>
+        <Divider style={{ margin: "10px 0" }} />
         <div style={{ color: "#888", fontSize: 12, marginBottom: 4 }}>總負載(依各棟現況比例分配)</div>
         <InputNumber size="small" style={{ width: "100%" }} addonAfter="kW" min={0} value={Math.round(total)} onChange={(v) => setTotal(v ?? 0)} />
         <Slider min={0.5} max={3} step={0.05} value={base.total_load_kw ? total / base.total_load_kw : 1}

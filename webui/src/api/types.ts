@@ -1,7 +1,8 @@
 // 後端 DTO 的 TS 鏡像。欄位皆為業務語意,無 pandapower 原始欄位名。
 
 export interface DashboardSummary {
-  building_count: number;
+  building_count: number;       // 低壓負載點數(含合併負載)
+  substation_count: number;     // 變電站母線數 = 實際供電建築數
   transformer_count: number;
   feeder_count: number;
   vcb_count: number;
@@ -9,6 +10,7 @@ export interface DashboardSummary {
   total_load_kvar: number;
   system_loss_kw: number;
   system_loss_kvar: number;
+  grid_import_kw: number;       // 市電進線實功率
   min_voltage_pu: number;
   max_transformer_load_ratio_percent: number;
   max_feeder_load_ratio_percent: number;
@@ -143,6 +145,7 @@ export interface PowerFlowResult {
   total_load_kvar: number;
   system_loss_kw: number;
   system_loss_kvar: number;
+  grid_import_kw: number;
   min_voltage_pu: number;
   min_voltage_building_id: string | null;
   min_voltage_building_name: string | null;
@@ -178,4 +181,9 @@ export interface ScenarioRequest {
 export interface ScenarioComparison {
   base: PowerFlowResult;
   scenario: PowerFlowResult;
+}
+
+export interface ForecastRequest {
+  timestamp: string;       // "YYYY-MM-DD HH:MM"
+  pv_factor?: number;      // 太陽能出力係數
 }
