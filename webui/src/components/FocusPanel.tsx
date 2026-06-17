@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import type { BuildingDetail, BuildingSummary, DashboardSummary, FeederDetail, SupplyPathNode, TransformerDetail, VcbDetail } from "../api/types";
 import { type Focus, useFocus } from "../focus/FocusContext";
 import { buildingLetter } from "../lib/campusPositions";
+import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
 import { useActiveScenario } from "../scenario/ActiveScenarioContext";
 import LoadRatioTag from "./LoadRatioTag";
 
@@ -119,7 +120,8 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
         </Space>
         <Descriptions column={1} size="small" style={{ marginTop: 8 }}>
           <Descriptions.Item label="容量">{tr.capacity_kva} kVA</Descriptions.Item>
-          <Descriptions.Item label="一次/二次側">11.4 kV / {tr.lv_kv === 0.38 ? "380-220V" : `${tr.lv_kv * 1000}V`}</Descriptions.Item>
+          <Descriptions.Item label="一次側額定">11.4 kV<span style={{ color: "#999", fontSize: 12 }}>(允許 {rangeKV(11.4)} kV)</span></Descriptions.Item>
+          <Descriptions.Item label="二次側額定">{lvLabel(tr.lv_kv)}<span style={{ color: "#999", fontSize: 12 }}>(允許 {lvRangeLabel(tr.lv_kv)})</span></Descriptions.Item>
           <Descriptions.Item label="型式">{tr.trafo_type}式</Descriptions.Item>
           <Descriptions.Item label="負載率"><LoadRatioTag ratio={trRatio(tr.id, tr.load_ratio_percent)} /></Descriptions.Item>
           <Descriptions.Item label="所屬饋線">

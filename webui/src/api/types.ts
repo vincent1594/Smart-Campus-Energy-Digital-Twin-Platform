@@ -6,11 +6,14 @@ export interface DashboardSummary {
   feeder_count: number;
   vcb_count: number;
   total_load_kw: number;
+  total_load_kvar: number;
   system_loss_kw: number;
+  system_loss_kvar: number;
   min_voltage_pu: number;
   max_transformer_load_ratio_percent: number;
   max_feeder_load_ratio_percent: number;
   status: string; // OK / WARNING / ERROR
+  load_basis?: string; // 負載基準(情境/時點)
 }
 
 export interface SupplyPathNode {
@@ -60,6 +63,31 @@ export interface TransformerDetail {
   connected_buildings: string[];
   total_connected_load_kw: number;
   load_ratio_percent: number | null;
+}
+
+// 變壓器規格明細(原始銘牌/實測資料,供營繕組核對)
+export interface TransformerSpec {
+  seq: string;
+  building: string;
+  tag: string;
+  brand: string;
+  year: string;
+  capacity_kva: number | null;
+  trafo_type: string;
+  hv_kv: string;
+  lv_v: string;
+  circuit: string;
+  load_desc: string;
+  efficiency: number | null;
+  temperature_c: number | null;
+  hv_actual_kv: string;
+  lv_actual_v: string;
+  load_current_a: number | null;
+  power_factor: number | null;
+  avg_load_kw: number | null;
+  load_ratio_percent: number | null;
+  pf_regulator: string;
+  capacitor_kvar: number | null;
 }
 
 export interface VcbDetail {
@@ -112,7 +140,9 @@ export interface PowerFlowResult {
   converged: boolean;
   status: string;
   total_load_kw: number;
+  total_load_kvar: number;
   system_loss_kw: number;
+  system_loss_kvar: number;
   min_voltage_pu: number;
   min_voltage_building_id: string | null;
   min_voltage_building_name: string | null;

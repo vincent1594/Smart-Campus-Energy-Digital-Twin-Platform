@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from webapi.schemas import FeederDetail, TransformerDetail, VcbDetail
+from webapi.schemas import FeederDetail, TransformerDetail, TransformerSpec, VcbDetail
 from webapi.services import asset_service
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
@@ -10,6 +10,12 @@ router = APIRouter(prefix="/api/assets", tags=["assets"])
 @router.get("/transformers", response_model=list[TransformerDetail])
 def list_transformers():
     return asset_service.list_transformers()
+
+
+# 變壓器規格明細(原始銘牌/實測資料,供營繕組核對;不對應潮流模型)
+@router.get("/transformer-specs", response_model=list[TransformerSpec])
+def list_transformer_specs():
+    return asset_service.list_transformer_specs()
 
 
 @router.get("/transformers/{transformer_id}", response_model=TransformerDetail)

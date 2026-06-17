@@ -83,7 +83,8 @@ export default function MapExplorer() {
 
   const effPf = scenario ?? pf;
   const effDash = scenario ? {
-    ...dash, total_load_kw: scenario.total_load_kw, system_loss_kw: scenario.system_loss_kw,
+    ...dash, total_load_kw: scenario.total_load_kw, total_load_kvar: scenario.total_load_kvar,
+    system_loss_kw: scenario.system_loss_kw, system_loss_kvar: scenario.system_loss_kvar,
     min_voltage_pu: scenario.min_voltage_pu, max_transformer_load_ratio_percent: scenario.max_transformer_load_ratio_percent,
     max_feeder_load_ratio_percent: scenario.max_feeder_load_ratio_percent, status: scenario.status,
   } : dash;
@@ -98,13 +99,15 @@ export default function MapExplorer() {
       {/* 中:地圖(依高度縮放、置中) */}
       <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#fff", border: "1px solid #f0f0f0", borderRadius: 8, overflow: "hidden" }}>
         <div style={{ padding: "6px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f5" }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>校園供電地圖 <Tag color="geekblue">北電錶系統</Tag>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>校園供電地圖{" "}
+            <Tag color="geekblue" style={{ cursor: "pointer" }} title="點選聚焦 X棟受電站、高亮整個北側系統"
+              onClick={() => setFocus({ kind: "source", id: SOURCE_KEY, label: "受電站(X棟)" })}>北電錶系統</Tag>
             {scenario && <Tag color="orange">模擬情境 <a onClick={() => setScenario(null)}>還原現況</a></Tag>}</span>
           <Segmented size="small" value={mode} onChange={(v) => setMode(v as "supply" | "impact")}
             options={[{ label: "查供電路徑", value: "supply" }, { label: "看停電影響", value: "impact" }]} />
         </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center", padding: 8 }}>
-          <CampusMapStatic markers={markers} focusLetter={focusLetter} highlight={highlight} onSelect={onMapSelect} dark={dark} showConnectors={dark} fitHeight />
+          <CampusMapStatic markers={markers} focusLetter={focusLetter} highlight={highlight} onSelect={onMapSelect} onClear={() => setFocus(null)} dark={dark} showConnectors={dark} fitHeight />
         </div>
       </div>
 

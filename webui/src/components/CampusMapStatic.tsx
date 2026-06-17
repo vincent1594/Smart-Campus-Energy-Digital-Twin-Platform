@@ -19,13 +19,14 @@ function distSeg(p: Pt, a: Pt, b: Pt): number {
 }
 
 export default function CampusMapStatic({
-  markers, focusLetter, highlight, onSelect, dark = false, showConnectors = false,
+  markers, focusLetter, highlight, onSelect, onClear, dark = false, showConnectors = false,
   editable = false, polys, onPolyChange, fitHeight = false,
 }: {
   markers: MapMarker[];
   focusLetter?: string | null;
   highlight?: Set<string>;
   onSelect?: (letter: string) => void;
+  onClear?: () => void;   // 點地圖空白處 → 取消選取
   dark?: boolean;
   showConnectors?: boolean;
   editable?: boolean;
@@ -43,6 +44,12 @@ export default function CampusMapStatic({
 
   const toImg = (e: PointerEvent | React.MouseEvent): Pt => {
     const r = ref.current!.getBoundingClientRect();
+    if (fitHeight) {
+      // contain:圖片等比置中、可能有 letterbox,需扣掉縮放與留白偏移
+      const s = Math.min(r.width / MAP_W, r.height / MAP_H);
+      const offX = (r.width - MAP_W * s) / 2, offY = (r.height - MAP_H * s) / 2;
+      return [(e.clientX - r.left - offX) / s, (e.clientY - r.top - offY) / s];
+    }
     return [(e.clientX - r.left) * (MAP_W / r.width), (e.clientY - r.top) * (MAP_H / r.height)];
   };
 
@@ -67,8 +74,8 @@ export default function CampusMapStatic({
   };
 
   return (
-    <div ref={ref} style={{ position: "relative", lineHeight: 0, touchAction: editable ? "none" : undefined, ...(fitHeight ? { height: "100%", display: "inline-block" } : { width: "100%" }) }}>
-      <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.85)" : "none", ...(fitHeight ? { height: "100%", width: "auto" } : { width: "100%" }) }} />
+    <div ref={ref} style={{ position: "relative", lineHeight: 0, touchAction: editable ? "none" : undefined, ...(fitHeight ? { width: "100%", height: "100%" } : { width: "100%" }) }}>
+      <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.85)" : "none", ...(fitHeight ? { width: "100%", height: "100%", objectFit: "contain" } : { width: "100%" }) }} />
 
       {!editable && (
         <div style={{ position: "absolute", top: 8, right: 8, background: dark ? "rgba(0,0,0,.5)" : "rgba(255,255,255,.85)", color: dark ? "#fff" : "#000", borderRadius: 6, padding: "2px 8px", zIndex: 30 }}>
@@ -77,13 +84,19 @@ export default function CampusMapStatic({
         </div>
       )}
 
-      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} preserveAspectRatio="none"
+      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} preserveAspectRatio={fitHeight ? "xMidYMid meet" : "none"}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
         <defs>
           <filter id="cmsGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
+
+        {/* 背景:點空白處取消選取(編輯模式不啟用) */}
+        {!editable && (
+          <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="transparent"
+            style={{ cursor: "default" }} onClick={() => onClear?.()} />
+        )}
 
         {/* 受電站 → 各棟 發光連線 */}
         {showConnectors && xc && markers.filter((m) => m.letter !== "X" && POS[m.letter]).map((m) => {

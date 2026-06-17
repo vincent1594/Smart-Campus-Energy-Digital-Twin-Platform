@@ -4,10 +4,15 @@
 """
 from __future__ import annotations
 
+import json
+from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 
 from webapi import state
-from webapi.schemas import FeederDetail, TransformerDetail, VcbDetail
+from webapi.schemas import FeederDetail, TransformerDetail, TransformerSpec, VcbDetail
+
+_SPECS_PATH = Path(__file__).resolve().parents[1] / "data" / "transformer_specs.json"
 
 
 def _trafo_ratio(transformer_id: str) -> Optional[float]:
@@ -51,6 +56,13 @@ def _transformer_detail(transformer_id: str) -> TransformerDetail:
         total_connected_load_kw=round(sum(b.load_kw for b in buildings), 1),
         load_ratio_percent=_trafo_ratio(transformer_id),
     )
+
+
+# ---------- 變壓器規格明細 (原始銘牌/實測資料) ----------
+@lru_cache(maxsize=1)
+def list_transformer_specs() -> list[TransformerSpec]:
+    raw = json.loads(_SPECS_PATH.read_text(encoding="utf-8"))
+    return [TransformerSpec(**r) for r in raw]
 
 
 # ---------- VCB ----------

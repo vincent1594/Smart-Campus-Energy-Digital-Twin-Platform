@@ -102,7 +102,7 @@ FEEDERS = {
                         "name": "TR_M_MAIN",
                         "capacity": 750,
                         "voltage_hv": 11.4,
-                        "voltage_lv": 0.22,
+                        "voltage_lv": 0.38,
                         "lv_bus": "M_LV_BUS",
                         "loads": ["LOAD_M"],
                         "capacitors": [{"name": "CAP_M", "rating": 0}],  # 折入 TR-26 運轉功因(實裝120)
@@ -120,8 +120,8 @@ FEEDERS = {
                 "bus": "H3_BUS",
                 "cable": {"cross_section": 60, "length": 187.2},
                 "transformers": [
-                    {"name": "TR_H3_1", "capacity": 400, "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "H3_1_LV_BUS", "loads": ["LOAD_H3_1"]},
-                    {"name": "TR_H3_2", "capacity": 300, "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "H3_2_LV_BUS", "loads": ["LOAD_H3_2"]},
+                    {"name": "TR_H3_1", "capacity": 400, "voltage_hv": 11.4, "voltage_lv": 0.38, "lv_bus": "H3_1_LV_BUS", "loads": ["LOAD_H3_1"]},
+                    {"name": "TR_H3_2", "capacity": 300, "voltage_hv": 11.4, "voltage_lv": 0.19, "lv_bus": "H3_2_LV_BUS", "loads": ["LOAD_H3_2"]},
                 ]
             }
         ]
@@ -167,7 +167,7 @@ FEEDERS = {
                         "name": "TR_L_1",
                         "capacity": 300,
                         "voltage_hv": 11.4,
-                        "voltage_lv": 0.22,
+                        "voltage_lv": 0.208,
                         "lv_bus": "L1_LV_BUS",
                         "loads": ["LOAD_L1"],
                         "capacitors": [{"name": "CAP_L", "rating": 0}],
@@ -233,7 +233,7 @@ FEEDERS = {
                         "name": "TR_T_1",
                         "capacity": 1250,
                         "voltage_hv": 11.4,
-                        "voltage_lv": 0.22,
+                        "voltage_lv": 0.38,
                         "lv_bus": "T_LV_BUS",
                         "type": "乾",
                         "loads": ["LOAD_T"],
@@ -248,7 +248,7 @@ FEEDERS = {
                 "cable": {"cross_section": 38, "length": 112 * 1.2},
                 "transformers": [
                     {"name": "TR_V_1", "capacity": 600, "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "V1_LV_BUS", "loads": ["LOAD_V1"]},
-                    {"name": "TR_V_2", "capacity": 750, "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "V2_LV_BUS", "loads": ["LOAD_V2"]},
+                    {"name": "TR_V_2", "capacity": 750, "voltage_hv": 11.4, "voltage_lv": 0.38, "lv_bus": "V2_LV_BUS", "loads": ["LOAD_V2"]},
                 ]
             }
         ]
@@ -280,7 +280,7 @@ FEEDERS = {
                         "name": "TR_S1",
                         "capacity": 750,
                         "voltage_hv": 11.4,
-                        "voltage_lv": 0.22,
+                        "voltage_lv": 0.38,
                         "lv_bus": "S1_LV_BUS",
                         "loads": ["LOAD_S1"],
                         "capacitors": [{"name": "CAP_S1", "rating": 0}],  # 折入 TR-16 運轉功因(實裝225)
@@ -289,7 +289,7 @@ FEEDERS = {
                         "name": "TR_S2",
                         "capacity": 400,
                         "voltage_hv": 11.4,
-                        "voltage_lv": 0.22,
+                        "voltage_lv": 0.11,
                         "lv_bus": "S2_LV_BUS",
                         "loads": ["LOAD_S2"],
                         "capacitors": [{"name": "CAP_S2", "rating": 0}],  # 折入 TR-15 運轉功因(實裝165)
@@ -321,19 +321,19 @@ FEEDERS = {
                 "bus": "W_BUS",
                 "cable": {"cross_section": 60, "length": 435 * 1.2},
                 "transformers": [
-                    {"name": "TR_W_1", "capacity": 1500, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "W1_LV_BUS", "loads": ["LOAD_W1"]},
-                    {"name": "TR_W_4", "capacity": 750, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "W4_LV_BUS", "loads": ["LOAD_W4"]},
+                    {"name": "TR_W_1", "capacity": 1500, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.38, "lv_bus": "W1_LV_BUS", "loads": ["LOAD_W1"]},
+                    {"name": "TR_W_4", "capacity": 750, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.19, "lv_bus": "W4_LV_BUS", "loads": ["LOAD_W4"]},
                 ]
             },
             {
                 "bus": "W_BUS1",
                 "transformers": [
-                    {"name": "TR_W_2", "capacity": 1500, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "W2_LV_BUS", "loads": ["LOAD_W2"]},
+                    {"name": "TR_W_2", "capacity": 1500, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.38, "lv_bus": "W2_LV_BUS", "loads": ["LOAD_W2"]},
                     {
                         "name": "TR_W_3",
                         "capacity": 500,
                         "voltage_hv": 11.4,
-                        "voltage_lv": 0.22,
+                        "voltage_lv": 0.38,
                         "lv_bus": "W3_LV_BUS",
                         "type": "乾",
                         "loads": ["LOAD_W3"],
@@ -352,10 +352,10 @@ FEEDERS = {
                 "bus": "I_BUS",
                 "cable": {"cross_section": 60, "length": 63 * 1.2},
                 "transformers": [
-                    {"name": "TR_I_1", "capacity": 1500, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "I1_LV_BUS", "loads": ["LOAD_I1"]},
-                    {"name": "TR_I_2", "capacity": 1500, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "I2_LV_BUS", "loads": ["LOAD_I2"]},
-                    {"name": "TR_I_3", "capacity": 750, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "I3_LV_BUS", "loads": ["LOAD_I3"]},
-                    {"name": "TR_I_4", "capacity": 750, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.22, "lv_bus": "I4_LV_BUS", "loads": ["LOAD_I4"]},
+                    {"name": "TR_I_1", "capacity": 1500, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.38, "lv_bus": "I1_LV_BUS", "loads": ["LOAD_I1"]},
+                    {"name": "TR_I_2", "capacity": 1500, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.38, "lv_bus": "I2_LV_BUS", "loads": ["LOAD_I2"]},
+                    {"name": "TR_I_3", "capacity": 750, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.19, "lv_bus": "I3_LV_BUS", "loads": ["LOAD_I3"]},
+                    {"name": "TR_I_4", "capacity": 750, "type": "乾", "voltage_hv": 11.4, "voltage_lv": 0.19, "lv_bus": "I4_LV_BUS", "loads": ["LOAD_I4"]},
                 ]
             }
         ]
