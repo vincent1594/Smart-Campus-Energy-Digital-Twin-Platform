@@ -9,9 +9,11 @@ import type {
   ScenarioRequest,
   TopologyGraph,
   TransformerDetail,
+  TransformerSpec,
   VcbDetail,
 } from "./types";
-const API_BASE_URL = "https://smart-campus-energy-digital-twin.onrender.com";
+// 開發時用相對路徑 → 由 Vite proxy 轉到本機後端 (127.0.0.1:8126);正式版打 Render
+const API_BASE_URL = import.meta.env.DEV ? "" : "https://smart-campus-energy-digital-twin.onrender.com";
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`);
@@ -42,6 +44,7 @@ export const api = {
   building: (id: string) => get<BuildingDetail>(`/api/buildings/${encodeURIComponent(id)}`),
   transformers: () => get<TransformerDetail[]>("/api/assets/transformers"),
   transformer: (id: string) => get<TransformerDetail>(`/api/assets/transformers/${encodeURIComponent(id)}`),
+  transformerSpecs: () => get<TransformerSpec[]>("/api/assets/transformer-specs"),
   vcbs: () => get<VcbDetail[]>("/api/assets/vcbs"),
   feeders: () => get<FeederDetail[]>("/api/assets/feeders"),
   feeder: (id: string) => get<FeederDetail>(`/api/assets/feeders/${encodeURIComponent(id)}`),

@@ -36,7 +36,9 @@ class PowerFlowResult(BaseModel):
     converged: bool
     status: str = "OK"   # OK / WARNING(電壓或熱越限) / ERROR(孤島或未供電)
     total_load_kw: float
+    total_load_kvar: float = 0.0
     system_loss_kw: float
+    system_loss_kvar: float = 0.0
     min_voltage_pu: float
     min_voltage_building_id: Optional[str] = None
     min_voltage_building_name: Optional[str] = None
@@ -54,11 +56,14 @@ class DashboardSummary(BaseModel):
     feeder_count: int
     vcb_count: int
     total_load_kw: float
+    total_load_kvar: float = 0.0
     system_loss_kw: float
+    system_loss_kvar: float = 0.0
     min_voltage_pu: float
     max_transformer_load_ratio_percent: float
     max_feeder_load_ratio_percent: float
     status: str = "OK"
+    load_basis: str = ""   # 負載基準說明(情境/時點),例:S1 · 2023/03/01 14:00 半尖峰
 
 
 # ---------- Building / Asset 查詢 ----------
@@ -136,6 +141,32 @@ class FeederDetail(BaseModel):
     connected_buildings: list[str]
     total_connected_load_kw: float
     load_ratio_percent: Optional[float] = None
+
+
+# ---------- 變壓器規格明細 (原始銘牌/實測資料,供營繕組核對) ----------
+# 忠實呈現「各站變壓器規格容量資料.xlsx」,不對應潮流模型。
+class TransformerSpec(BaseModel):
+    seq: str                              # 序號
+    building: str                         # 建築物名稱
+    tag: str                              # 變壓器編號 (TR-n)
+    brand: str = ""                       # 廠牌
+    year: str = ""                        # 製造年份
+    capacity_kva: Optional[int] = None    # 變壓器容量
+    trafo_type: str = ""                  # 變壓器型式 (油式/乾式)
+    hv_kv: str = ""                        # 一次側額定電壓
+    lv_v: str = ""                         # 二次側額定電壓 (線/相)
+    circuit: str = ""                     # 迴路名稱
+    load_desc: str = ""                   # 負載概述
+    efficiency: Optional[float] = None    # 效率 η
+    temperature_c: Optional[float] = None # 變壓器溫度 (°C)
+    hv_actual_kv: str = ""                # 一次側實際電壓
+    lv_actual_v: str = ""                 # 二次側實際電壓
+    load_current_a: Optional[float] = None  # 負載電流 (A)
+    power_factor: Optional[float] = None  # 功因
+    avg_load_kw: Optional[float] = None   # 平均負載 (kW)
+    load_ratio_percent: Optional[float] = None  # 負載率 (%)
+    pf_regulator: str = ""                # 功因自動調整器
+    capacitor_kvar: Optional[float] = None  # 裝置電容器量
 
 
 # ---------- Topology (React Flow) ----------

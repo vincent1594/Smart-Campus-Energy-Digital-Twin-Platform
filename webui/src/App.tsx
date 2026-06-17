@@ -6,6 +6,7 @@ import BuildingExplorer from "./pages/BuildingExplorer";
 import CampusMapPage from "./pages/CampusMapPage";
 import MapExplorer from "./pages/MapExplorer";
 import Placeholder from "./pages/Placeholder";
+import Report from "./pages/Report";
 import Scenario from "./pages/Scenario";
 
 export default function App() {
@@ -21,7 +22,7 @@ export default function App() {
         <Route path="/monitor" element={<Placeholder title="即時監控（需時序資料,示意）" />} />
         <Route path="/history" element={<Placeholder title="歷史趨勢（需時序資料,示意）" />} />
         <Route path="/alarms" element={<Alarms />} />
-        <Route path="/report" element={<Placeholder title="報表匯出" />} />
+        <Route path="/report" element={<Report />} />
       </Routes>
     </AppLayout>
   );

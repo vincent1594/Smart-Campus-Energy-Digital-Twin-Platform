@@ -58,8 +58,12 @@ def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> P
         ))
 
     total_load_kw = round(float(stats.get("total_load_p_kw", 0.0)), 1)
+    total_load_kvar = round(float(stats.get("total_load_q_kvar", 0.0)), 1)
     system_loss_kw = round(
         float(stats.get("total_loss_p_kw", 0.0)) + float(stats.get("trafo_loss_p_kw", 0.0)), 1
+    )
+    system_loss_kvar = round(
+        float(stats.get("total_loss_q_kvar", 0.0)) + float(stats.get("trafo_loss_q_kvar", 0.0)), 1
     )
     worst = min(building_voltages, key=lambda x: x.voltage_pu) if building_voltages else None
     max_tr = max((t.load_ratio_percent for t in transformer_loadings), default=0.0)
@@ -71,7 +75,9 @@ def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> P
         converged=status != "ERROR",
         status=status,
         total_load_kw=total_load_kw,
+        total_load_kvar=total_load_kvar,
         system_loss_kw=system_loss_kw,
+        system_loss_kvar=system_loss_kvar,
         min_voltage_pu=round(worst.voltage_pu, 4) if worst else 0.0,
         min_voltage_building_id=worst.building_id if worst else None,
         min_voltage_building_name=worst.building_name if worst else None,
