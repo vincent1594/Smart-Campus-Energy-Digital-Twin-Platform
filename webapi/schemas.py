@@ -176,6 +176,39 @@ class TransformerSpec(BaseModel):
     capacitor_kvar: Optional[float] = None  # 裝置電容器量
 
 
+# ---------- 歷史趨勢 (EMS 實測時序) ----------
+class HistoryDaily(BaseModel):
+    date: str
+    avg_kw: float
+    peak_kw: float
+
+
+class HistoryHourProfile(BaseModel):
+    hour: int
+    weekday_kw: float             # 平日該時平均需量
+    weekend_kw: float             # 假日該時平均需量
+
+
+class HistoryFeeder(BaseModel):
+    feeder: str                   # VCBx
+    name: str
+    avg_kw: float                 # 期間平均
+
+
+class HistoryReport(BaseModel):
+    period_start: str
+    period_end: str
+    days: int
+    peak_kw: float
+    peak_time: str                # 全期尖峰時刻
+    avg_kw: float
+    total_kwh: float
+    source: str                   # 資料來源/範圍說明
+    daily: list[HistoryDaily]     # 每日 平均/尖峰
+    profile: list[HistoryHourProfile]  # 典型日 24h(平日/假日)
+    feeders: list[HistoryFeeder]  # 各饋線期間平均(降冪)
+
+
 # ---------- EUI 用電強度 (營繕組節能) ----------
 class BuildingEUI(BaseModel):
     letter: str

@@ -8,6 +8,7 @@ import type {
   DemandStatus,
   EUIReport,
   FeederDetail,
+  HistoryReport,
   MonthlyBill,
   TariffInfo,
   PowerFlowResult,
@@ -75,6 +76,7 @@ export const api = {
     return get<DemandForecast>(`/api/demand/forecast?${q.toString()}`);
   },
   eui: (year?: number) => get<EUIReport>(`/api/eui${year ? `?year=${year}` : ""}`),
+  history: () => get<HistoryReport>("/api/history"),
   tariff: () => get<TariffInfo>("/api/demand/tariff"),
   bill: (req: BillRequest) => post<MonthlyBill>("/api/demand/bill", req),
 };
