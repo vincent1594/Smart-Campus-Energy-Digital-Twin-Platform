@@ -1,5 +1,5 @@
 import {
-  AlertOutlined, AppstoreOutlined, DashboardOutlined,
+  AlertOutlined, AppstoreOutlined, BarChartOutlined, DashboardOutlined,
   EnvironmentOutlined, FileTextOutlined, FundProjectionScreenOutlined,
   HomeOutlined, LineChartOutlined, ThunderboltOutlined, UserOutlined,
 } from "@ant-design/icons";
@@ -15,6 +15,7 @@ const topNav = [
   { key: "/assets", label: "設備查詢" },
   { key: "/scenario", label: "規劃模擬" },
   { key: "/demand", label: "需量契約" },
+  { key: "/eui", label: "用電強度" },
   { key: "/history", label: "歷史趨勢" },
   { key: "/alarms", label: "告警紀錄" },
   { key: "/report", label: "報表匯出" },
@@ -23,7 +24,7 @@ const topNav = [
 const topIcon: Record<string, ReactNode> = {
   "/": <DashboardOutlined />, "/map": <EnvironmentOutlined />, "/buildings": <HomeOutlined />,
   "/assets": <AppstoreOutlined />, "/scenario": <FundProjectionScreenOutlined />,
-  "/demand": <ThunderboltOutlined />,
+  "/demand": <ThunderboltOutlined />, "/eui": <BarChartOutlined />,
   "/history": <LineChartOutlined />, "/alarms": <AlertOutlined />, "/report": <FileTextOutlined />,
 };
 

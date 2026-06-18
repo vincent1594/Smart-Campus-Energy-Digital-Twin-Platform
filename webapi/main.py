@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from webapi import state
 from webapi.config import FRONTEND_ORIGINS
-from webapi.routes import assets, buildings, dashboard, demand, powerflow, scenario, topology
+from webapi.routes import assets, buildings, dashboard, demand, eui, powerflow, scenario, topology
 
 
 @asynccontextmanager
@@ -40,6 +40,7 @@ app.include_router(topology.router)
 app.include_router(powerflow.router)
 app.include_router(scenario.router)
 app.include_router(demand.router)
+app.include_router(eui.router)
 
 
 @app.get("/api/health", tags=["health"])

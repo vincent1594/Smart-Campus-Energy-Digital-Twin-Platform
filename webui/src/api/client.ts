@@ -6,6 +6,7 @@ import type {
   DashboardSummary,
   DemandForecast,
   DemandStatus,
+  EUIReport,
   FeederDetail,
   MonthlyBill,
   TariffInfo,
@@ -73,6 +74,7 @@ export const api = {
     if (rate != null) q.set("rate", String(rate));
     return get<DemandForecast>(`/api/demand/forecast?${q.toString()}`);
   },
+  eui: (year?: number) => get<EUIReport>(`/api/eui${year ? `?year=${year}` : ""}`),
   tariff: () => get<TariffInfo>("/api/demand/tariff"),
   bill: (req: BillRequest) => post<MonthlyBill>("/api/demand/bill", req),
 };
