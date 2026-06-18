@@ -11,6 +11,7 @@ export interface DashboardSummary {
   system_loss_kw: number;
   system_loss_kvar: number;
   grid_import_kw: number;       // 市電進線實功率
+  grid_import_kvar: number;     // 市電進線無功(進線端,含電容器補償後)
   min_voltage_pu: number;
   max_transformer_load_ratio_percent: number;
   max_feeder_load_ratio_percent: number;
@@ -31,6 +32,7 @@ export interface SupplyPathNode {
 export interface BuildingSummary {
   id: string;
   name: string;
+  floor_area_m2?: number | null;   // 樓地板面積 m²(112年統計表)
   estimated_load_kw: number;
   feeder_name: string;
   transformer_name: string;
@@ -41,6 +43,8 @@ export interface BuildingDetail {
   name: string;
   estimated_load_kw: number;
   power_factor: number;
+  floor_area_m2?: number | null;   // 樓地板面積 m²(112年統計表)
+
   vcb_id: string;
   vcb_name: string;
   feeder_id: string | null;
@@ -146,6 +150,7 @@ export interface PowerFlowResult {
   system_loss_kw: number;
   system_loss_kvar: number;
   grid_import_kw: number;
+  grid_import_kvar: number;
   min_voltage_pu: number;
   min_voltage_building_id: string | null;
   min_voltage_building_name: string | null;

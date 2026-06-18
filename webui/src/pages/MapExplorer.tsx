@@ -85,7 +85,7 @@ export default function MapExplorer() {
   const effDash = scenario ? {
     ...dash, total_load_kw: scenario.total_load_kw, total_load_kvar: scenario.total_load_kvar,
     system_loss_kw: scenario.system_loss_kw, system_loss_kvar: scenario.system_loss_kvar,
-    grid_import_kw: scenario.grid_import_kw,
+    grid_import_kw: scenario.grid_import_kw, grid_import_kvar: scenario.grid_import_kvar,
     min_voltage_pu: scenario.min_voltage_pu, max_transformer_load_ratio_percent: scenario.max_transformer_load_ratio_percent,
     max_feeder_load_ratio_percent: scenario.max_feeder_load_ratio_percent, status: scenario.status,
   } : dash;

@@ -7,6 +7,17 @@ from webapi import state
 from webapi import topology
 from webapi.schemas import BuildingDetail, BuildingSummary
 
+try:  # 樓地板面積 (112年統計表) —— 既有面積法資料,僅供顯示
+    from data.area_loads import BUILDING_AREA, LOAD_BUILDING
+except Exception:  # pragma: no cover
+    BUILDING_AREA, LOAD_BUILDING = {}, {}
+
+
+def _floor_area(building_id: str) -> Optional[float]:
+    """負載點 → 所屬建物 (字母) → 樓地板面積 m²;查無回 None。"""
+    letter = LOAD_BUILDING.get(building_id)
+    return BUILDING_AREA.get(letter) if letter else None
+
 
 def list_buildings(query: Optional[str] = None) -> list[BuildingSummary]:
     model = state.get_base_model()
@@ -18,7 +29,8 @@ def list_buildings(query: Optional[str] = None) -> list[BuildingSummary]:
         tr = model.transformer(b.transformer_id)
         feeder = model.feeder(tr.feeder_id) if (tr and tr.feeder_id) else None
         items.append(BuildingSummary(
-            id=b.id, name=b.name, estimated_load_kw=b.load_kw,
+            id=b.id, name=b.name, floor_area_m2=_floor_area(b.id),
+            estimated_load_kw=b.load_kw,
             feeder_name=feeder.name if feeder else "(開關耦合)",
             transformer_name=tr.name if tr else "",
         ))
@@ -39,6 +51,7 @@ def get_building(building_id: str) -> Optional[BuildingDetail]:
     return BuildingDetail(
         id=b.id, name=b.name,
         estimated_load_kw=b.load_kw, power_factor=b.power_factor,
+        floor_area_m2=_floor_area(building_id),
         vcb_id=vcb.id if vcb else "", vcb_name=vcb.name if vcb else "",
         feeder_id=feeder.id if feeder else None,
         feeder_name=feeder.name if feeder else None,

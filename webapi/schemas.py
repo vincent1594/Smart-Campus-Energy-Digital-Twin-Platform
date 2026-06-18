@@ -40,6 +40,7 @@ class PowerFlowResult(BaseModel):
     system_loss_kw: float
     system_loss_kvar: float = 0.0
     grid_import_kw: float = 0.0   # 市電(台電)進線實功率
+    grid_import_kvar: float = 0.0 # 市電進線無功(進線端,含電容器補償後)
     min_voltage_pu: float
     min_voltage_building_id: Optional[str] = None
     min_voltage_building_name: Optional[str] = None
@@ -62,6 +63,7 @@ class DashboardSummary(BaseModel):
     system_loss_kw: float
     system_loss_kvar: float = 0.0
     grid_import_kw: float = 0.0   # 市電(台電)進線實功率
+    grid_import_kvar: float = 0.0 # 市電進線無功(進線端,含電容器補償後)
     min_voltage_pu: float
     max_transformer_load_ratio_percent: float
     max_feeder_load_ratio_percent: float
@@ -86,6 +88,7 @@ class BuildingDetail(BaseModel):
     name: str
     estimated_load_kw: float
     power_factor: float
+    floor_area_m2: Optional[float] = None   # 樓地板面積 (112年統計表);多負載點共用該棟總面積
     vcb_id: str
     vcb_name: str
     feeder_id: Optional[str] = None
@@ -99,6 +102,7 @@ class BuildingDetail(BaseModel):
 class BuildingSummary(BaseModel):
     id: str
     name: str
+    floor_area_m2: Optional[float] = None   # 樓地板面積 (112年統計表)
     estimated_load_kw: float
     feeder_name: str
     transformer_name: str
