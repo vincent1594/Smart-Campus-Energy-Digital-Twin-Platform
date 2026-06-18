@@ -1,9 +1,14 @@
 // 極簡 API client。開發時 /api 由 Vite proxy 轉到後端 (見 vite.config.ts)。
 import type {
+  BillRequest,
   BuildingDetail,
   BuildingSummary,
   DashboardSummary,
+  DemandForecast,
+  DemandStatus,
   FeederDetail,
+  MonthlyBill,
+  TariffInfo,
   PowerFlowResult,
   ForecastRequest,
   ScenarioComparison,
@@ -53,4 +58,19 @@ export const api = {
   powerflow: () => get<PowerFlowResult>("/api/powerflow"),
   runScenario: (req: ScenarioRequest) => post<ScenarioComparison>("/api/scenario/run", req),
   runForecast: (req: ForecastRequest) => post<ScenarioComparison>("/api/scenario/forecast", req),
+  demand: (contractKw?: number, rate?: number) => {
+    const q = new URLSearchParams();
+    if (contractKw != null) q.set("contract_kw", String(contractKw));
+    if (rate != null) q.set("rate", String(rate));
+    const s = q.toString();
+    return get<DemandStatus>(`/api/demand/${s ? `?${s}` : ""}`);
+  },
+  demandForecast: (date: string, contractKw?: number, rate?: number) => {
+    const q = new URLSearchParams({ date });
+    if (contractKw != null) q.set("contract_kw", String(contractKw));
+    if (rate != null) q.set("rate", String(rate));
+    return get<DemandForecast>(`/api/demand/forecast?${q.toString()}`);
+  },
+  tariff: () => get<TariffInfo>("/api/demand/tariff"),
+  bill: (req: BillRequest) => post<MonthlyBill>("/api/demand/bill", req),
 };

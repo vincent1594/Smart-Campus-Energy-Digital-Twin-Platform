@@ -1,7 +1,7 @@
 import {
   AlertOutlined, AppstoreOutlined, DashboardOutlined,
   EnvironmentOutlined, FileTextOutlined, FundProjectionScreenOutlined,
-  HomeOutlined, LineChartOutlined, UserOutlined,
+  HomeOutlined, LineChartOutlined, ThunderboltOutlined, UserOutlined,
 } from "@ant-design/icons";
 import { Layout, Menu, Space } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -14,6 +14,7 @@ const topNav = [
   { key: "/buildings", label: "建築查詢" },
   { key: "/assets", label: "設備查詢" },
   { key: "/scenario", label: "規劃模擬" },
+  { key: "/demand", label: "需量契約" },
   { key: "/history", label: "歷史趨勢" },
   { key: "/alarms", label: "告警紀錄" },
   { key: "/report", label: "報表匯出" },
@@ -22,6 +23,7 @@ const topNav = [
 const topIcon: Record<string, ReactNode> = {
   "/": <DashboardOutlined />, "/map": <EnvironmentOutlined />, "/buildings": <HomeOutlined />,
   "/assets": <AppstoreOutlined />, "/scenario": <FundProjectionScreenOutlined />,
+  "/demand": <ThunderboltOutlined />,
   "/history": <LineChartOutlined />, "/alarms": <AlertOutlined />, "/report": <FileTextOutlined />,
 };
 
@@ -32,7 +34,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <Layout style={{ height: "100vh" }}>
-      <Header style={{ background: "#001529", paddingInline: 20, display: "flex", alignItems: "center", gap: 23 }}>
+      <Header style={{ background: "#001529", paddingInline: 20, height: 52, lineHeight: "52px", display: "flex", alignItems: "center", gap: 23 }}>
         <img src="/stust-logo.png" alt="STUST" title="回首頁(重新整理)" onClick={() => { window.location.href = "/"; }}
           style={{ height: 30, display: "block", cursor: "pointer" }} />
         <Menu theme="dark" mode="horizontal" selectedKeys={[topSelected]} onClick={({ key }) => navigate(key)}
