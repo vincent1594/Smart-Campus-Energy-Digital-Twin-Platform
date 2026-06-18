@@ -54,14 +54,15 @@ BUILDING_MAP = {
 # 主要導出函數
 # ============================================================================
 
-def export_s1_results(net, results: Dict, output_dir: str = None):
+def export_s1_results(net, results: Dict, output_dir: str = None, prefix: str = None):
     """
-    導出 S1 Baseline 潮流結果為報告 (md/txt) 與 CSV
+    導出潮流結果為報告 (md/txt) 與 CSV
 
     参数:
         net: PandaPower 網路
         results: 潮流計算結果
         output_dir: 輸出目錄 (默認為當前目錄)
+        prefix: 檔名前綴 (預設取輸出目錄名,即情境代號,如 S2 → S2_report.md)
 
     返回:
         文件路徑列表
@@ -71,6 +72,8 @@ def export_s1_results(net, results: Dict, output_dir: str = None):
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    if prefix is None:
+        prefix = output_path.name or "report"
 
     logger.info("=" * 80)
     logger.info("開始導出 S1 Baseline 結果")
@@ -82,23 +85,23 @@ def export_s1_results(net, results: Dict, output_dir: str = None):
     meta, sections = _build_report(net, results)
 
     # 2. 輸出 Markdown 主報告
-    md_file = output_path / "s1_baseline_report.md"
+    md_file = output_path / f"{prefix}_report.md"
     md_file.write_text(_render_markdown(meta, sections), encoding="utf-8")
     files_created.append(str(md_file))
     logger.info(f"✓ Markdown 報告: {md_file}")
 
     # 3. 輸出純文字報告
-    txt_file = output_path / "s1_baseline_report.txt"
+    txt_file = output_path / f"{prefix}_report.txt"
     txt_file.write_text(_render_text(meta, sections), encoding="utf-8")
     files_created.append(str(txt_file))
     logger.info(f"✓ 純文字報告: {txt_file}")
 
     # 4. CSV 數據檔
     for fname, fn in [
-        ("s1_bus_voltage.csv", _export_bus_data),
-        ("s1_line_loading.csv", _export_line_data),
-        ("s1_transformer_loading.csv", _export_transformer_data),
-        ("s1_load_data.csv", _export_load_data),
+        (f"{prefix}_bus_voltage.csv", _export_bus_data),
+        (f"{prefix}_line_loading.csv", _export_line_data),
+        (f"{prefix}_transformer_loading.csv", _export_transformer_data),
+        (f"{prefix}_load_data.csv", _export_load_data),
     ]:
         fpath = output_path / fname
         fn(net, fpath)
@@ -696,7 +699,7 @@ def _render_markdown(meta, sections) -> str:
             out.append(f"> {note}")
         out.append("")
     out.append("---")
-    out.append("_附:同目錄 CSV 檔 — s1_bus_voltage / s1_line_loading / s1_transformer_loading / s1_load_data_")
+    out.append("_附:同目錄 CSV 檔 — bus_voltage / line_loading / transformer_loading / load_data_")
     return "\n".join(out)
 
 
@@ -721,7 +724,7 @@ def _render_text(meta, sections) -> str:
             out.append(f"  {note}")
         out.append("")
     out.append("=" * W)
-    out.append("附: CSV 檔 — s1_bus_voltage / s1_line_loading / s1_transformer_loading / s1_load_data")
+    out.append("附: CSV 檔 — bus_voltage / line_loading / transformer_loading / load_data")
     out.append("=" * W)
     return "\n".join(out)
 
