@@ -1,6 +1,6 @@
 # 校園 11.4kV 配電系統 潮流分析報告 — 情境 S0
 
-_負載情境: EMS實測尖峰 2023/06/08 14:00 (4220 kW) | 產生時間 2026-06-18 21:12:38 | Newton-Raphson | pandapower 3.4.0_
+_負載情境: EMS實測尖峰 2023/06/08 14:00 (4220 kW) | 產生時間 2026-06-18 21:17:16 | Newton-Raphson | pandapower 3.4.0_
 
 ## 1. 分析基礎與假設
 
@@ -383,4 +383,4 @@ _負載情境: EMS實測尖峰 2023/06/08 14:00 (4220 kW) | 產生時間 2026-06
 ```
 
 ---
-_附:同目錄 CSV 檔 — s1_bus_voltage / s1_line_loading / s1_transformer_loading / s1_load_data_
+_附:同目錄 CSV 檔 — bus_voltage / line_loading / transformer_loading / load_data_
