@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
-from webapi.schemas import FeederDetail, TransformerDetail, TransformerSpec, VcbDetail
-from webapi.services import asset_service
+from webapi.schemas import FeederDetail, TransformerDetail, TransformerRisk, TransformerSpec, VcbDetail
+from webapi.services import asset_service, replacement_service
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
 
@@ -16,6 +16,12 @@ def list_transformers():
 @router.get("/transformer-specs", response_model=list[TransformerSpec])
 def list_transformer_specs():
     return asset_service.list_transformer_specs()
+
+
+# 汰換優先序:依屆齡/負載/溫度/效率算風險分數,降冪排序(營繕組資本門規劃)
+@router.get("/replacement-priority", response_model=list[TransformerRisk])
+def replacement_priority():
+    return replacement_service.replacement_priority()
 
 
 @router.get("/transformers/{transformer_id}", response_model=TransformerDetail)

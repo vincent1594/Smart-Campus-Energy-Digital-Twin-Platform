@@ -96,6 +96,31 @@ export interface TransformerSpec {
   capacitor_kvar: number | null;
 }
 
+// 設備汰換風險排序(營繕組資本門)
+export interface RiskFactor {
+  name: string;        // 屆齡/負載/溫度/效率
+  detail: string;
+  score: number;       // 0-100
+  weight: number;
+}
+
+export interface TransformerRisk {
+  tag: string;
+  building: string;
+  brand: string;
+  year: string;
+  age_years: number | null;
+  capacity_kva: number | null;
+  trafo_type: string;
+  load_ratio_percent: number | null;
+  temperature_c: number | null;
+  efficiency: number | null;
+  risk_score: number;       // 0-100
+  risk_level: string;       // 高/中/低
+  factors: RiskFactor[];
+  reason: string;
+}
+
 export interface VcbDetail {
   id: string;
   name: string;

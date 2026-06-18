@@ -176,6 +176,31 @@ class TransformerSpec(BaseModel):
     capacitor_kvar: Optional[float] = None  # 裝置電容器量
 
 
+# ---------- 設備汰換風險排序 (營繕組資本門) ----------
+class RiskFactor(BaseModel):
+    name: str          # 屆齡 / 負載 / 溫度 / 效率
+    detail: str        # 顯示文字,例:屆齡 30 年(1996)
+    score: float       # 0-100 該因子風險分數
+    weight: float      # 權重
+
+
+class TransformerRisk(BaseModel):
+    tag: str
+    building: str = ""
+    brand: str = ""
+    year: str = ""
+    age_years: Optional[int] = None
+    capacity_kva: Optional[int] = None
+    trafo_type: str = ""
+    load_ratio_percent: Optional[float] = None
+    temperature_c: Optional[float] = None
+    efficiency: Optional[float] = None
+    risk_score: float          # 0-100 綜合風險
+    risk_level: str            # 高 / 中 / 低
+    factors: list[RiskFactor]
+    reason: str                # 主要風險因子 + 建議行動
+
+
 # ---------- Topology (React Flow) ----------
 class TopologyNode(BaseModel):
     id: str
