@@ -11,21 +11,22 @@ import DemandManagement from "./pages/DemandManagement";
 import EnergyIntensity from "./pages/EnergyIntensity";
 import HistoryTrends from "./pages/HistoryTrends";
 import MapExplorer from "./pages/MapExplorer";
-import Placeholder from "./pages/Placeholder";
-import SingleLineDiagram from "./pages/SingleLineDiagram";
 import Report from "./pages/Report";
 import Scenario from "./pages/Scenario";
 
+const INTRO_KEY = "bg_intro_seen";
+
 export default function App() {
-  // 進入網站先播「通電序列」開場;按進入後顯示平台。整頁重載會再播。
-  const [entered, setEntered] = useState(false);
+  // 「通電序列」開場一個 session 只播一次(頂部「重看開場」可重播)。
+  const [entered, setEntered] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
 
   if (!entered) {
+    const enter = () => { sessionStorage.setItem(INTRO_KEY, "1"); setEntered(true); };
     return (
       <div style={{ position: "fixed", inset: 0, background: "#02030a", overflow: "hidden" }}>
         <WarRoomBackdrop />
         <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
-          <WarRoomIntro onEnter={() => setEntered(true)} />
+          <WarRoomIntro onEnter={enter} />
         </div>
       </div>
     );
@@ -41,8 +42,6 @@ export default function App() {
         <Route path="/scenario" element={<Scenario />} />
         <Route path="/demand" element={<DemandManagement />} />
         <Route path="/eui" element={<EnergyIntensity />} />
-        <Route path="/single-line" element={<SingleLineDiagram />} />
-        <Route path="/monitor" element={<Placeholder title="即時監控（需時序資料,示意）" />} />
         <Route path="/history" element={<HistoryTrends />} />
         <Route path="/alarms" element={<Alarms />} />
         <Route path="/report" element={<Report />} />
