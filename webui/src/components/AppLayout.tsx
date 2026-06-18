@@ -11,11 +11,9 @@ const { Header, Content } = Layout;
 
 const topNav = [
   { key: "/", label: "校園總覽" },
-  { key: "/buildings", label: "建築查詢" },
   { key: "/assets", label: "設備查詢" },
   { key: "/scenario", label: "規劃模擬" },
-  { key: "/demand", label: "需量契約" },
-  { key: "/eui", label: "用電強度" },
+  { key: "/demand", label: "能源管理" },
   { key: "/history", label: "歷史趨勢" },
   { key: "/alarms", label: "告警紀錄" },
   { key: "/report", label: "報表匯出" },

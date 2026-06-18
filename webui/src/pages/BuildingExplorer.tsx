@@ -12,7 +12,8 @@ const kindLabel: Record<string, string> = {
   building: "建築",
 };
 
-export default function BuildingExplorer() {
+// 建築查詢內容(搜尋+表格+詳情抽屜),無外層 Card。供設備查詢分頁與獨立頁共用。
+export function BuildingsPanel() {
   const [rows, setRows] = useState<BuildingSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<BuildingDetail | null>(null);
@@ -29,20 +30,22 @@ export default function BuildingExplorer() {
   };
 
   return (
-    <Card style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
+    <>
       <Input.Search
         placeholder="輸入建築名稱或編號 (例如 LOAD_T)"
         allowClear
         enterButton="搜尋"
-        style={{ maxWidth: 420, marginBottom: 16 }}
+        size="small"
+        style={{ maxWidth: 420, marginBottom: 8 }}
         onSearch={(v) => load(v)}
       />
       <Table<BuildingSummary>
         rowKey="id"
+        size="small"
         loading={loading}
         dataSource={rows}
-        pagination={{ pageSize: 8 }}
-        scroll={{ y: "calc(100vh - 250px)" }}
+        pagination={{ pageSize: 12 }}
+        scroll={{ y: "calc(100vh - 280px)" }}
         onRow={(r) => ({ onClick: () => { openDetail(r.id); setFocus({ kind: "building", id: r.id, label: r.name }); }, style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "id", width: 120 },
@@ -84,6 +87,14 @@ export default function BuildingExplorer() {
           </>
         )}
       </Drawer>
+    </>
+  );
+}
+
+export default function BuildingExplorer() {
+  return (
+    <Card style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
+      <BuildingsPanel />
     </Card>
   );
 }
