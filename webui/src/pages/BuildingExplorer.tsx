@@ -47,6 +47,11 @@ export default function BuildingExplorer() {
         columns={[
           { title: "編號", dataIndex: "id", width: 120 },
           { title: "建築", dataIndex: "name" },
+          {
+            title: "樓地板面積 (m²)", dataIndex: "floor_area_m2", align: "right",
+            sorter: (a, b) => (a.floor_area_m2 ?? 0) - (b.floor_area_m2 ?? 0),
+            render: (v: number | null) => (v != null ? v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"),
+          },
           { title: "估計負載 (kW)", dataIndex: "estimated_load_kw", align: "right", sorter: (a, b) => a.estimated_load_kw - b.estimated_load_kw },
           { title: "所屬饋線", dataIndex: "feeder_name" },
           { title: "所屬變壓器", dataIndex: "transformer_name" },

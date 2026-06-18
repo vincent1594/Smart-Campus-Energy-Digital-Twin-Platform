@@ -89,11 +89,11 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
 
   const statusColor = dash.status === "OK" ? "#52c41a" : dash.status === "WARNING" ? "#faad14" : "#ff4d4f";
 
-  // 系統總功因 = P / √(P²+Q²);台電 ≥0.8 才不罰款
-  const sysPf = dash.total_load_kw > 0
-    ? dash.total_load_kw / Math.sqrt(dash.total_load_kw ** 2 + dash.total_load_kvar ** 2)
-    : 0;
-  const pfColor = sysPf >= 0.9 ? "#52c41a" : sysPf >= 0.8 ? "#faad14" : "#ff4d4f";
+  // 系統總功因:取「進線端」P/√(P²+Q²)(台電計費點,含電容器補償);台電 ≥0.8 不罰、≥0.95 有折扣
+  const gP = Math.abs(dash.grid_import_kw);
+  const gQ = Math.abs(dash.grid_import_kvar);
+  const sysPf = gP > 0 ? gP / Math.sqrt(gP ** 2 + gQ ** 2) : 0;
+  const pfColor = sysPf >= 0.95 ? "#52c41a" : sysPf >= 0.8 ? "#faad14" : "#ff4d4f";
 
   // 環境監測單格
   const Env = ({ icon, value, label }: { icon: string; value: React.ReactNode; label: string }) => (

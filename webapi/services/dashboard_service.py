@@ -25,6 +25,7 @@ def get_summary() -> DashboardSummary:
         system_loss_kw=result.system_loss_kw,
         system_loss_kvar=result.system_loss_kvar,
         grid_import_kw=result.grid_import_kw,
+        grid_import_kvar=result.grid_import_kvar,
         min_voltage_pu=result.min_voltage_pu,
         max_transformer_load_ratio_percent=result.max_transformer_load_ratio_percent,
         max_feeder_load_ratio_percent=result.max_feeder_load_ratio_percent,
