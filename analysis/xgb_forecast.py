@@ -17,8 +17,7 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
-EMS_FILE = ROOT / "EMS" / "11205-06(北).xls"
-MODEL_FILE = ROOT / "models" / "xgb_feeder_models.pkl"
+MODEL_FILE = ROOT / "models" / "xgb_feeder_models.pkl"  # EMS 讀取統一走 data.ems_loads._read_ems (glob 定位)
 FEEDER_COLS = [f"VCB{i}" for i in range(1, 12)]   # VCB12=0 不預測
 
 
