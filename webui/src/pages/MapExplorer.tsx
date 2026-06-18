@@ -1,11 +1,12 @@
 import { Alert, Card, Segmented, Spin, Tag } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
-import type { BuildingSummary, DashboardSummary, PowerFlowResult, TransformerDetail } from "../api/types";
+import type { BuildingSummary, DashboardSummary, PowerFlowResult, TopologyGraph, TransformerDetail } from "../api/types";
 import CampusMapStatic, { type MapMarker } from "../components/CampusMapStatic";
 import FocusPanel from "../components/FocusPanel";
+import SingleLineSvg from "../components/SingleLineSvg";
 import StatsPanel from "../components/StatsPanel";
-import { useFocus } from "../focus/FocusContext";
+import { useFocus, type FocusKind } from "../focus/FocusContext";
 import { SOURCE_KEY, buildingLetter } from "../lib/campusPositions";
 import { useActiveScenario } from "../scenario/ActiveScenarioContext";
 import { useTheme } from "../theme/ThemeContext";
@@ -16,15 +17,17 @@ export default function MapExplorer() {
   const { scenario, setScenario } = useActiveScenario();
   const { dark } = useTheme();
   const [mode, setMode] = useState<"supply" | "impact">("supply");
+  const [centerView, setCenterView] = useState<"map" | "single">("map");
   const [dash, setDash] = useState<DashboardSummary>();
   const [pf, setPf] = useState<PowerFlowResult>();
   const [buildings, setBuildings] = useState<BuildingSummary[]>([]);
   const [trafos, setTrafos] = useState<TransformerDetail[]>([]);
+  const [graph, setGraph] = useState<TopologyGraph>();
   const [err, setErr] = useState<string>();
 
   useEffect(() => {
-    Promise.all([api.dashboard(), api.powerflow(), api.buildings(), api.transformers()])
-      .then(([d, p, b, t]) => { setDash(d); setPf(p); setBuildings(b); setTrafos(t); })
+    Promise.all([api.dashboard(), api.powerflow(), api.buildings(), api.transformers(), api.topology()])
+      .then(([d, p, b, t, g]) => { setDash(d); setPf(p); setBuildings(b); setTrafos(t); setGraph(g); })
       .catch((e) => setErr(String(e.message ?? e)));
   }, []);
 
@@ -97,18 +100,28 @@ export default function MapExplorer() {
         <StatsPanel dash={effDash} pf={effPf} dark={dark} />
       </div>
 
-      {/* 中:地圖(依高度縮放、置中) */}
+      {/* 中:地圖 / 單線圖 切換 */}
       <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#fff", border: "1px solid #f0f0f0", borderRadius: 8, overflow: "hidden" }}>
-        <div style={{ padding: "6px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f5" }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>校園供電地圖{" "}
+        <div style={{ padding: "6px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f5", gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{centerView === "map" ? "校園供電地圖" : "高壓配電單線圖"}{" "}
             <Tag color="geekblue" style={{ cursor: "pointer" }} title="點選聚焦 X棟受電站、高亮整個北側系統"
               onClick={() => setFocus({ kind: "source", id: SOURCE_KEY, label: "受電站(X棟)" })}>北電錶系統</Tag>
             {scenario && <Tag color="orange">模擬情境 <a onClick={() => setScenario(null)}>還原現況</a></Tag>}</span>
-          <Segmented size="small" value={mode} onChange={(v) => setMode(v as "supply" | "impact")}
-            options={[{ label: "查供電路徑", value: "supply" }, { label: "看停電影響", value: "impact" }]} />
+          <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {centerView === "map" && (
+              <Segmented size="small" value={mode} onChange={(v) => setMode(v as "supply" | "impact")}
+                options={[{ label: "查供電路徑", value: "supply" }, { label: "看停電影響", value: "impact" }]} />
+            )}
+            <Segmented size="small" value={centerView} onChange={(v) => setCenterView(v as "map" | "single")}
+              options={[{ label: "地圖", value: "map" }, { label: "單線圖", value: "single" }]} />
+          </span>
         </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center", padding: 8 }}>
-          <CampusMapStatic markers={markers} focusLetter={focusLetter} highlight={highlight} onSelect={onMapSelect} onClear={() => setFocus(null)} dark={dark} fitHeight />
+          {centerView === "map"
+            ? <CampusMapStatic markers={markers} focusLetter={focusLetter} highlight={highlight} onSelect={onMapSelect} onClear={() => setFocus(null)} dark={dark} fitHeight />
+            : graph
+              ? <SingleLineSvg graph={graph} pf={effPf} selectedId={focus?.id ?? null} onSelect={(n) => setFocus({ kind: n.kind as FocusKind, id: n.id, label: n.id })} />
+              : <Spin />}
         </div>
       </div>
 
