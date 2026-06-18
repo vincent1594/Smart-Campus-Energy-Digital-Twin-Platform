@@ -59,7 +59,9 @@
 ## 快速開始 (研究模型)
 
 ```powershell
-# 1. 安裝相依套件 (需 pandapower 3.x)
+# 1. 建立虛擬環境並安裝相依套件 (務必照 requirements.txt 釘選版本)
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1     # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
 # 2. 執行分析
@@ -73,6 +75,10 @@ python analysis/xgb_forecast.py
 ```
 
 結果輸出於 `results/<情境>/`,含中文報告(`.md` / `.txt`)與 4 個 CSV(母線電壓、電纜負載、變壓器負載、負載明細)。
+
+> ⚠️ **務必照 `requirements.txt` 釘選版本安裝**(尤其 `xgboost` / `numpy` / `pandapower`)。
+> XGBoost 不同大版本載入同一份模型會給出不同預測,導致**本地與部署(Render)結果不一致**
+> (例:同情境最大變壓器負載率 21.1% vs 16.8%)。部署端 Render 依此檔重建,本地請用同版本。
 
 ---
 
