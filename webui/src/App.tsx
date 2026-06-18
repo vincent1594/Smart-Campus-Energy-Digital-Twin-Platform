@@ -6,6 +6,7 @@ import BuildingExplorer from "./pages/BuildingExplorer";
 import CampusMapPage from "./pages/CampusMapPage";
 import DemandManagement from "./pages/DemandManagement";
 import EnergyIntensity from "./pages/EnergyIntensity";
+import HistoryTrends from "./pages/HistoryTrends";
 import MapExplorer from "./pages/MapExplorer";
 import Placeholder from "./pages/Placeholder";
 import Report from "./pages/Report";
@@ -24,7 +25,7 @@ export default function App() {
         <Route path="/eui" element={<EnergyIntensity />} />
         <Route path="/single-line" element={<Placeholder title="單線圖總覽" />} />
         <Route path="/monitor" element={<Placeholder title="即時監控（需時序資料,示意）" />} />
-        <Route path="/history" element={<Placeholder title="歷史趨勢（需時序資料,示意）" />} />
+        <Route path="/history" element={<HistoryTrends />} />
         <Route path="/alarms" element={<Alarms />} />
         <Route path="/report" element={<Report />} />
       </Routes>

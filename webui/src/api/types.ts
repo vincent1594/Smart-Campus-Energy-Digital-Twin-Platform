@@ -261,6 +261,24 @@ export interface DemandForecast {
   shed_suggestions: ShedSuggestion[];
 }
 
+// ---------- 歷史趨勢 (EMS 實測) ----------
+export interface HistoryDaily { date: string; avg_kw: number; peak_kw: number; }
+export interface HistoryHourProfile { hour: number; weekday_kw: number; weekend_kw: number; }
+export interface HistoryFeeder { feeder: string; name: string; avg_kw: number; }
+export interface HistoryReport {
+  period_start: string;
+  period_end: string;
+  days: number;
+  peak_kw: number;
+  peak_time: string;
+  avg_kw: number;
+  total_kwh: number;
+  source: string;
+  daily: HistoryDaily[];
+  profile: HistoryHourProfile[];
+  feeders: HistoryFeeder[];
+}
+
 // ---------- EUI 用電強度 ----------
 export interface BuildingEUI {
   letter: string;
