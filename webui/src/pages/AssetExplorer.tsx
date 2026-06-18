@@ -1,10 +1,13 @@
-import { Card, Descriptions, Drawer, Input, List, Table, Tabs, Tag, message } from "antd";
+import { Button, Card, Descriptions, Drawer, Input, List, Progress, Table, Tabs, Tag, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
-import type { FeederDetail, TransformerDetail, TransformerSpec, VcbDetail } from "../api/types";
+import type { FeederDetail, TransformerDetail, TransformerRisk, TransformerSpec, VcbDetail } from "../api/types";
 import LoadRatioTag from "../components/LoadRatioTag";
 import { useFocus } from "../focus/FocusContext";
 import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
+import { downloadCSV, stamp } from "../lib/csv";
+
+const RISK_COLOR: Record<string, string> = { "高": "#ff4d4f", "中": "#fa8c16", "低": "#52c41a" };
 
 function Transformers() {
   const [rows, setRows] = useState<TransformerDetail[]>([]);
@@ -158,12 +161,117 @@ function Specs() {
   );
 }
 
+// 汰換優先序:依屆齡/負載/溫度/效率算風險分數降冪排序,供資本門設備汰換規劃
+function Replacement() {
+  const [rows, setRows] = useState<TransformerRisk[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [detail, setDetail] = useState<TransformerRisk | null>(null);
+  useEffect(() => {
+    setLoading(true);
+    api.replacementPriority().then(setRows).catch((e) => message.error(String(e.message ?? e))).finally(() => setLoading(false));
+  }, []);
+
+  const counts = useMemo(() => {
+    const c = { 高: 0, 中: 0, 低: 0 } as Record<string, number>;
+    rows.forEach((r) => { c[r.risk_level] = (c[r.risk_level] ?? 0) + 1; });
+    return c;
+  }, [rows]);
+
+  const exportCsv = () => downloadCSV<TransformerRisk>(`設備汰換建議表_${stamp()}.csv`, rows, [
+    { label: "汰換優先序", value: (r) => rows.indexOf(r) + 1 },
+    { label: "編號", value: (r) => r.tag },
+    { label: "建築物", value: (r) => r.building },
+    { label: "廠牌", value: (r) => r.brand },
+    { label: "製造年份", value: (r) => r.year },
+    { label: "屆齡(年)", value: (r) => r.age_years ?? "" },
+    { label: "容量(kVA)", value: (r) => r.capacity_kva ?? "" },
+    { label: "負載率(%)", value: (r) => r.load_ratio_percent ?? "" },
+    { label: "實測溫度(°C)", value: (r) => r.temperature_c ?? "" },
+    { label: "效率", value: (r) => r.efficiency ?? "" },
+    { label: "風險分數", value: (r) => r.risk_score },
+    { label: "風險等級", value: (r) => r.risk_level },
+    { label: "建議", value: (r) => r.reason },
+  ]);
+
+  return (
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+        <span style={{ fontSize: 13, color: "#666" }}>
+          共 {rows.length} 台 ·
+          <Tag color={RISK_COLOR["高"]} style={{ marginInline: 6 }}>高 {counts["高"] ?? 0}</Tag>
+          <Tag color={RISK_COLOR["中"]}>中 {counts["中"] ?? 0}</Tag>
+          <Tag color={RISK_COLOR["低"]}>低 {counts["低"] ?? 0}</Tag>
+          <span style={{ color: "#bbb", marginLeft: 6 }}>風險=屆齡0.40+負載0.25+溫度0.20+效率0.15,相對排序供規劃,需現場檢測佐證</span>
+        </span>
+        <Button size="small" onClick={exportCsv} disabled={!rows.length}>匯出汰換建議表 (CSV)</Button>
+      </div>
+      <Table<TransformerRisk>
+        rowKey="tag" loading={loading} dataSource={rows} size="small"
+        pagination={{ pageSize: 10 }} scroll={{ y: "calc(100vh - 330px)" }}
+        onRow={(r) => ({ onClick: () => setDetail(r), style: { cursor: "pointer" } })}
+        columns={[
+          { title: "序", render: (_v, _r, i) => i + 1, width: 48, align: "center" },
+          { title: "編號", dataIndex: "tag", width: 70 },
+          { title: "建築物", dataIndex: "building", ellipsis: true },
+          { title: "容量", dataIndex: "capacity_kva", align: "right", width: 76, render: (v) => (v ? `${v} kVA` : "—") },
+          { title: "屆齡", dataIndex: "age_years", align: "right", width: 64, sorter: (a, b) => (a.age_years ?? 0) - (b.age_years ?? 0), render: (v) => (v != null ? `${v} 年` : "—") },
+          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", width: 72, sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: (v) => (v != null ? `${v}%` : "—") },
+          { title: "溫度", dataIndex: "temperature_c", align: "right", width: 64, render: (v) => (v != null ? `${v}°` : "—") },
+          {
+            title: "風險分數", dataIndex: "risk_score", width: 180,
+            defaultSortOrder: "descend", sorter: (a, b) => a.risk_score - b.risk_score,
+            render: (v: number, r) => (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Progress percent={v} size="small" showInfo={false} strokeColor={RISK_COLOR[r.risk_level]} style={{ flex: 1, margin: 0 }} />
+                <b style={{ width: 34, textAlign: "right", color: RISK_COLOR[r.risk_level] }}>{v}</b>
+                <Tag color={RISK_COLOR[r.risk_level]} style={{ margin: 0 }}>{r.risk_level}</Tag>
+              </div>
+            ),
+          },
+          { title: "主要風險 / 建議", dataIndex: "reason", ellipsis: true },
+        ]}
+      />
+      <Drawer width={460} open={!!detail} onClose={() => setDetail(null)}
+        title={detail ? `${detail.tag}｜${detail.building}` : ""}>
+        {detail && (
+          <>
+            <div style={{ textAlign: "center", marginBottom: 16 }}>
+              <Progress type="dashboard" percent={detail.risk_score} strokeColor={RISK_COLOR[detail.risk_level]}
+                format={(p) => <span style={{ color: RISK_COLOR[detail.risk_level] }}>{p}<div style={{ fontSize: 13 }}>{detail.risk_level}風險</div></span>} />
+              <div style={{ marginTop: 6, color: "#555" }}>{detail.reason}</div>
+            </div>
+            <Descriptions column={1} size="small" bordered style={{ marginBottom: 14 }}>
+              <Descriptions.Item label="廠牌 / 年份">{detail.brand || "—"} / {detail.year || "—"}（屆齡 {detail.age_years ?? "—"} 年）</Descriptions.Item>
+              <Descriptions.Item label="容量 / 型式">{detail.capacity_kva ?? "—"} kVA / {detail.trafo_type || "—"}</Descriptions.Item>
+              <Descriptions.Item label="負載率">{detail.load_ratio_percent != null ? `${detail.load_ratio_percent}%` : "—"}</Descriptions.Item>
+              <Descriptions.Item label="實測溫度">{detail.temperature_c != null ? `${detail.temperature_c} °C` : "—"}</Descriptions.Item>
+              <Descriptions.Item label="效率">{detail.efficiency ?? "—"}</Descriptions.Item>
+            </Descriptions>
+            <h4 style={{ margin: "0 0 8px" }}>風險因子分解</h4>
+            {detail.factors.map((f) => (
+              <div key={f.name} style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
+                  <span><b>{f.name}</b> <span style={{ color: "#999" }}>{f.detail}（權重 {f.weight}）</span></span>
+                  <span>{f.score}</span>
+                </div>
+                <Progress percent={f.score} size="small" showInfo={false}
+                  strokeColor={f.score >= 60 ? "#ff4d4f" : f.score >= 40 ? "#fa8c16" : "#52c41a"} />
+              </div>
+            ))}
+          </>
+        )}
+      </Drawer>
+    </>
+  );
+}
+
 export default function AssetExplorer() {
   return (
     <Card style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
       <Tabs
         items={[
           { key: "tr", label: "變壓器", children: <Transformers /> },
+          { key: "replace", label: "汰換優先序", children: <Replacement /> },
           { key: "spec", label: "規格明細", children: <Specs /> },
           { key: "vcb", label: "VCB", children: <Vcbs /> },
           { key: "fd", label: "饋線", children: <Feeders /> },

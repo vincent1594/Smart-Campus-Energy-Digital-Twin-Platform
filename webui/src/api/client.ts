@@ -15,6 +15,7 @@ import type {
   ScenarioRequest,
   TopologyGraph,
   TransformerDetail,
+  TransformerRisk,
   TransformerSpec,
   VcbDetail,
 } from "./types";
@@ -51,6 +52,7 @@ export const api = {
   transformers: () => get<TransformerDetail[]>("/api/assets/transformers"),
   transformer: (id: string) => get<TransformerDetail>(`/api/assets/transformers/${encodeURIComponent(id)}`),
   transformerSpecs: () => get<TransformerSpec[]>("/api/assets/transformer-specs"),
+  replacementPriority: () => get<TransformerRisk[]>("/api/assets/replacement-priority"),
   vcbs: () => get<VcbDetail[]>("/api/assets/vcbs"),
   feeders: () => get<FeederDetail[]>("/api/assets/feeders"),
   feeder: (id: string) => get<FeederDetail>(`/api/assets/feeders/${encodeURIComponent(id)}`),
