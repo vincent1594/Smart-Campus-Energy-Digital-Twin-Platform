@@ -18,7 +18,7 @@ export default function TopologyFlow({
   graph: TopologyGraph;
   pf?: PowerFlowResult;
   onSelect?: (n: SelectedNode) => void;
-  height?: number;
+  height?: number | string;
 }) {
   const { nodes, edges } = useMemo(() => buildFlow(graph, pf), [graph, pf]);
 
