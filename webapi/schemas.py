@@ -176,6 +176,26 @@ class TransformerSpec(BaseModel):
     capacitor_kvar: Optional[float] = None  # 裝置電容器量
 
 
+# ---------- EUI 用電強度 (營繕組節能) ----------
+class BuildingEUI(BaseModel):
+    letter: str
+    name: str
+    floor_area_m2: float
+    load_kw: float                # 現況負載(分配年用電量依據)
+    annual_kwh: float             # 估算年用電量
+    eui: float                    # kWh/m²·年
+    area_reliable: bool = True    # False=面積偏小,EUI 易受分母放大,僅供參考
+
+
+class EUIReport(BaseModel):
+    year: int
+    campus_eui: float             # 全校 EUI
+    campus_annual_kwh: float
+    total_floor_area_m2: float
+    benchmark: float              # 參考基準 kWh/m²·年(全國大專參考,可校正)
+    buildings: list[BuildingEUI]  # 依 EUI 降冪
+
+
 # ---------- 設備汰換風險排序 (營繕組資本門) ----------
 class RiskFactor(BaseModel):
     name: str          # 屆齡 / 負載 / 溫度 / 效率

@@ -261,6 +261,26 @@ export interface DemandForecast {
   shed_suggestions: ShedSuggestion[];
 }
 
+// ---------- EUI 用電強度 ----------
+export interface BuildingEUI {
+  letter: string;
+  name: string;
+  floor_area_m2: number;
+  load_kw: number;
+  annual_kwh: number;
+  eui: number;
+  area_reliable: boolean;   // false=面積偏小,EUI 僅供參考
+}
+
+export interface EUIReport {
+  year: number;
+  campus_eui: number;
+  campus_annual_kwh: number;
+  total_floor_area_m2: number;
+  benchmark: number;
+  buildings: BuildingEUI[];
+}
+
 // ---------- 時間電價 月電費試算 ----------
 export interface TariffRates {
   summer_peak_kwh: number;
