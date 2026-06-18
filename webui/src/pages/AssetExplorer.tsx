@@ -6,6 +6,7 @@ import LoadRatioTag from "../components/LoadRatioTag";
 import { useFocus } from "../focus/FocusContext";
 import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
 import { downloadCSV, stamp } from "../lib/csv";
+import { BuildingsPanel } from "./BuildingExplorer";
 
 const RISK_COLOR: Record<string, string> = { "高": "#ff4d4f", "中": "#fa8c16", "低": "#52c41a" };
 
@@ -21,7 +22,7 @@ function Transformers() {
   return (
     <>
       <Table<TransformerDetail>
-        rowKey="id" loading={loading} dataSource={rows} pagination={{ pageSize: 8 }} scroll={{ y: "calc(100vh - 290px)" }}
+        rowKey="id" size="small" loading={loading} dataSource={rows} pagination={{ pageSize: 12 }} scroll={{ y: "calc(100vh - 280px)" }}
         onRow={(r) => ({ onClick: () => { setDetail(r); setFocus({ kind: "transformer", id: r.id, label: r.name }); }, style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "id" },
@@ -61,7 +62,7 @@ function Vcbs() {
   const { setFocus } = useFocus();
   useEffect(() => { api.vcbs().then(setRows).catch((e) => message.error(String(e.message ?? e))); }, []);
   return (
-    <Table<VcbDetail> rowKey="id" dataSource={rows} pagination={{ pageSize: 8 }} scroll={{ y: "calc(100vh - 290px)" }}
+    <Table<VcbDetail> rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: 12 }} scroll={{ y: "calc(100vh - 280px)" }}
       onRow={(r) => ({ onClick: () => setFocus({ kind: "vcb", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
       columns={[
         { title: "編號", dataIndex: "id" },
@@ -80,7 +81,7 @@ function Feeders() {
   const { setFocus } = useFocus();
   useEffect(() => { api.feeders().then(setRows).catch((e) => message.error(String(e.message ?? e))); }, []);
   return (
-    <Table<FeederDetail> rowKey="id" dataSource={rows} pagination={{ pageSize: 8 }} scroll={{ y: "calc(100vh - 290px)" }}
+    <Table<FeederDetail> rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: 12 }} scroll={{ y: "calc(100vh - 280px)" }}
       onRow={(r) => ({ onClick: () => setFocus({ kind: "feeder", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
       columns={[
         { title: "編號", dataIndex: "id" },
@@ -116,7 +117,7 @@ function Specs() {
         onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 320, marginBottom: 8 }} />
       <Table<TransformerSpec>
         rowKey="seq" loading={loading} dataSource={filtered} size="small"
-        pagination={{ pageSize: 8 }} scroll={{ y: "calc(100vh - 330px)" }}
+        pagination={{ pageSize: 12 }} scroll={{ y: "calc(100vh - 320px)" }}
         onRow={(r) => ({ onClick: () => setDetail(r), style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "tag", width: 70 },
@@ -207,7 +208,7 @@ function Replacement() {
       </div>
       <Table<TransformerRisk>
         rowKey="tag" loading={loading} dataSource={rows} size="small"
-        pagination={{ pageSize: 10 }} scroll={{ y: "calc(100vh - 330px)" }}
+        pagination={{ pageSize: 12 }} scroll={{ y: "calc(100vh - 320px)" }}
         onRow={(r) => ({ onClick: () => setDetail(r), style: { cursor: "pointer" } })}
         columns={[
           { title: "序", render: (_v, _r, i) => i + 1, width: 48, align: "center" },
@@ -267,9 +268,12 @@ function Replacement() {
 
 export default function AssetExplorer() {
   return (
-    <Card style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
+    <Card style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto", padding: "8px 12px" } }}>
       <Tabs
+        size="small"
+        tabBarStyle={{ marginBottom: 8 }}
         items={[
+          { key: "bld", label: "建築", children: <BuildingsPanel /> },
           { key: "tr", label: "變壓器", children: <Transformers /> },
           { key: "replace", label: "汰換優先序", children: <Replacement /> },
           { key: "spec", label: "規格明細", children: <Specs /> },

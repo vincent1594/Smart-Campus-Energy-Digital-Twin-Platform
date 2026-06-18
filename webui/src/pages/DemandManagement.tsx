@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import { api } from "../api/client";
 import type { DemandForecast, DemandStatus, MonthlyBill, TariffRates } from "../api/types";
+import EnergyIntensity from "./EnergyIntensity";
 
 const STATUS_COLOR: Record<string, string> = { OK: "#52c41a", WARNING: "#fa8c16", EXCEED: "#ff4d4f" };
 const STATUS_TEXT: Record<string, string> = { OK: "正常", WARNING: "接近契約", EXCEED: "超約" };
@@ -25,11 +26,11 @@ export default function DemandManagement() {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
       <Segmented size="small" value={view} onChange={(v) => setView(String(v))}
-        options={[{ label: "需量預警", value: "demand" }, { label: "時間電價電費", value: "bill" }]} />
+        options={[{ label: "需量預警", value: "demand" }, { label: "時間電價電費", value: "bill" }, { label: "用電強度", value: "eui" }]} />
       <div style={{ flex: 1, minHeight: 0 }}>
-        {view === "demand"
-          ? <DemandView contract={contract} setContract={setContract} />
-          : <BillView contract={contract} setContract={setContract} />}
+        {view === "demand" ? <DemandView contract={contract} setContract={setContract} />
+          : view === "bill" ? <BillView contract={contract} setContract={setContract} />
+            : <EnergyIntensity />}
       </div>
     </div>
   );
