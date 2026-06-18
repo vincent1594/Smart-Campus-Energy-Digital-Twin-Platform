@@ -1,6 +1,6 @@
 // 用電強度 EUI:各棟 + 全校 kWh/m²·年,供節能績效/能源局申報。
 // 後端 /api/eui:全校年用電量(XGBoost 整年預測)× 各棟負載占比 ÷ 樓地板面積。
-import { Button, Card, Spin, Statistic, Tag, message } from "antd";
+import { Button, Card, InputNumber, Spin, Statistic, Tag, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import { api } from "../api/client";
@@ -13,9 +13,11 @@ const euiColor = (eui: number, campus: number, benchmark: number) =>
 export default function EnergyIntensity() {
   const [data, setData] = useState<EUIReport>();
   const [loading, setLoading] = useState(true);
+  const [benchmark, setBenchmark] = useState<number>(120);   // 可編輯參考基準;載入時帶後端預設
 
   useEffect(() => {
-    api.eui().then(setData).catch((e) => message.error(String(e.message ?? e))).finally(() => setLoading(false));
+    api.eui().then((d) => { setData(d); setBenchmark(d.benchmark); })
+      .catch((e) => message.error(String(e.message ?? e))).finally(() => setLoading(false));
   }, []);
 
   // 節能優先:高於全校均,且面積足夠可靠(排除小面積分母放大假象)
@@ -45,7 +47,7 @@ export default function EnergyIntensity() {
       data: data.buildings.map((b) => ({
         value: b.eui,
         itemStyle: b.area_reliable
-          ? { color: euiColor(b.eui, data.campus_eui, data.benchmark) }
+          ? { color: euiColor(b.eui, data.campus_eui, benchmark) }
           : { color: "#d9d9d9", decal: { symbol: "line", color: "rgba(0,0,0,0.18)", dashArrayX: [1, 0], dashArrayY: [2, 3], rotation: -Math.PI / 4 } },
       })),
       label: { show: true, position: "right", fontSize: 10, formatter: (p: { value: number }) => p.value },
@@ -53,7 +55,7 @@ export default function EnergyIntensity() {
         symbol: "none", silent: true,
         data: [
           { xAxis: data.campus_eui, label: { formatter: `全校均 ${data.campus_eui}`, fontSize: 10, color: "#1677ff" }, lineStyle: { color: "#1677ff", type: "dashed" } },
-          { xAxis: data.benchmark, label: { formatter: `參考 ${data.benchmark}`, fontSize: 10, color: "#999", position: "insideEndTop" }, lineStyle: { color: "#bbb", type: "dotted" } },
+          { xAxis: benchmark, label: { formatter: `參考 ${benchmark}`, fontSize: 10, color: "#999", position: "insideEndTop" }, lineStyle: { color: "#bbb", type: "dotted" } },
         ],
       },
     }],
@@ -76,8 +78,13 @@ export default function EnergyIntensity() {
       {/* 左:全校摘要 + 節能優先棟 */}
       <Card size="small" title="全校用電強度" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         <Statistic value={data.campus_eui} suffix="kWh/m²·年" valueStyle={{ fontSize: 26, color: "#1677ff" }} />
-        <div style={{ color: "#888", fontSize: 12, marginTop: 2 }}>
-          {data.year} 年 · 參考基準 {data.benchmark}（全國大專約 80–130)
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+          <span style={{ color: "#888", fontSize: 12 }}>{data.year} 年 · 參考基準</span>
+          <InputNumber size="small" style={{ width: 96 }} min={0} step={5} value={benchmark}
+            onChange={(v) => setBenchmark(v ?? 0)} addonAfter="kWh/m²" />
+        </div>
+        <div style={{ color: "#bbb", fontSize: 11, marginTop: 3 }}>
+          填學校歷史值或能源署大專基準(參考 80–130);驅動紅線與「超參考」標色
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666", marginTop: 10 }}>
           <span>年用電量</span><b>{(data.campus_annual_kwh / 1e6).toFixed(2)} GWh</b>
@@ -93,8 +100,8 @@ export default function EnergyIntensity() {
         </div>
         {priority.slice(0, 8).map((b, i) => (
           <div key={b.letter} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "3px 0" }}>
-            <span><Tag color={euiColor(b.eui, data.campus_eui, data.benchmark)} style={{ marginInlineEnd: 4 }}>{i + 1}</Tag>{b.letter}·{b.name.slice(0, 6)}</span>
-            <b style={{ color: euiColor(b.eui, data.campus_eui, data.benchmark) }}>{b.eui}</b>
+            <span><Tag color={euiColor(b.eui, data.campus_eui, benchmark)} style={{ marginInlineEnd: 4 }}>{i + 1}</Tag>{b.letter}·{b.name.slice(0, 6)}</span>
+            <b style={{ color: euiColor(b.eui, data.campus_eui, benchmark) }}>{b.eui}</b>
           </div>
         ))}
 
