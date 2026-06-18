@@ -14,14 +14,15 @@ import MapExplorer from "./pages/MapExplorer";
 import Report from "./pages/Report";
 import Scenario from "./pages/Scenario";
 
-const INTRO_KEY = "bg_intro_seen";
+const INTRO_KEY = "bg_intro_date";
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
 
 export default function App() {
-  // 「通電序列」開場一個 session 只播一次(頂部「重看開場」可重播)。
-  const [entered, setEntered] = useState(() => sessionStorage.getItem(INTRO_KEY) === "1");
+  // 「通電序列」開場一天只播一次(localStorage 記日期;頂部「重看開場」可重播)。
+  const [entered, setEntered] = useState(() => localStorage.getItem(INTRO_KEY) === today());
 
   if (!entered) {
-    const enter = () => { sessionStorage.setItem(INTRO_KEY, "1"); setEntered(true); };
+    const enter = () => { localStorage.setItem(INTRO_KEY, today()); setEntered(true); };
     return (
       <div style={{ position: "fixed", inset: 0, background: "#02030a", overflow: "hidden" }}>
         <WarRoomBackdrop />
