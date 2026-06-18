@@ -225,6 +225,21 @@ npm run dev          # http://localhost:5173 (dev 透過 vite proxy 轉 127.0.0.
 
 ---
 
+## 後續工作 (Roadmap)
+
+**研究模型**
+- [ ] 補建模型缺漏建物(E館、H1、H6、U、污水廠、O)
+- [ ] 故障分析 / 短路計算
+- [ ] N-1 設備停機情境
+- [ ] South 校區(南電錶)建模(目前僅北校區)
+
+**數位孿生平台**
+- [ ] 前端 Placeholder 頁:歷史趨勢 / 即時監控 / 單線圖總覽(需逐時資料管線;EMS 已有逐時實測可接)
+- [ ] 日負載曲線改用 EMS 真實資料(目前為示意曲線)
+- [ ] V2 綠能管理:PV / ESS 一等公民資產建模 + 新增分頁
+
+---
+
 ## 技術棧
 
 - **計算引擎**: PandaPower 3.x｜**數據處理**: Pandas, NumPy, NetworkX｜**預測**: XGBoost, scikit-learn
