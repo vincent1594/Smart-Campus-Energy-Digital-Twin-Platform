@@ -213,3 +213,96 @@ class ScenarioComparison(BaseModel):
 class ForecastRequest(BaseModel):
     timestamp: str                        # "YYYY-MM-DD HH:MM"
     pv_factor: float = 0.8                # 太陽能出力係數(日照強弱)
+
+
+# ---------- 需量 / 契約容量 (營繕組) ----------
+class DemandStatus(BaseModel):
+    """現況需量 vs 契約容量。需量取市電(台電)進線實功率。"""
+    current_demand_kw: float
+    contract_capacity_kw: float
+    demand_charge_nt_per_kw: float
+    utilization_percent: float            # 需量 / 契約 × 100
+    headroom_kw: float                    # 契約 - 需量 (可為負 = 已超約)
+    status: str = "OK"                    # OK / WARNING(接近) / EXCEED(超約)
+    load_basis: str = ""                  # 現況需量的負載基準說明
+
+
+class HourlyDemand(BaseModel):
+    hour: int                             # 0~23
+    demand_kw: float
+
+
+class FeederDemand(BaseModel):
+    feeder_id: str
+    feeder_name: str
+    demand_kw: float
+
+
+class ShedSuggestion(BaseModel):
+    """為回到契約容量內,建議於尖峰時段調控/卸載的饋線。"""
+    feeder_id: str
+    feeder_name: str
+    shed_kw: float                        # 該饋線尖峰時段需量
+    cumulative_kw: float                  # 累計可削減量 (含本條)
+
+
+class DemandForecast(BaseModel):
+    """某日逐時需量預測 (XGBoost) 與超約評估。"""
+    date: str                             # "YYYY-MM-DD"
+    contract_capacity_kw: float
+    demand_charge_nt_per_kw: float
+    hourly: list[HourlyDemand]
+    peak_kw: float
+    peak_hour: int                        # 尖峰小時 0~23
+    overshoot_kw: float                   # max(0, 尖峰 - 契約)
+    penalty_nt: float                     # 估算單月超約罰款
+    status: str = "OK"                    # OK / WARNING / EXCEED
+    peak_feeders: list[FeederDemand]      # 尖峰時刻各饋線需量 (降冪)
+    shed_suggestions: list[ShedSuggestion]
+
+
+# ---------- 時間電價 月電費試算 ----------
+class TariffRates(BaseModel):
+    """台電高壓三段式時間電價費率 (可編輯)。非夏月無尖峰,故無 nonsummer_peak。"""
+    summer_peak_kwh: float                # 夏月尖峰  NT$/kWh
+    summer_midpeak_kwh: float             # 夏月半尖峰
+    summer_offpeak_kwh: float             # 夏月離峰
+    nonsummer_midpeak_kwh: float          # 非夏月半尖峰
+    nonsummer_offpeak_kwh: float          # 非夏月離峰
+    basic_summer_kw: float                # 夏月經常契約基本電費 NT$/kW/月
+    basic_nonsummer_kw: float             # 非夏月經常契約基本電費
+
+
+class TariffInfo(BaseModel):
+    """預設費率 + 時段窗格說明,供前端預填可編輯表單。"""
+    rates: TariffRates
+    window_note: str
+
+
+class BillRequest(BaseModel):
+    month: str                            # "YYYY-MM"
+    contract_capacity_kw: float
+    rates: Optional[TariffRates] = None   # 未給用 demand_config 預設
+
+
+class BillPeriodLine(BaseModel):
+    period: str                           # 尖峰/半尖峰/離峰
+    kwh: float                            # 該時段預測度數
+    rate: float                           # NT$/kWh
+    charge: float                         # NT$ = kwh × rate
+    peak_kw: float                        # 該時段最高需量 (kW)
+
+
+class MonthlyBill(BaseModel):
+    month: str
+    season: str                           # 夏月 / 非夏月
+    contract_capacity_kw: float
+    energy_lines: list[BillPeriodLine]    # 各時段流動電費
+    energy_charge: float                  # 流動電費合計
+    basic_rate: float                     # 採用的基本電費單價 NT$/kW
+    basic_charge: float                   # 基本電費 = 契約 × 單價
+    peak_kw: float                        # 全月預測最高需量
+    overshoot_kw: float                   # max(0, 尖峰需量 - 契約)
+    overshoot_penalty: float              # 超約罰款 (2/3 倍級距)
+    total: float                          # 月電費合計
+    window_note: str

@@ -187,3 +187,91 @@ export interface ForecastRequest {
   timestamp: string;       // "YYYY-MM-DD HH:MM"
   pv_factor?: number;      // 太陽能出力係數
 }
+
+// ---------- 需量 / 契約容量 (營繕組) ----------
+export interface DemandStatus {
+  current_demand_kw: number;
+  contract_capacity_kw: number;
+  demand_charge_nt_per_kw: number;
+  utilization_percent: number;
+  headroom_kw: number;
+  status: string;          // OK / WARNING / EXCEED
+  load_basis: string;
+}
+
+export interface HourlyDemand {
+  hour: number;
+  demand_kw: number;
+}
+
+export interface FeederDemand {
+  feeder_id: string;
+  feeder_name: string;
+  demand_kw: number;
+}
+
+export interface ShedSuggestion {
+  feeder_id: string;
+  feeder_name: string;
+  shed_kw: number;
+  cumulative_kw: number;
+}
+
+export interface DemandForecast {
+  date: string;
+  contract_capacity_kw: number;
+  demand_charge_nt_per_kw: number;
+  hourly: HourlyDemand[];
+  peak_kw: number;
+  peak_hour: number;
+  overshoot_kw: number;
+  penalty_nt: number;
+  status: string;          // OK / WARNING / EXCEED
+  peak_feeders: FeederDemand[];
+  shed_suggestions: ShedSuggestion[];
+}
+
+// ---------- 時間電價 月電費試算 ----------
+export interface TariffRates {
+  summer_peak_kwh: number;
+  summer_midpeak_kwh: number;
+  summer_offpeak_kwh: number;
+  nonsummer_midpeak_kwh: number;
+  nonsummer_offpeak_kwh: number;
+  basic_summer_kw: number;
+  basic_nonsummer_kw: number;
+}
+
+export interface TariffInfo {
+  rates: TariffRates;
+  window_note: string;
+}
+
+export interface BillRequest {
+  month: string;                  // "YYYY-MM"
+  contract_capacity_kw: number;
+  rates?: TariffRates;
+}
+
+export interface BillPeriodLine {
+  period: string;                 // 尖峰/半尖峰/離峰
+  kwh: number;
+  rate: number;
+  charge: number;
+  peak_kw: number;
+}
+
+export interface MonthlyBill {
+  month: string;
+  season: string;                 // 夏月 / 非夏月
+  contract_capacity_kw: number;
+  energy_lines: BillPeriodLine[];
+  energy_charge: number;
+  basic_rate: number;
+  basic_charge: number;
+  peak_kw: number;
+  overshoot_kw: number;
+  overshoot_penalty: number;
+  total: number;
+  window_note: string;
+}
