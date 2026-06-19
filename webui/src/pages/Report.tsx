@@ -1,6 +1,7 @@
 import { DownloadOutlined, EyeOutlined } from "@ant-design/icons";
 import { Button, Card, List, Modal, Table, Tabs, Tag, message } from "antd";
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../api/client";
 import UsageGuide from "../components/UsageGuide";
 import { downloadCSV, type CsvCol, stamp } from "../lib/csv";
@@ -152,6 +153,8 @@ const REPORTS: ReportDef[] = [
 ];
 
 export default function Report() {
+  const loc = useLocation();
+  const guideFirst = (loc.state as { tab?: string } | null)?.tab === "guide";   // 由首次使用提示導入時,預設開使用說明
   const [active, setActive] = useState<ReportDef | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [rows, setRows] = useState<any[]>([]);
@@ -199,7 +202,7 @@ export default function Report() {
   return (
     <Card title="報表匯出 / 使用說明" size="small" style={{ height: "100%", display: "flex", flexDirection: "column" }}
       styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
-      <Tabs size="small" items={[
+      <Tabs size="small" defaultActiveKey={guideFirst ? "guide" : "report"} items={[
         { key: "report", label: "報表下載", children: reportList },
         { key: "guide", label: "使用說明", children: <UsageGuide /> },
       ]} />
