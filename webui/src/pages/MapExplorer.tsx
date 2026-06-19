@@ -99,27 +99,22 @@ export default function MapExplorer() {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
-      {/* V1 範圍/可信度聲明:連到驗證中心 */}
+      {/* V1 範圍/可信度聲明(連驗證中心)+ 第一次使用提示(接在後面,看過/關閉後不再出現) */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 10px", background: "#e6f4ff", border: "1px solid #91caff", borderRadius: 6, fontSize: 13, lineHeight: 1.5, color: "#0958d9", flexWrap: "wrap" }}>
         <span style={{ fontWeight: 600, background: "#0958d9", color: "#fff", borderRadius: 3, padding: "0 6px", fontSize: 12 }}>V1</span>
         <span style={{ color: "#333" }}>部分數值為規劃估算、模型涵蓋北電錶區。各數據來源與待校正項目請見</span>
         <a style={{ fontWeight: 600 }} onClick={() => navigate("/verify")}>驗證中心 →</a>
+        {showGuide && (
+          <>
+            <span style={{ color: "#91caff" }}>·</span>
+            <span style={{ color: "#389e0d" }}>👋 第一次使用?{" "}
+              <a style={{ fontWeight: 600, color: "#237804" }}
+                onClick={() => { dismissGuide(); navigate("/report", { state: { tab: "guide" } }); }}>到「報表匯出 → 使用說明」看操作指南 →</a>
+            </span>
+            <a onClick={dismissGuide} title="不再顯示" style={{ color: "#52c41a", fontSize: 15, lineHeight: 1, padding: "0 2px" }}>×</a>
+          </>
+        )}
       </div>
-
-      {/* 第一次使用提示:導到「報表匯出 → 使用說明」;看過/關閉後不再出現 */}
-      {showGuide && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 10px", background: "#f6ffed", border: "1px solid #b7eb8f", borderRadius: 6, fontSize: 13, lineHeight: 1.5, color: "#389e0d", flexWrap: "wrap" }}>
-          <span style={{ flex: 1 }}>
-            👋 第一次使用?到{" "}
-            <a style={{ fontWeight: 600, color: "#237804" }}
-              onClick={() => { dismissGuide(); navigate("/report", { state: { tab: "guide" } }); }}>
-              「報表匯出 → 使用說明」
-            </a>
-            {" "}看操作指南 →
-          </span>
-          <a onClick={dismissGuide} title="不再顯示" style={{ color: "#52c41a", fontSize: 15, lineHeight: 1, padding: "0 2px" }}>×</a>
-        </div>
-      )}
 
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
       {/* 左:狀態 + KPI 面板 */}
