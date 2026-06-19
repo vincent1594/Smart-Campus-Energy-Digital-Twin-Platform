@@ -96,7 +96,7 @@ export default function MapExplorer() {
   } : dash;
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
       {/* V1 範圍/可信度聲明:連到驗證中心 */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 10px", background: "#e6f4ff", border: "1px solid #91caff", borderRadius: 6, fontSize: 13, lineHeight: 1.5, color: "#0958d9", flexWrap: "wrap" }}>
         <span style={{ fontWeight: 600, background: "#0958d9", color: "#fff", borderRadius: 3, padding: "0 6px", fontSize: 12 }}>V1</span>
