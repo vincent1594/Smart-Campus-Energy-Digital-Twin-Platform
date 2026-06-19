@@ -1,13 +1,14 @@
-// 戰情室開場英雄動畫「通電序列」(電網版發射)— 電影級編排:
-// ① 特寫受電站 X 蓄能 → ② 點火爆光 + 放射火花 + 水平鏡頭光斑 →
-// ③ 鏡頭隨能量波「拉遠揭示」整座校園(各棟在被揭示時序列點火、衝擊環)→
-// ④ 100% 瞬間 全螢幕白光爆閃 + 衝擊波 + 標題重擊 → ⑤ 全網同步心跳脈動 + 前景餘燼。
+// 開場英雄動畫「電網傳輸序列」(送電版,非發射)— 電影級編排:
+// ① 特寫受電站 X:台電 11.4kV 進線受電、電壓爬升(收束電流匯入)→
+// ② 併網送電:能量波自 X 沿真實饋線往外傳輸 + 放射火花 + 鏡頭光斑 →
+// ③ 鏡頭隨送電波「拉遠揭示」整座校園(各棟在電流到達時依 VCB 群帶電、衝擊環)→
+// ④ 100% 全線帶電:全螢幕白光 + 衝擊波 + 標題 → ⑤ 全網同步心跳脈動 + 前景餘燼。
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { BuildingSummary, PowerFlowResult, TransformerDetail } from "../api/types";
 import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, buildingLetter, centroid, type Pt } from "../lib/campusPositions";
 
-const SURGE = 3.0;        // 點火時刻(秒)— 延後以醞釀「發射前序列」張力
+const SURGE = 3.0;        // 併網送電時刻(秒)— 延後以醞釀「受電爬升」過程
 const WAVE_SPEED = 470;   // 能量波速(校園座標單位 / 秒)
 const CAM_DUR = 3.1;      // 鏡頭拉遠時長(秒)
 const CAM_START = 2.5;    // 開場特寫倍率
@@ -273,15 +274,14 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
 
         ctx.textAlign = "center";
         if (e < SURGE) {
-          const tm = Math.max(1, Math.ceil(SURGE - e));
           ctx.fillStyle = "#9ccbff"; ctx.font = `13px ${MONO}`;
-          ctx.fillText("發射前序列 · PRE-ENERGIZE SEQUENCE", W / 2, 40);
-          const beat = 1 - ((SURGE - e) % 1);           // 每秒一跳
-          ctx.fillStyle = "#7db8ff"; ctx.font = `bold ${48 + beat * 10}px ${MONO}`;
-          ctx.shadowBlur = 16 + beat * 16; ctx.shadowColor = "#5fa8ff"; ctx.globalAlpha = Math.min(1, e / 0.6) * (0.6 + beat * 0.4);
-          ctx.fillText(`T- ${tm}`, W / 2, 98); ctx.shadowBlur = 0; ctx.globalAlpha = Math.min(1, e / 0.6);
+          ctx.fillText("台電進線受電中 · INCOMING SUPPLY", W / 2, 40);
+          const beat = 1 - ((SURGE - e) % 1);           // 每秒一脈
+          ctx.fillStyle = "#7db8ff"; ctx.font = `bold ${46 + beat * 6}px ${MONO}`;
+          ctx.shadowBlur = 14 + beat * 14; ctx.shadowColor = "#5fa8ff"; ctx.globalAlpha = Math.min(1, e / 0.6);
+          ctx.fillText(`${(chgH * 11.4).toFixed(1)} kV`, W / 2, 98); ctx.shadowBlur = 0;
         } else {
-          const label = e < SURGE + 0.5 ? "◆ IGNITION · 點火" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
+          const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
           ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`;
           ctx.fillText(label, W / 2, 24);
           const bw = 320, bx = W / 2 - bw / 2, by = 36;
