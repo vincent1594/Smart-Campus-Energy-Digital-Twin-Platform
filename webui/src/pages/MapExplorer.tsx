@@ -1,5 +1,6 @@
 import { Alert, Card, Segmented, Spin, Tag } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { BuildingSummary, DashboardSummary, PowerFlowResult, TopologyGraph, TransformerDetail } from "../api/types";
 import CampusMapStatic, { type MapMarker } from "../components/CampusMapStatic";
@@ -13,6 +14,7 @@ import { useTheme } from "../theme/ThemeContext";
 
 
 export default function MapExplorer() {
+  const navigate = useNavigate();
   const { focus, setFocus } = useFocus();
   const { scenario, setScenario } = useActiveScenario();
   const { dark } = useTheme();
@@ -94,7 +96,15 @@ export default function MapExplorer() {
   } : dash;
 
   return (
-    <div style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* V1 範圍/可信度聲明:連到驗證中心 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 12px", background: "#e6f4ff", border: "1px solid #91caff", borderRadius: 6, fontSize: 12, color: "#0958d9", flexWrap: "wrap" }}>
+        <span style={{ fontWeight: 600, background: "#0958d9", color: "#fff", borderRadius: 3, padding: "0 6px", fontSize: 11 }}>V1</span>
+        <span style={{ color: "#333" }}>部分數值為規劃估算、模型涵蓋北電錶區。各數據來源與待校正項目請見</span>
+        <a style={{ fontWeight: 600 }} onClick={() => navigate("/verify")}>驗證中心 →</a>
+      </div>
+
+      <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
       {/* 左:狀態 + KPI 面板 */}
       <div style={{ height: "100%", overflow: "hidden" }}>
         <StatsPanel dash={effDash} pf={effPf} dark={dark} />
@@ -129,6 +139,7 @@ export default function MapExplorer() {
       <Card size="small" title="焦點詳情" style={{ height: "100%", overflow: "hidden" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         <FocusPanel buildings={buildings} trafos={trafos} dash={dash} />
       </Card>
+      </div>
     </div>
   );
 }
