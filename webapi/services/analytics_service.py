@@ -25,10 +25,11 @@ def record_visit(visitor_id: str, ip: str = "") -> VisitStats:
 
 
 def get_recent(limit: int = 30) -> list[RecentVisit]:
-    """最近拜訪紀錄(含 IP)—— 個資,僅供登入後檢視。"""
+    """最近拜訪紀錄(含 IP)—— 個資,僅供登入後檢視;只列有 IP 的(略過早於 IP 功能的舊紀錄)。"""
     with engine.connect() as c:
         rows = c.execute(
             select(visits.c.ts, visits.c.ip, visits.c.visitor_id)
+            .where(visits.c.ip.isnot(None)).where(visits.c.ip != "")
             .order_by(visits.c.id.desc()).limit(min(200, max(1, limit)))
         ).all()
     return [RecentVisit(ts=r[0], ip=r[1], visitor_id=r[2]) for r in rows]
