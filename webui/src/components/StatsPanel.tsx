@@ -1,6 +1,7 @@
 // 系統狀態 + KPI + 日負載曲線 + 告警統計 + 環境監測 的左欄面板。
 // 主題自適應:dark = 戰情室發光版;light = 工作台白卡版。
 // 環境監測:Open-Meteo 免費即時資料(南臺科大座標),失敗回退示意值。
+import { CloudOutlined, DashboardOutlined, DeploymentUnitOutlined, FireOutlined, PercentageOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { Tag } from "antd";
 import ReactECharts from "echarts-for-react";
 import { useEffect, useMemo, useState } from "react";
@@ -53,8 +54,9 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
   const Demo = <Tag style={{ marginInlineStart: 4, color: C.muted, borderColor: C.border, background: "transparent", fontSize: 10 }}>示意</Tag>;
   const env = useEnv();
 
-  const Kpi = ({ label, value, unit, accent, demo, extra }: { label: React.ReactNode; value: string | number; unit?: string; accent: string; demo?: boolean; extra?: string }) => (
-    <div style={{ ...panel, padding: "9px 10px 9px 12px", flex: 1, borderLeft: `3px solid ${accent}` }}>
+  const Kpi = ({ label, value, unit, accent, demo, extra, icon }: { label: React.ReactNode; value: string | number; unit?: string; accent: string; demo?: boolean; extra?: string; icon?: React.ReactNode }) => (
+    <div style={{ ...panel, padding: "8px 10px 8px 12px", flex: 1, borderLeft: `3px solid ${accent}`, position: "relative", overflow: "hidden" }}>
+      {icon && <span style={{ position: "absolute", top: 8, right: 10, color: accent, opacity: dark ? 0.5 : 0.26, fontSize: 16 }}>{icon}</span>}
       <div style={{ color: C.muted, fontSize: 12 }}>{label}{demo && Demo}</div>
       <div style={{ color: accent, fontSize: 20, fontWeight: 700, textShadow: dark ? `0 0 10px ${accent}66` : "none", lineHeight: 1.3, whiteSpace: "nowrap" }}>
         {value}<span style={{ fontSize: 11, color: C.text, marginInlineStart: 3 }}>{unit}</span>
@@ -88,6 +90,7 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
   }, [pf]);
 
   const statusColor = dash.status === "OK" ? "#52c41a" : dash.status === "WARNING" ? "#faad14" : "#ff4d4f";
+  const statusDesc = dash.status === "OK" ? "正常運轉" : dash.status === "WARNING" ? "需注意" : "異常";
 
   // 系統總功因:取「進線端」P/√(P²+Q²)(台電計費點,含電容器補償);台電 ≥0.8 不罰、≥0.95 有折扣
   const gP = Math.abs(dash.grid_import_kw);
@@ -107,23 +110,29 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, height: "100%" }}>
-      {/* 系統狀態(精簡:標題與狀態同列,把高度還給日負載曲線) */}
-      <div style={{ ...panel, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "6px 12px", background: dark ? C.bg : `${statusColor}0d`, borderColor: dark ? C.border : `${statusColor}40` }}>
-        <span style={{ color: C.muted, fontSize: 12, letterSpacing: 0.5 }}>系統狀態 SYSTEM STATUS</span>
-        <span style={{ fontSize: 22, fontWeight: 800, textShadow: `0 0 14px ${statusColor}99`, color: statusColor, lineHeight: 1.1 }}>{dash.status}</span>
+      <style>{"@keyframes bgPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.78)}}"}</style>
+      {/* 系統狀態英雄條:脈動點 + 漸層底 + 一句描述 */}
+      <div style={{ ...panel, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 14px",
+        background: dark ? C.bg : `linear-gradient(90deg, ${statusColor}1f, ${statusColor}08)`, borderColor: dark ? C.border : `${statusColor}55` }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: statusColor, animation: "bgPulse 1.8s ease-in-out infinite", boxShadow: `0 0 8px ${statusColor}` }} />
+          <span style={{ color: C.muted, fontSize: 12, letterSpacing: 0.5 }}>系統狀態</span>
+          <span style={{ fontSize: 21, fontWeight: 800, textShadow: dark ? `0 0 14px ${statusColor}99` : "none", color: statusColor, lineHeight: 1 }}>{dash.status}</span>
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: statusColor }}>{statusDesc}</span>
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
-        <Kpi label="總負載" value={dash.total_load_kw} unit="kW" accent={C.accent} extra={`${dash.total_load_kvar} kVAR`} />
-        <Kpi label="系統損耗" value={dash.system_loss_kw} unit="kW" accent="#fa8c16" extra={`${dash.system_loss_kvar} kVAR`} />
+        <Kpi label="總負載" value={dash.total_load_kw} unit="kW" accent={C.accent} extra={`${dash.total_load_kvar} kVAR`} icon={<ThunderboltOutlined />} />
+        <Kpi label="系統損耗" value={dash.system_loss_kw} unit="kW" accent="#fa8c16" extra={`${dash.system_loss_kvar} kVAR`} icon={<FireOutlined />} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <Kpi label="最低電壓" value={dash.min_voltage_pu} unit="pu" accent={dash.min_voltage_pu < 0.95 ? "#ff4d4f" : "#52c41a"} />
-        <Kpi label="最大變壓器" value={dash.max_transformer_load_ratio_percent} unit="%" accent="#faad14" extra={maxTr?.transformer_name} />
+        <Kpi label="最低電壓" value={dash.min_voltage_pu} unit="pu" accent={dash.min_voltage_pu < 0.95 ? "#ff4d4f" : "#52c41a"} icon={<DashboardOutlined />} />
+        <Kpi label="最大變壓器" value={dash.max_transformer_load_ratio_percent} unit="%" accent="#faad14" extra={maxTr?.transformer_name} icon={<DeploymentUnitOutlined />} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <Kpi label="系統總功因" value={sysPf.toFixed(2)} accent={pfColor} />
-        <Kpi label="目前碳排放" value={Math.round((dash.grid_import_kw || 0) * CO2_EF).toLocaleString()} unit="kg/h" accent="#9e7d4e" />
+        <Kpi label="系統總功因" value={sysPf.toFixed(2)} accent={pfColor} icon={<PercentageOutlined />} />
+        <Kpi label="目前碳排放" value={Math.round((dash.grid_import_kw || 0) * CO2_EF).toLocaleString()} unit="kg/h" accent="#9e7d4e" icon={<CloudOutlined />} />
       </div>
 
       {/* 日負載曲線 */}
