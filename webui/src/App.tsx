@@ -1,19 +1,22 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { Route, Routes } from "react-router-dom";
+import { Spin } from "antd";
 import AppLayout from "./components/AppLayout";
 import WarRoomBackdrop from "./components/WarRoomBackdrop";
 import WarRoomIntro from "./components/WarRoomIntro";
-import AssetExplorer from "./pages/AssetExplorer";
-import Alarms from "./pages/Alarms";
-import BuildingExplorer from "./pages/BuildingExplorer";
-import CampusMapPage from "./pages/CampusMapPage";
-import DemandManagement from "./pages/DemandManagement";
-import EnergyIntensity from "./pages/EnergyIntensity";
-import HistoryTrends from "./pages/HistoryTrends";
-import MapExplorer from "./pages/MapExplorer";
-import Report from "./pages/Report";
-import Scenario from "./pages/Scenario";
-import VerificationCenter from "./pages/VerificationCenter";
+import MapExplorer from "./pages/MapExplorer";   // 首頁:維持即時載入(進場即顯示)
+
+// 次要分頁懶載入 → 各自獨立 chunk,首屏不載、點到才下載
+const AssetExplorer = lazy(() => import("./pages/AssetExplorer"));
+const Alarms = lazy(() => import("./pages/Alarms"));
+const BuildingExplorer = lazy(() => import("./pages/BuildingExplorer"));
+const CampusMapPage = lazy(() => import("./pages/CampusMapPage"));
+const DemandManagement = lazy(() => import("./pages/DemandManagement"));
+const EnergyIntensity = lazy(() => import("./pages/EnergyIntensity"));
+const HistoryTrends = lazy(() => import("./pages/HistoryTrends"));
+const Report = lazy(() => import("./pages/Report"));
+const Scenario = lazy(() => import("./pages/Scenario"));
+const VerificationCenter = lazy(() => import("./pages/VerificationCenter"));
 
 const INTRO_KEY = "bg_intro_date";
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
@@ -33,19 +36,21 @@ export default function App() {
       {entered && (
         <div style={{ height: "100vh", animation: seen ? undefined : "bgDashEnter .85s cubic-bezier(.2,.7,.2,1) both" }}>
           <AppLayout>
-            <Routes>
-              <Route path="/" element={<MapExplorer />} />
-              <Route path="/map" element={<CampusMapPage />} />
-              <Route path="/buildings" element={<BuildingExplorer />} />
-              <Route path="/assets" element={<AssetExplorer />} />
-              <Route path="/scenario" element={<Scenario />} />
-              <Route path="/demand" element={<DemandManagement />} />
-              <Route path="/eui" element={<EnergyIntensity />} />
-              <Route path="/history" element={<HistoryTrends />} />
-              <Route path="/alarms" element={<Alarms />} />
-              <Route path="/report" element={<Report />} />
-              <Route path="/verify" element={<VerificationCenter />} />
-            </Routes>
+            <Suspense fallback={<Spin size="large" style={{ display: "block", margin: "120px auto" }} />}>
+              <Routes>
+                <Route path="/" element={<MapExplorer />} />
+                <Route path="/map" element={<CampusMapPage />} />
+                <Route path="/buildings" element={<BuildingExplorer />} />
+                <Route path="/assets" element={<AssetExplorer />} />
+                <Route path="/scenario" element={<Scenario />} />
+                <Route path="/demand" element={<DemandManagement />} />
+                <Route path="/eui" element={<EnergyIntensity />} />
+                <Route path="/history" element={<HistoryTrends />} />
+                <Route path="/alarms" element={<Alarms />} />
+                <Route path="/report" element={<Report />} />
+                <Route path="/verify" element={<VerificationCenter />} />
+              </Routes>
+            </Suspense>
           </AppLayout>
         </div>
       )}
