@@ -320,13 +320,14 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       `}</style>
       <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
 
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: "9%", pointerEvents: "none" }}>
+      {/* 標題移上方(避開中央剛點亮的校園)、按鈕留下緣 */}
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "12% 0 8%", pointerEvents: "none" }}>
         <div style={{ opacity: 0, animation: "wrIntroTitle 0.9s cubic-bezier(.2,.8,.2,1) 5.4s forwards", textAlign: "center" }}>
-          <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: 8, textShadow: "0 0 40px #1677ffcc", color: "#eaf2ff" }}>GRID ENERGIZED</div>
-          <div style={{ fontSize: 18, letterSpacing: 6, color: "#9ccbff", marginTop: 6 }}>北電錶 · 全線帶電</div>
+          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 6, textShadow: "0 0 24px #1677ffaa", color: "#eaf2ff" }}>GRID ENERGIZED</div>
+          <div style={{ fontSize: 14, letterSpacing: 5, color: "#9ccbff", marginTop: 4 }}>北電錶 · 全線帶電</div>
         </div>
         <button onClick={onEnter} style={{
-          marginTop: 28, opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 6.6s forwards", pointerEvents: "auto",
+          opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 6.6s forwards", pointerEvents: "auto",
           background: "rgba(95,168,255,0.10)", border: "1px solid rgba(120,180,255,0.5)", color: "#cfe2ff", fontFamily: MONO,
           fontSize: 15, letterSpacing: 3, padding: "11px 30px", cursor: "pointer", borderRadius: 2,
         }}>進入系統 ▸</button>
