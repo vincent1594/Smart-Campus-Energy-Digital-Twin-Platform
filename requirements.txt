@@ -27,6 +27,8 @@ pyyaml>=5.4.0
 fastapi>=0.110
 uvicorn[standard]>=0.27
 python-multipart>=0.0.9
+SQLAlchemy>=2.0           # 訪客統計/設定持久化:DATABASE_URL 有則 Postgres、否則 SQLite
+psycopg2-binary>=2.9      # Postgres 驅動(免編譯;Render/Neon)
 
 # Development (optional)
 pytest>=7.0.0
