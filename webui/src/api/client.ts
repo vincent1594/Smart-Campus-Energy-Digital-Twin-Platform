@@ -49,6 +49,19 @@ async function post<T>(path: string, payload: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function put<T>(path: string, payload: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export const api = {
   dashboard: () => get<DashboardSummary>("/api/dashboard"),
   buildings: (query?: string) =>
@@ -101,4 +114,6 @@ export const api = {
   recordVisit: (visitorId: string) => post<VisitStats>("/api/visit", { visitor_id: visitorId }),
   visitStats: () => get<VisitStats>("/api/visit/stats"),
   health: () => get<{ status: string }>("/api/health"),
+  getSettings: () => get<Record<string, unknown>>("/api/settings"),
+  putSettings: (values: Record<string, unknown>, by = "") => put<Record<string, unknown>>("/api/settings", { values, by }),
 };
