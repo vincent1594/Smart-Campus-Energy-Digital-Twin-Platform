@@ -1,5 +1,6 @@
 // 使用說明 —— 嵌在「報表匯出」頁的分頁。平台簡介 + 各功能怎麼用 + 操作技巧。
-import { Tag } from "antd";
+import { FilePdfOutlined } from "@ant-design/icons";
+import { Button, Tag } from "antd";
 
 const FEATURES: { nav: string; what: string; how: string }[] = [
   {
@@ -52,9 +53,50 @@ const TIPS: string[] = [
   "右上「重看開場」可重播進站的電網傳輸動畫。",
 ];
 
+const INTRO_HTML =
+  "<b>校園配電數位分身平台</b> —— 把學校的高壓配電(台電進線 → 受電站 → VCB → 饋線 → 變壓器 → 各棟)做成可互動的模型," +
+  "給營繕組/總務組看<b>電力現況、省電費、設備汰換規劃</b>。涵蓋範圍目前為<b>北電錶區</b>;多數數值為規劃估算,各數字來源與可信度詳見<b>「驗證中心」</b>。";
+
+// 用瀏覽器內建列印 → 另存為 PDF(品質好、零相依);內容用同一份資料生成
+function exportPdf() {
+  const feat = FEATURES.map((f) =>
+    `<div class="f"><div class="nav">${f.nav}</div><div class="b"><div>${f.what}</div>` +
+    `<div class="how"><b>怎麼用:</b>${f.how}</div></div></div>`).join("");
+  const tips = TIPS.map((t) => `<li>${t}</li>`).join("");
+  const html = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>使用說明</title><style>
+    *{box-sizing:border-box}
+    body{font-family:"Microsoft JhengHei","PingFang TC",sans-serif;color:#222;font-size:12.5px;line-height:1.7;margin:0;padding:24px}
+    h1{font-size:20px;border-bottom:3px solid #1677ff;padding-bottom:6px;margin:0 0 2px}
+    .sub{color:#999;font-size:12px;margin-bottom:14px}
+    .intro{background:#f0f7ff;border:1px solid #d6e8ff;border-radius:8px;padding:12px 14px;margin-bottom:16px}
+    h2{font-size:14px;margin:16px 0 8px;color:#1677ff}
+    .f{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #eee;page-break-inside:avoid}
+    .nav{flex:0 0 90px;font-weight:700;color:#1677ff}
+    .how{color:#666;margin-top:2px}.how b{color:#1677ff;font-weight:600}
+    ul{padding-left:20px;margin:6px 0}li{margin:4px 0}
+    .foot{color:#aaa;font-size:11px;margin-top:18px}
+  </style></head><body>
+    <h1>校園配電數位分身平台 · 使用說明</h1>
+    <div class="sub">V1 · 北電錶區</div>
+    <div class="intro">${INTRO_HTML}</div>
+    <h2>功能導覽</h2>${feat}
+    <h2>操作技巧</h2><ul>${tips}</ul>
+    <div class="foot">平台為 V1 版,部分數值以業界預設值估算、模型涵蓋北電錶區;校正進度與待辦見「驗證中心」。</div>
+  </body></html>`;
+  const w = window.open("", "_blank", "width=900,height=720");
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 350);
+}
+
 export default function UsageGuide() {
   return (
     <div style={{ maxWidth: 820 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <Button size="small" icon={<FilePdfOutlined />} onClick={exportPdf}>匯出 PDF / 列印</Button>
+      </div>
       {/* 簡介 */}
       <div style={{ background: "#f0f7ff", border: "1px solid #d6e8ff", borderRadius: 8, padding: "12px 16px", marginBottom: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>這是什麼</div>
