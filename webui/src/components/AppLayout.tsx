@@ -1,38 +1,16 @@
 import {
   AlertOutlined, AppstoreOutlined, BarChartOutlined, DashboardOutlined,
-  EnvironmentOutlined, FileTextOutlined, FundProjectionScreenOutlined,
+  DownOutlined, EnvironmentOutlined, FileTextOutlined, FundProjectionScreenOutlined,
   HomeOutlined, LineChartOutlined, SafetyCertificateOutlined, ThunderboltOutlined, UserOutlined,
 } from "@ant-design/icons";
-import { DownOutlined, EyeOutlined } from "@ant-design/icons";
-import { Layout, Menu, Popover, Space, Tooltip } from "antd";
-import { useEffect, useState } from "react";
+import { Layout, Menu, Popover, Space } from "antd";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { api } from "../api/client";
-import type { VisitStats } from "../api/types";
 import AccountPanel from "./AccountPanel";
 
 const { Header, Content } = Layout;
-
-// 訪客統計:每瀏覽器一個 visitor_id(算人數),每 session 記一次拜訪。
-function VisitorBadge() {
-  const [s, setS] = useState<VisitStats>();
-  useEffect(() => {
-    let vid = localStorage.getItem("bg_visitor_id");
-    if (!vid) { vid = (crypto.randomUUID?.() ?? String(Math.random()).slice(2)); localStorage.setItem("bg_visitor_id", vid); }
-    const first = !sessionStorage.getItem("bg_visited");
-    sessionStorage.setItem("bg_visited", "1");
-    (first ? api.recordVisit(vid) : api.visitStats()).then(setS).catch(() => undefined);
-  }, []);
-  if (!s) return null;
-  return (
-    <Tooltip title={`拜訪次數:今日 ${s.today_visits} · 累計 ${s.total_visits}${s.since ? `(自 ${s.since})` : ""}`}>
-      <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, whiteSpace: "nowrap" }}>
-        <EyeOutlined style={{ marginInlineEnd: 5 }} />今日 {s.today_people} · 累計 {s.total_people} 人
-      </span>
-    </Tooltip>
-  );
-}
 
 const topNav = [
   { key: "/", label: "校園總覽" },
@@ -58,6 +36,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const topSelected = topNav.find((i) => i.key === pathname)?.key ?? "/";
 
+  // 記錄拜訪(每瀏覽器一個 visitor_id 算人數、每 session 記一次);不顯示,統計改在帳號面板看。
+  useEffect(() => {
+    let vid = localStorage.getItem("bg_visitor_id");
+    if (!vid) { vid = (crypto.randomUUID?.() ?? String(Math.random()).slice(2)); localStorage.setItem("bg_visitor_id", vid); }
+    if (!sessionStorage.getItem("bg_visited")) {
+      sessionStorage.setItem("bg_visited", "1");
+      api.recordVisit(vid).catch(() => undefined);
+    }
+  }, []);
+
   return (
     <Layout style={{ height: "100vh" }}>
       <Header style={{ background: "#001529", paddingInline: 20, height: 44, lineHeight: "44px", display: "flex", alignItems: "center", gap: 23 }}>
@@ -67,7 +55,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           items={topNav.map((i) => ({ key: i.key, icon: topIcon[i.key], label: i.label }))}
           style={{ flex: 1, minWidth: 0, background: "transparent", borderBottom: "none", marginInlineStart: 40 }} />
         <Space size={18} style={{ color: "#fff" }}>
-          <VisitorBadge />
           <a onClick={() => { localStorage.removeItem("bg_intro_date"); window.location.reload(); }}
             style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 }} title="重新播放通電序列開場">重看開場</a>
           <Popover trigger="click" placement="bottomRight" content={<AccountPanel />} destroyTooltipOnHide>
