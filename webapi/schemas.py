@@ -343,6 +343,42 @@ class DemandForecast(BaseModel):
     shed_suggestions: list[ShedSuggestion]
 
 
+# ---------- 契約容量最佳化 (營繕組殺手功能) ----------
+class MeasuredMonthPeak(BaseModel):
+    """EMS 實測:某月最高需量 + 對現況契約的單月超約罰款 (純實測,零外推)。"""
+    month: str                            # "2023-06"
+    peak_kw: float
+    overshoot_kw: float                   # max(0, 實測尖峰 - 現況契約)
+    penalty_nt: float                     # 該月實測超約罰款 (2/3 倍級距)
+
+
+class ContractCurvePoint(BaseModel):
+    """年成本曲線一點:某候選契約容量下的基本電費 / 罰款 / 總成本。"""
+    contract_kw: float
+    basic_nt: float                       # 基本電費 = 契約 × 單價 × 12 月
+    penalty_nt: float                     # 全年超約罰款 (依假設月尖峰)
+    total_nt: float                       # 年總成本 = 基本 + 罰款
+
+
+class ContractOptimization(BaseModel):
+    """掃契約容量求「基本電費 + 全年超約罰款」最小的最佳契約與全年估省。"""
+    rate_nt_per_kw: float                 # 採用的基本電費單價
+    high_months: int                      # 假設:全年高需量月數
+    offseason_ratio: float                # 假設:離峰季尖峰 / 夏季尖峰
+    summer_peak_kw: float                 # 尖峰錨點 (EMS 實測月最高需量)
+    measured: list[MeasuredMonthPeak]     # 實測各月尖峰 + 罰款 (零外推)
+    current_contract_kw: float
+    current_annual_nt: float              # 現況契約年總成本
+    current_penalty_nt: float             # 現況契約全年超約罰款
+    recommended_contract_kw: float        # 最佳契約
+    recommended_annual_nt: float          # 最佳契約年總成本
+    recommended_penalty_nt: float
+    annual_savings_nt: float              # 純調契約的全年估省 = 現況 - 最佳
+    peakshave_savings_nt: float           # 削峰至契約內可省 (= 現況全年超約罰款)
+    curve: list[ContractCurvePoint]       # 年成本 vs 契約容量曲線
+    note: str                             # 資料/假設說明
+
+
 # ---------- 時間電價 月電費試算 ----------
 class TariffRates(BaseModel):
     """台電高壓三段式時間電價費率 (可編輯)。非夏月無尖峰,故無 nonsummer_peak。"""

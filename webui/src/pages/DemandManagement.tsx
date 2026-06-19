@@ -1,12 +1,12 @@
 // 需量契約:兩個視圖切換 ——
 //   ① 需量預警:現況需量 vs 契約 + XGBoost 逐時尖峰 → 超約罰款 + 卸載建議
 //   ② 時間電價電費:台電高壓三段式月電費試算(各時段度數×費率 + 基本電費 + 超約)
-import { Alert, Card, DatePicker, Divider, InputNumber, Progress, Segmented, Spin, Statistic, Tag, message } from "antd";
+import { Alert, Card, DatePicker, Divider, InputNumber, Progress, Segmented, Slider, Spin, Statistic, Tag, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import { api } from "../api/client";
-import type { DemandForecast, DemandStatus, MonthlyBill, TariffRates } from "../api/types";
+import type { ContractOptimization, DemandForecast, DemandStatus, MonthlyBill, TariffRates } from "../api/types";
 import EnergyIntensity from "./EnergyIntensity";
 
 const STATUS_COLOR: Record<string, string> = { OK: "#52c41a", WARNING: "#fa8c16", EXCEED: "#ff4d4f" };
@@ -26,11 +26,12 @@ export default function DemandManagement() {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
       <Segmented size="small" value={view} onChange={(v) => setView(String(v))}
-        options={[{ label: "需量預警", value: "demand" }, { label: "時間電價電費", value: "bill" }, { label: "用電強度", value: "eui" }]} />
+        options={[{ label: "需量預警", value: "demand" }, { label: "契約最佳化", value: "optimize" }, { label: "時間電價電費", value: "bill" }, { label: "用電強度", value: "eui" }]} />
       <div style={{ flex: 1, minHeight: 0 }}>
         {view === "demand" ? <DemandView contract={contract} setContract={setContract} />
-          : view === "bill" ? <BillView contract={contract} setContract={setContract} />
-            : <EnergyIntensity />}
+          : view === "optimize" ? <OptimizeView contract={contract} setContract={setContract} />
+            : view === "bill" ? <BillView contract={contract} setContract={setContract} />
+              : <EnergyIntensity />}
       </div>
     </div>
   );
@@ -171,7 +172,160 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
 }
 
 // ============================================================================
-// 視圖 ② 時間電價電費
+// 視圖 ② 契約最佳化 —— 掃契約求「基本電費 + 全年超約罰款」最小;削峰可省為頭條
+// ============================================================================
+const wan = (n: number) => `${(n / 1e4).toLocaleString(undefined, { maximumFractionDigits: 1 })} 萬`;
+
+function OptimizeView({ contract, setContract }: { contract: number; setContract: (n: number) => void }) {
+  const [rate, setRate] = useState<number>(223.6);
+  const [highMonths, setHighMonths] = useState<number>(4);
+  const [offseason, setOffseason] = useState<number>(0.7);
+  const [data, setData] = useState<ContractOptimization>();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { api.demand().then((s) => setRate(s.demand_charge_nt_per_kw)).catch(() => undefined); }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLoading(true);
+      api.contractOptimize(contract, rate, highMonths, offseason)
+        .then(setData).catch((e) => message.error(String(e.message ?? e))).finally(() => setLoading(false));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [contract, rate, highMonths, offseason]);
+
+  const overPct = data ? Math.round((data.summer_peak_kw / data.current_contract_kw - 1) * 100) : 0;
+  const raise = data ? data.recommended_contract_kw > data.current_contract_kw : false;
+
+  const chartOption = data && {
+    grid: { left: 44, right: 14, top: 26, bottom: 30 },
+    legend: { right: 6, top: 0, itemWidth: 14, textStyle: { fontSize: 11 } },
+    tooltip: {
+      trigger: "axis",
+      formatter: (ps: { axisValue: number; seriesName: string; value: number[] }[]) =>
+        `契約 ${Math.round(ps[0].axisValue).toLocaleString()} kW<br/>` +
+        ps.map((p) => `${p.seriesName} ${ntd(p.value[1])}`).join("<br/>"),
+    },
+    xAxis: {
+      type: "value", name: "契約容量 kW", nameTextStyle: { fontSize: 10 }, nameGap: 18,
+      min: data.curve[0].contract_kw, max: data.curve[data.curve.length - 1].contract_kw,
+      axisLabel: { fontSize: 10, formatter: (v: number) => v.toLocaleString() },
+    },
+    yAxis: { type: "value", name: "NT$/年", nameTextStyle: { fontSize: 10 }, axisLabel: { fontSize: 10, formatter: (v: number) => `${(v / 1e6).toFixed(1)}M` } },
+    series: [
+      { name: "基本電費", type: "line", smooth: true, symbol: "none", data: data.curve.map((p) => [p.contract_kw, p.basic_nt]), lineStyle: { color: "#1677ff", width: 1.5 }, itemStyle: { color: "#1677ff" } },
+      { name: "超約罰款", type: "line", smooth: true, symbol: "none", data: data.curve.map((p) => [p.contract_kw, p.penalty_nt]), lineStyle: { color: "#cf1322", width: 1.5 }, itemStyle: { color: "#cf1322" }, areaStyle: { color: "rgba(207,19,34,0.07)" } },
+      {
+        name: "年總成本", type: "line", smooth: true, symbol: "none",
+        data: data.curve.map((p) => [p.contract_kw, p.total_nt]),
+        lineStyle: { color: "#262626", width: 2.5 }, itemStyle: { color: "#262626" },
+        markLine: {
+          symbol: "none", silent: true,
+          data: [
+            { xAxis: data.current_contract_kw, label: { formatter: "現況", fontSize: 10, color: "#888", position: "insideStartTop" }, lineStyle: { color: "#bbb", type: "dashed", width: 1.5 } },
+            { xAxis: data.recommended_contract_kw, label: { formatter: `最佳 ${data.recommended_contract_kw.toLocaleString()}`, fontSize: 10, color: "#52c41a", position: "insideEndTop" }, lineStyle: { color: "#52c41a", width: 1.5 } },
+          ],
+        },
+        markPoint: { symbolSize: 8, symbol: "circle", data: [{ type: "min", itemStyle: { color: "#52c41a" }, label: { show: false } }] },
+      },
+    ],
+  };
+
+  if (loading && !data) return <Spin size="large" style={{ display: "block", marginTop: 120 }} />;
+
+  return (
+    <div style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr 340px", gap: 8 }}>
+      {/* 左:尖峰實況 + 假設 */}
+      <Card size="small" title="尖峰實況 / 假設" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+        {data && (
+          <>
+            <div style={{ color: "#888", fontSize: 12, marginBottom: 2 }}>實測尖峰(EMS 北電錶)</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <Statistic value={data.summer_peak_kw} suffix="kW" valueStyle={{ fontSize: 22, color: "#cf1322" }} />
+              {overPct > 0 && <Tag color="red">超約 {overPct}%</Tag>}
+            </div>
+            <div style={{ color: "#bbb", fontSize: 11, marginTop: 2, marginBottom: 10 }}>取自 2023/05–06 月最高需量,罰款計算零外推</div>
+
+            <div style={{ color: "#888", fontSize: 12, marginBottom: 2 }}>現況契約容量</div>
+            <InputNumber size="small" style={{ width: "100%" }} addonAfter="kW" min={1} step={50} value={contract} onChange={(v) => setContract(v ?? 0)} />
+            <div style={{ color: "#888", fontSize: 12, margin: "8px 0 2px" }}>基本電費單價</div>
+            <InputNumber size="small" style={{ width: "100%" }} addonAfter="元/kW" min={0} step={0.1} value={rate} onChange={(v) => setRate(v ?? 0)} />
+
+            <Divider style={{ margin: "12px 0 6px" }} orientation="left" plain>全年型態假設</Divider>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666" }}>
+              <span>高需量月數</span><b>{highMonths} 月</b>
+            </div>
+            <Slider min={0} max={12} step={1} value={highMonths} onChange={setHighMonths} marks={{ 0: "0", 4: "4", 8: "8", 12: "12" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666", marginTop: 4 }}>
+              <span>離峰季尖峰比例</span><b>×{offseason.toFixed(2)}</b>
+            </div>
+            <Slider min={0.4} max={1} step={0.05} value={offseason} onChange={setOffseason} tooltip={{ formatter: (v) => `×${v}` }} />
+            <div style={{ color: "#bbb", fontSize: 11, marginTop: 6, lineHeight: 1.5 }}>
+              依自家全年型態調整:高需量月數=夏季冷氣旺月,離峰季尖峰約為夏季的幾成。
+            </div>
+          </>
+        )}
+      </Card>
+
+      {/* 中:年成本 vs 契約 U 曲線 */}
+      <Card size="small" title="年成本 vs 契約容量(基本電費↑ 罰款↓ 的權衡)" style={{ height: "100%" }}
+        styles={{ body: { padding: 8, height: "calc(100% - 39px)", display: "flex", flexDirection: "column" } }}>
+        {!chartOption ? <Spin size="large" style={{ margin: "auto" }} /> : (
+          <>
+            <ReactECharts option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge />
+            <div style={{ color: "#999", fontSize: 11, textAlign: "center", lineHeight: 1.4 }}>
+              黑線最低點=最佳契約;基本電費按契約整年收,故調高雖降罰款卻墊高基本,U 形底部常很平。
+            </div>
+          </>
+        )}
+      </Card>
+
+      {/* 右:結論 */}
+      <Card size="small" title="結論 / 建議" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+        {data && (
+          <>
+            <div style={{ background: "#fff1f0", border: "1px solid #ffccc7", borderRadius: 6, padding: "10px 12px" }}>
+              <div style={{ color: "#888", fontSize: 12 }}>削峰至契約內,全年可省</div>
+              <div style={{ fontSize: 27, fontWeight: 700, color: "#cf1322", lineHeight: 1.2 }}>NT$ {wan(data.peakshave_savings_nt)}</div>
+              <div style={{ color: "#999", fontSize: 11, marginTop: 2 }}>
+                = 現況全年超約罰款。把 {data.summer_peak_kw.toLocaleString()} kW 尖峰壓回契約 {data.current_contract_kw.toLocaleString()} kW 內即免罰。
+              </div>
+            </div>
+
+            <Alert style={{ marginTop: 10 }} type={raise ? "warning" : "info"} showIcon
+              message={<span style={{ fontSize: 13 }}>建議契約 <b>{data.recommended_contract_kw.toLocaleString()} kW</b></span>}
+              description={<span style={{ fontSize: 12 }}>純調契約全年估省 <b style={{ color: data.annual_savings_nt > 0 ? "#3f8600" : "#888" }}>NT$ {wan(data.annual_savings_nt)}</b>{data.annual_savings_nt < 50000 ? "(與現況接近,單靠調約效益有限 → 削峰才是解)" : ""}</span>} />
+
+            <Divider style={{ margin: "12px 0 8px" }} orientation="left" plain>現況年成本拆解</Divider>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "2px 0" }}>
+              <span style={{ color: "#666" }}>基本電費(契約 × 單價 × 12)</span><b>{ntd(data.current_annual_nt - data.current_penalty_nt)}</b>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "2px 0" }}>
+              <span style={{ color: "#cf1322" }}>超約罰款(2/3 倍級距)</span><b style={{ color: "#cf1322" }}>{ntd(data.current_penalty_nt)}</b>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0", borderTop: "1px solid #f0f0f0", marginTop: 2, fontWeight: 700 }}>
+              <span>年總成本</span><span>{ntd(data.current_annual_nt)}</span>
+            </div>
+
+            <Divider style={{ margin: "12px 0 6px" }} orientation="left" plain>實測各月超約罰款(零外推)</Divider>
+            {data.measured.map((m) => (
+              <div key={m.month} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "3px 0" }}>
+                <span style={{ color: "#555" }}>{m.month} 尖峰 {m.peak_kw.toLocaleString()} kW</span>
+                <span style={{ color: m.penalty_nt > 0 ? "#cf1322" : "#3f8600" }}>
+                  {m.overshoot_kw > 0 ? `超 ${m.overshoot_kw.toLocaleString()} → ${ntd(m.penalty_nt)}` : "未超約"}
+                </span>
+              </div>
+            ))}
+            <div style={{ color: "#bbb", fontSize: 11, marginTop: 10, lineHeight: 1.5 }}>{data.note}</div>
+          </>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// 視圖 ③ 時間電價電費
 // ============================================================================
 const PERIOD_COLOR: Record<string, string> = { "尖峰": "#ff4d4f", "半尖峰": "#fa8c16", "離峰": "#52c41a" };
 

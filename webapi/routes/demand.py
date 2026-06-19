@@ -12,8 +12,15 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from webapi.demand_config import CONTRACT_CAPACITY_KW, DEMAND_CHARGE_NT_PER_KW, WINDOW_NOTE
-from webapi.schemas import BillRequest, DemandForecast, DemandStatus, MonthlyBill, TariffInfo
-from webapi.services import bill_service, demand_service
+from webapi.schemas import (
+    BillRequest,
+    ContractOptimization,
+    DemandForecast,
+    DemandStatus,
+    MonthlyBill,
+    TariffInfo,
+)
+from webapi.services import bill_service, contract_service, demand_service
 
 router = APIRouter(prefix="/api/demand", tags=["demand"])
 
@@ -36,6 +43,20 @@ def get_demand_forecast(
         return demand_service.get_forecast(date, contract_kw, rate)
     except Exception as exc:  # noqa: BLE001 - 日期格式/預測失敗轉友善訊息
         raise HTTPException(status_code=400, detail=f"需量預測失敗:{exc}") from exc
+
+
+@router.get("/optimize", response_model=ContractOptimization)
+def get_optimize(
+    contract_kw: float = Query(CONTRACT_CAPACITY_KW, gt=0),
+    rate: float = Query(DEMAND_CHARGE_NT_PER_KW, ge=0),
+    high_months: int = Query(4, ge=0, le=12, description="全年高需量月數 (假設)"),
+    offseason_ratio: float = Query(0.70, ge=0.0, le=1.0, description="離峰季尖峰/夏季尖峰 (假設)"),
+) -> ContractOptimization:
+    """契約容量最佳化:掃契約求基本電費+全年超約罰款最小者。"""
+    try:
+        return contract_service.optimize(contract_kw, rate, high_months, offseason_ratio)
+    except Exception as exc:  # noqa: BLE001 - 轉友善訊息
+        raise HTTPException(status_code=400, detail=f"契約最佳化失敗:{exc}") from exc
 
 
 @router.get("/tariff", response_model=TariffInfo)

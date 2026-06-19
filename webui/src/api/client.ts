@@ -3,6 +3,7 @@ import type {
   BillRequest,
   BuildingDetail,
   BuildingSummary,
+  ContractOptimization,
   DashboardSummary,
   DemandForecast,
   DemandStatus,
@@ -74,6 +75,15 @@ export const api = {
     if (contractKw != null) q.set("contract_kw", String(contractKw));
     if (rate != null) q.set("rate", String(rate));
     return get<DemandForecast>(`/api/demand/forecast?${q.toString()}`);
+  },
+  contractOptimize: (contractKw?: number, rate?: number, highMonths?: number, offseasonRatio?: number) => {
+    const q = new URLSearchParams();
+    if (contractKw != null) q.set("contract_kw", String(contractKw));
+    if (rate != null) q.set("rate", String(rate));
+    if (highMonths != null) q.set("high_months", String(highMonths));
+    if (offseasonRatio != null) q.set("offseason_ratio", String(offseasonRatio));
+    const s = q.toString();
+    return get<ContractOptimization>(`/api/demand/optimize${s ? `?${s}` : ""}`);
   },
   eui: (year?: number) => get<EUIReport>(`/api/eui${year ? `?year=${year}` : ""}`),
   history: () => get<HistoryReport>("/api/history"),
