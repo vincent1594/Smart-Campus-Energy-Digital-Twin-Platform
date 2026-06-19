@@ -320,7 +320,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       `}</style>
       <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
 
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: "9%", pointerEvents: "none" }}>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: "3.5%", pointerEvents: "none" }}>
         <div style={{ opacity: 0, animation: "wrIntroTitle 0.9s cubic-bezier(.2,.8,.2,1) 5.4s forwards", textAlign: "center" }}>
           <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: 8, textShadow: "0 0 40px #1677ffcc", color: "#eaf2ff" }}>GRID ENERGIZED</div>
           <div style={{ fontSize: 18, letterSpacing: 6, color: "#9ccbff", marginTop: 6 }}>北電錶 · 全線帶電</div>
