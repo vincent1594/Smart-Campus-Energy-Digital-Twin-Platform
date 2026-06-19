@@ -24,7 +24,7 @@ export const PROVENANCE: ProvenanceItem[] = [
   { feature: "變壓器銘牌規格", tier: "measured", source: "各站變壓器規格容量表 (Excel)", note: "設備查詢「規格明細」忠實呈現,不對應潮流模型", page: "設備查詢" },
   { feature: "樓地板面積", tier: "measured", source: "112 年校舍統計表", note: "建築查詢 / EUI 分母", page: "設備查詢 · 用電強度" },
   { feature: "契約容量 3,250 kW", tier: "measured", source: "營繕組確認", note: "北電錶經常契約;影響全部需量/罰款計算", page: "能源管理" },
-  { feature: "電網拓樸(線徑/長度/容量/VCB)", tier: "measured", source: "校內單線圖 / 設備清冊", note: "pandapower 建模基礎", page: "校園總覽 · 設備查詢" },
+  { feature: "電網拓樸(線徑/容量/VCB 接線)", tier: "measured", source: "校內單線圖 / 設備清冊", note: "pandapower 建模基礎(饋線長度除外,見下方)", page: "校園總覽 · 設備查詢" },
 
   // 🔵 模型推算
   { feature: "電壓 / 負載率 / 系統損耗 / 市電進線", tier: "model", source: "pandapower Newton-Raphson 潮流", note: "單時點 / 情境快照", page: "校園總覽 · 規劃模擬" },
@@ -36,6 +36,7 @@ export const PROVENANCE: ProvenanceItem[] = [
   { feature: "契約最佳化全年外推", tier: "assumption", source: "規劃假設(高需量月數=4、離峰×0.70)", note: "尖峰錨點為實測,僅季節外推屬假設;可調", page: "能源管理 · 契約最佳化" },
   { feature: "EUI 參考基準 120", tier: "assumption", source: "全國大專參考區間", note: "建議填學校歷史值;前端可編輯", page: "用電強度" },
   { feature: "汰換風險權重", tier: "assumption", source: "工程判斷(屆齡.40/負載.25/溫度.20/效率.15)", note: "相對排序,非絕對壽命", page: "設備查詢 · 汰換優先序" },
+  { feature: "饋線長度 / R / X", tier: "assumption", source: "長度推估(×1.2 經驗係數)、R/X = 線徑單位阻抗 × 長度", note: "實際佈線長度未量測;影響潮流壓降/損耗精度,設備查詢已標「估」", page: "設備查詢 · 饋線" },
   { feature: "各棟年用電量", tier: "assumption", source: "現況負載占比 × 全校年預測", note: "近似分配,非各棟獨立電錶", page: "用電強度" },
   { feature: "汰換投資回收(成本/年省/回收年限)", tier: "assumption", source: "標準變壓器損耗模型 + 換新單價假設", note: "節能用銘牌典型損耗(非 spec.efficiency,其值域不合理);單價/電價前端可編輯", page: "設備查詢 · 汰換投資回收" },
 

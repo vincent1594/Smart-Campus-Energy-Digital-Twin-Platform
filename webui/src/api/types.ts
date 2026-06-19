@@ -164,7 +164,10 @@ export interface FeederDetail {
   vcb_id: string;
   vcb_name: string;
   length_m: number;
+  length_estimated: boolean;
   cross_section_mm2?: number | null;
+  resistance_ohm?: number | null;   // 整段 R (Ω)
+  reactance_ohm?: number | null;    // 整段 X (Ω)
   overloaded: boolean;
   transformer_count: number;
   transformers: string[];
