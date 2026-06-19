@@ -13,4 +13,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // 把大型 vendor 拆成獨立 chunk(可長期快取、與業務碼分離、平行下載)
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          echarts: ["echarts", "echarts-for-react"],
+          antd: ["antd", "@ant-design/icons"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1300,   // echarts/antd 為大型 vendor,已獨立拆分
+  },
 });
