@@ -73,12 +73,26 @@ export default function CampusMapStatic({
 
   return (
     <div ref={ref} style={{ position: "relative", lineHeight: 0, touchAction: editable ? "none" : undefined, ...(fitHeight ? { width: "100%", height: "100%" } : { width: "100%" }) }}>
-      <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.85)" : "none", ...(fitHeight ? { width: "100%", height: "100%", objectFit: "contain" } : { width: "100%" }) }} />
+      <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.85)" : "saturate(.42) brightness(1.06)", ...(fitHeight ? { width: "100%", height: "100%", objectFit: "contain" } : { width: "100%" }) }} />
 
       {!editable && (
         <div style={{ position: "absolute", top: 8, right: 8, background: dark ? "rgba(0,0,0,.5)" : "rgba(255,255,255,.85)", color: dark ? "#fff" : "#000", borderRadius: 6, padding: "2px 8px", zIndex: 30 }}>
           <span style={{ fontSize: 12, marginInlineEnd: 6 }}>顯示範圍框</span>
           <Switch size="small" checked={showBox} disabled={dark} onChange={setShowBox} />
+        </div>
+      )}
+
+      {/* 負載率色階圖例 */}
+      {!editable && (
+        <div style={{ position: "absolute", left: 8, bottom: 8, zIndex: 20, display: "flex", alignItems: "center", gap: 10,
+          background: dark ? "rgba(0,0,0,.5)" : "rgba(255,255,255,.86)", color: dark ? "#cfe9ff" : "#666",
+          borderRadius: 6, padding: "3px 9px", fontSize: 11, lineHeight: 1.6, boxShadow: "0 1px 4px rgba(0,0,0,.12)" }}>
+          <span style={{ color: dark ? "#5f86a8" : "#999" }}>負載率</span>
+          {[["#52c41a", "正常"], ["#fadb14", "中載"], ["#fa8c16", "吃緊"], ["#ff4d4f", "過載"]].map(([col, lab]) => (
+            <span key={lab} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 9, height: 9, borderRadius: 2, background: col, display: "inline-block" }} />{lab}
+            </span>
+          ))}
         </div>
       )}
 
@@ -130,11 +144,14 @@ export default function CampusMapStatic({
             else if (isFocus) { stroke = accent; fill = "rgba(22,119,255,.3)"; }
             else if (isHi) { stroke = accent; fill = "rgba(22,119,255,.12)"; }
             else { stroke = c.border; fill = `${c.bg}${dark ? "33" : "55"}`; }
+          } else if (!editable) {
+            // 預設(無框):依負載率淡色填,讓地圖呈現負載熱力圖感(無框、無字)
+            fill = isFocus ? `${accent}26` : isHi ? `${accent}16` : `${c.bg}${dark ? "26" : "40"}`;
           }
           return (
             <g key={m.letter} style={{ cursor: editable ? "default" : "pointer" }}>
               <title>{`${m.letter}棟 ${m.name}${m.ratio != null ? `｜負載率 ${m.ratio.toFixed(0)}%` : ""}`}</title>
-              <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={showShape ? fill : "transparent"} stroke={showShape ? stroke : "none"} strokeWidth={isFocus ? 5 : 4}
+              <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={fill} stroke={showShape ? stroke : "none"} strokeWidth={isFocus ? 5 : 4}
                 onClick={editable ? undefined : () => onSelect?.(m.letter)}
                 onDoubleClick={editable ? (e) => { e.stopPropagation(); addVertex(m.letter, pts, toImg(e)); } : undefined} />
               {showShape && (
