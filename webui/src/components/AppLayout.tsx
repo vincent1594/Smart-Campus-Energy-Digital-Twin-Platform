@@ -9,7 +9,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { api } from "../api/client";
 import AccountPanel from "./AccountPanel";
-import FeedbackButton from "./FeedbackButton";
 
 const { Header, Content } = Layout;
 
@@ -56,7 +55,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           items={topNav.map((i) => ({ key: i.key, icon: topIcon[i.key], label: i.label }))}
           style={{ flex: 1, minWidth: 0, background: "transparent", borderBottom: "none", marginInlineStart: 40 }} />
         <Space size={18} style={{ color: "#fff" }}>
-          <FeedbackButton />
           <a onClick={() => { localStorage.removeItem("bg_intro_date"); window.location.reload(); }}
             style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 }} title="重新播放通電序列開場">重看開場</a>
           <Popover trigger="click" placement="bottomRight" content={<AccountPanel />} destroyTooltipOnHide>
