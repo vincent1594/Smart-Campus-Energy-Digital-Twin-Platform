@@ -65,7 +65,11 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
     grid: { left: 48, right: 16, top: 24, bottom: 28 },
     tooltip: { trigger: "axis", valueFormatter: (v: number) => `${Math.round(v).toLocaleString()} kW` },
     xAxis: { type: "category", data: fc.hourly.map((h) => `${h.hour}:00`), axisLabel: { fontSize: 10, interval: 1 } },
-    yAxis: { type: "value", name: "kW", nameTextStyle: { fontSize: 10 }, axisLabel: { fontSize: 10 } },
+    yAxis: {
+      type: "value", name: "kW", nameTextStyle: { fontSize: 10 }, axisLabel: { fontSize: 10 },
+      // 確保契約線恆在視野內:尖峰低於契約的日子也要看得到紅虛線
+      max: (v: { max: number }) => Math.ceil((Math.max(v.max, contract) * 1.08) / 100) * 100,
+    },
     series: [{
       type: "line", smooth: true, symbol: "circle", symbolSize: 4,
       data: fc.hourly.map((h) => h.demand_kw),
@@ -222,8 +226,8 @@ function OptimizeView({ contract, setContract }: { contract: number; setContract
         markLine: {
           symbol: "none", silent: true,
           data: [
-            { xAxis: data.current_contract_kw, label: { formatter: "現況", fontSize: 10, color: "#888", position: "insideStartTop" }, lineStyle: { color: "#bbb", type: "dashed", width: 1.5 } },
-            { xAxis: data.recommended_contract_kw, label: { formatter: `最佳 ${data.recommended_contract_kw.toLocaleString()}`, fontSize: 10, color: "#52c41a", position: "insideEndTop" }, lineStyle: { color: "#52c41a", width: 1.5 } },
+            { xAxis: data.current_contract_kw, label: { formatter: `現況 ${data.current_contract_kw.toLocaleString()}`, fontSize: 10, color: "#fa8c16", position: "insideStartTop" }, lineStyle: { color: "#fa8c16", type: "dashed", width: 1.5 } },
+            { xAxis: data.recommended_contract_kw, label: { formatter: `最佳 ${data.recommended_contract_kw.toLocaleString()}`, fontSize: 10, color: "#52c41a", position: "insideEndTop" }, lineStyle: { color: "#52c41a", type: "dashed", width: 1.5 } },
           ],
         },
         markPoint: { symbolSize: 8, symbol: "circle", data: [{ type: "min", itemStyle: { color: "#52c41a" }, label: { show: false } }] },
