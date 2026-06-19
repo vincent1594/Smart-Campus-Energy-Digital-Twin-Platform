@@ -1,7 +1,8 @@
 import { DownloadOutlined, EyeOutlined } from "@ant-design/icons";
-import { Button, Card, List, Modal, Table, Tag, message } from "antd";
+import { Button, Card, List, Modal, Table, Tabs, Tag, message } from "antd";
 import { useState } from "react";
 import { api } from "../api/client";
+import UsageGuide from "../components/UsageGuide";
 import { downloadCSV, type CsvCol, stamp } from "../lib/csv";
 import { lvLabel, lvRangeLabel } from "../lib/voltage";
 
@@ -177,10 +178,9 @@ export default function Report() {
     finally { setBusy(null); }
   };
 
-  return (
-    <Card title="報表匯出" size="small" style={{ height: "100%", display: "flex", flexDirection: "column" }}
-      styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}
-      extra={<span style={{ color: "#999", fontSize: 12 }}>先預覽再匯出 · CSV(UTF-8,Excel 可直接開啟)· 取目前現況快照</span>}>
+  const reportList = (
+    <>
+      <div style={{ color: "#999", fontSize: 12, marginBottom: 8 }}>先預覽再匯出 · CSV(UTF-8,Excel 可直接開啟)· 取目前現況快照</div>
       <List
         dataSource={REPORTS}
         renderItem={(r) => (
@@ -193,6 +193,16 @@ export default function Report() {
           </List.Item>
         )}
       />
+    </>
+  );
+
+  return (
+    <Card title="報表匯出 / 使用說明" size="small" style={{ height: "100%", display: "flex", flexDirection: "column" }}
+      styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
+      <Tabs size="small" items={[
+        { key: "report", label: "報表下載", children: reportList },
+        { key: "guide", label: "使用說明", children: <UsageGuide /> },
+      ]} />
 
       <Modal open={!!active} title={`預覽:${active?.title}`} width={920} onCancel={() => setActive(null)}
         footer={[
