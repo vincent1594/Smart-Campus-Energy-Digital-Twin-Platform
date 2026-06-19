@@ -40,14 +40,3 @@ def get_stats() -> VisitStats:
 @router.get("/recent", response_model=list[RecentVisit])
 def get_recent(limit: int = 30) -> list[RecentVisit]:
     return analytics_service.get_recent(limit)
-
-
-# 一次性:清空訪客紀錄(清掉測試資料,從乾淨開始)。用後即移除此端點。
-@router.post("/reset")
-def reset_visits(key: str = "") -> dict:
-    if key != "purge-2026-0619-b":
-        return {"ok": False}
-    from webapi.db import engine, visits
-    with engine.begin() as c:
-        c.execute(visits.delete())
-    return {"ok": True}
