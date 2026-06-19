@@ -1,6 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
-from webapi.schemas import FeederDetail, TransformerDetail, TransformerRisk, TransformerSpec, VcbDetail
+from webapi.schemas import (
+    FeederDetail,
+    ReplacementEconomicsReport,
+    TransformerDetail,
+    TransformerRisk,
+    TransformerSpec,
+    VcbDetail,
+)
 from webapi.services import asset_service, replacement_service
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
@@ -22,6 +29,15 @@ def list_transformer_specs():
 @router.get("/replacement-priority", response_model=list[TransformerRisk])
 def replacement_priority():
     return replacement_service.replacement_priority()
+
+
+# 汰換投資回收:換新成本 vs 換高效機年省電費 → 回收年限(營繕組資本門效益)
+@router.get("/replacement-economics", response_model=ReplacementEconomicsReport)
+def replacement_economics(
+    unit_price: float = Query(600.0, gt=0, description="換新單價 NT$/kVA"),
+    energy_price: float = Query(3.0, gt=0, description="電價 NT$/kWh"),
+):
+    return replacement_service.replacement_economics(unit_price, energy_price)
 
 
 @router.get("/transformers/{transformer_id}", response_model=TransformerDetail)

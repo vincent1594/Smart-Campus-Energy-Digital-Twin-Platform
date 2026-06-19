@@ -254,6 +254,35 @@ class TransformerRisk(BaseModel):
     reason: str                # 主要風險因子 + 建議行動
 
 
+# ---------- 設備汰換 投資回收 (營繕組資本門效益) ----------
+class ReplacementEconomics(BaseModel):
+    """單台變壓器:換新成本 vs 換高效機年省電費 → 回收年限。"""
+    tag: str
+    building: str = ""
+    capacity_kva: Optional[int] = None
+    trafo_type: str = ""
+    age_years: Optional[int] = None
+    load_ratio_percent: Optional[float] = None
+    risk_level: str            # 高 / 中 / 低 (沿用風險排序)
+    risk_score: float
+    capex_nt: float            # 換新成本 = 容量 × 單價 × 型式係數
+    annual_saving_kwh: float   # 年損耗節省度數 (舊機 vs 新高效機)
+    annual_saving_nt: float    # 年省電費 = 節省度數 × 電價
+    payback_years: Optional[float] = None   # 回收年限 = 成本 / 年省;節省≤0 時為 None
+
+
+class ReplacementEconomicsReport(BaseModel):
+    unit_price_nt_per_kva: float       # 換新單價假設
+    energy_price_nt_per_kwh: float     # 電價假設 (損耗全年計)
+    loss_note: str                     # 損耗模型假設說明
+    items: list[ReplacementEconomics]  # 依回收年限升冪 (最划算在前)
+    # 高風險群彙總 (供資本門總額編列)
+    high_risk_count: int
+    high_risk_capex_nt: float
+    high_risk_annual_saving_nt: float
+    high_risk_blended_payback_years: Optional[float]
+
+
 # ---------- Topology (React Flow) ----------
 class TopologyNode(BaseModel):
     id: str
