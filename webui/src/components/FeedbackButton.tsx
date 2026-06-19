@@ -1,7 +1,7 @@
 // 右下角浮動「意見回饋」按鈕 → 星等(必)+ 感想(選)+ 身分(選)。
 // 一人(visitor_id)一則、可更新:開啟時預填自己既有的評分。明細僅管理者可看。
 import { CommentOutlined } from "@ant-design/icons";
-import { Button, Input, Modal, Rate, Select, Tooltip, message } from "antd";
+import { Input, Modal, Rate, Select, message } from "antd";
 import { useState } from "react";
 import { api } from "../api/client";
 
@@ -44,12 +44,11 @@ export default function FeedbackButton() {
 
   return (
     <>
-      <Tooltip title="意見回饋" placement="left">
-        <Button type="primary" shape="round" icon={<CommentOutlined />} onClick={openModal}
-          style={{ position: "fixed", right: 20, bottom: 22, zIndex: 900, boxShadow: "0 4px 14px rgba(22,119,255,0.35)" }}>
-          意見回饋
-        </Button>
-      </Tooltip>
+      {/* 頂部列連結(不浮動、不擋頁面內容) */}
+      <a onClick={openModal} title="意見回饋"
+        style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+        <CommentOutlined /><span>意見回饋</span>
+      </a>
 
       <Modal open={open} title="意見回饋" onCancel={() => setOpen(false)} width={440}
         okText={edited ? "更新" : "送出"} confirmLoading={saving} onOk={submit}>
