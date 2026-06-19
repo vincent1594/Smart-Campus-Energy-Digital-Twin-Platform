@@ -5,21 +5,28 @@
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import distinct, func, insert, select
 
 from webapi.db import engine, visits
 from webapi.schemas import DailyVisit, RecentVisit, VisitStats
 
+# 台灣時間(UTC+8)—— Render 伺服器跑 UTC,需明確換算,否則時間/「今日」會差 8 小時
+TW = timezone(timedelta(hours=8))
+
+
+def _now() -> datetime:
+    return datetime.now(TW)
+
 
 def record_visit(visitor_id: str, ip: str = "") -> VisitStats:
     visitor_id = (visitor_id or "anon").strip()[:64]
-    now = datetime.now()
+    now = _now()
     with engine.begin() as c:
         c.execute(insert(visits).values(
             visitor_id=visitor_id, day=now.date().isoformat(),
-            ts=now.isoformat(timespec="seconds"), ip=(ip or "")[:64] or None,
+            ts=now.strftime("%Y-%m-%dT%H:%M:%S"), ip=(ip or "")[:64] or None,
         ))
     return get_stats()
 
@@ -36,8 +43,9 @@ def get_recent(limit: int = 30) -> list[RecentVisit]:
 
 
 def get_stats(days: int = 14) -> VisitStats:
-    today = date.today().isoformat()
-    start = (date.today() - timedelta(days=days - 1)).isoformat()
+    today_d = _now().date()
+    today = today_d.isoformat()
+    start = (today_d - timedelta(days=days - 1)).isoformat()
     with engine.connect() as c:
         today_visits = c.execute(select(func.count()).select_from(visits).where(visits.c.day == today)).scalar() or 0
         today_people = c.execute(select(func.count(distinct(visits.c.visitor_id))).where(visits.c.day == today)).scalar() or 0
@@ -51,7 +59,7 @@ def get_stats(days: int = 14) -> VisitStats:
     agg = {r[0]: (r[1], r[2]) for r in rows}
     daily = []
     for i in range(days - 1, -1, -1):
-        d = (date.today() - timedelta(days=i)).isoformat()
+        d = (today_d - timedelta(days=i)).isoformat()
         v, p = agg.get(d, (0, 0))
         daily.append(DailyVisit(day=d, visits=int(v), people=int(p)))
 
