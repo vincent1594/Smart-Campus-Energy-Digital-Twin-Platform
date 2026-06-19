@@ -283,8 +283,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         } else {
           const label = e < SURGE + 0.5 ? "◆ IGNITION · 點火" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
           ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`;
-          ctx.fillText(label, W / 2, 42);
-          const bw = 320, bx = W / 2 - bw / 2, by = 54;
+          ctx.fillText(label, W / 2, 24);
+          const bw = 320, bx = W / 2 - bw / 2, by = 36;
           ctx.strokeStyle = "rgba(120,160,220,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 6);
           ctx.fillStyle = pct >= 1 ? "#3ad07a" : "#5fa8ff"; ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
           ctx.fillRect(bx, by, bw * pct, 6); ctx.shadowBlur = 0;
