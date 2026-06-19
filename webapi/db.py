@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from sqlalchemy import Column, Integer, MetaData, String, Table, Text, create_engine
+from sqlalchemy import Column, Integer, MetaData, String, Table, Text, create_engine, text
 from sqlalchemy.engine import Engine
 
 metadata = MetaData()
@@ -31,22 +31,36 @@ app_settings = Table(
 )
 
 
-def _make_engine() -> Engine:
-    url = (os.environ.get("DATABASE_URL") or "").strip()
-    if url:
-        # Neon/Heroku 風格 → SQLAlchemy + psycopg2
-        if url.startswith("postgres://"):
-            url = "postgresql://" + url[len("postgres://"):]
-        if url.startswith("postgresql://"):
-            url = "postgresql+psycopg2://" + url[len("postgresql://"):]
-        return create_engine(url, pool_pre_ping=True, pool_recycle=300)
+def _sqlite_engine() -> Engine:
     path = Path(__file__).resolve().parent / "data" / "app.db"
     path.parent.mkdir(parents=True, exist_ok=True)
     return create_engine(f"sqlite:///{path}", connect_args={"check_same_thread": False})
 
 
+def _make_engine() -> Engine:
+    url = (os.environ.get("DATABASE_URL") or "").strip()
+    if not url:
+        return _sqlite_engine()
+    # Neon/Heroku 風格 → SQLAlchemy + psycopg2
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg2://" + url[len("postgresql://"):]
+    try:
+        eng = create_engine(url, pool_pre_ping=True, pool_recycle=300)
+        with eng.connect() as c:        # 連線測試:連不上就退回 SQLite,不拖垮整個後端
+            c.execute(text("SELECT 1"))
+        return eng
+    except Exception as exc:  # noqa: BLE001
+        print(f"[db] Postgres 連線失敗,退回 SQLite:{exc}")
+        return _sqlite_engine()
+
+
 engine = _make_engine()
-metadata.create_all(engine)
+try:
+    metadata.create_all(engine)
+except Exception as exc:  # noqa: BLE001 - 建表失敗不應讓整個 app 起不來
+    print(f"[db] create_all 失敗:{exc}")
 
 
 def is_postgres() -> bool:
