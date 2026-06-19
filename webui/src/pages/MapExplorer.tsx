@@ -111,8 +111,8 @@ export default function MapExplorer() {
       </div>
 
       {/* 中:地圖 / 單線圖 切換 */}
-      <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#fff", border: "1px solid #f0f0f0", borderRadius: 8, overflow: "hidden" }}>
-        <div style={{ padding: "6px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f5", gap: 8 }}>
+      <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#fff", border: "1px solid #eef1f5", borderRadius: 12, boxShadow: "0 1px 4px rgba(20,40,80,.05)", overflow: "hidden" }}>
+        <div style={{ padding: "7px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f0f2f5", gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{centerView === "map" ? "校園供電地圖" : "高壓配電單線圖"}{" "}
             <Tag color="geekblue" style={{ cursor: "pointer" }} title="點選聚焦 X棟受電站、高亮整個北側系統"
               onClick={() => setFocus({ kind: "source", id: SOURCE_KEY, label: "受電站(X棟)" })}>北電錶系統</Tag>
@@ -136,7 +136,7 @@ export default function MapExplorer() {
       </div>
 
       {/* 右:焦點面板 */}
-      <Card size="small" title="焦點詳情" style={{ height: "100%", overflow: "hidden" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card size="small" title="焦點詳情" style={{ height: "100%", overflow: "hidden", borderRadius: 12, border: "1px solid #eef1f5", boxShadow: "0 1px 4px rgba(20,40,80,.05)" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         <FocusPanel buildings={buildings} trafos={trafos} dash={dash} />
       </Card>
       </div>
