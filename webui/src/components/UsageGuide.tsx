@@ -94,27 +94,24 @@ function exportPdf() {
 export default function UsageGuide() {
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>這是什麼</span>
         <Button size="small" icon={<FilePdfOutlined />} onClick={exportPdf}>匯出 PDF / 列印</Button>
       </div>
-      {/* 簡介 */}
-      <div style={{ background: "#f0f7ff", border: "1px solid #d6e8ff", borderRadius: 8, padding: "12px 16px", marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>這是什麼</div>
-        <div style={{ fontSize: 13, color: "#444", lineHeight: 1.7 }}>
-          <b>校園配電數位分身平台</b> —— 把學校的高壓配電(台電進線 → 受電站 → VCB → 饋線 → 變壓器 → 各棟)做成可互動的模型,
-          給營繕組/總務組看<b>電力現況、省電費、設備汰換規劃</b>。涵蓋範圍目前為<Tag color="geekblue" style={{ margin: "0 2px" }}>北電錶區</Tag>;
-          多數數值為規劃估算,各數字來源與可信度詳見<b>「驗證中心」</b>。
-        </div>
+      {/* 簡介(精簡) */}
+      <div style={{ background: "#f0f7ff", border: "1px solid #d6e8ff", borderRadius: 6, padding: "7px 12px", marginBottom: 10, fontSize: 12, color: "#444", lineHeight: 1.55 }}>
+        <b>校園配電數位分身平台</b> —— 把學校高壓配電(台電 → 受電站 → VCB → 饋線 → 變壓器 → 各棟)做成可互動模型,
+        給營繕組/總務組看<b>電力現況、省電費、設備汰換</b>。涵蓋<b>北電錶區</b>;多數為規劃估算,來源/可信度見<b>「驗證中心」</b>。
       </div>
 
-      {/* 功能導覽:兩欄卡片 */}
-      <div style={{ fontSize: 14, fontWeight: 700, margin: "4px 0 8px" }}>功能導覽</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 12 }}>
+      {/* 功能導覽:多欄卡片 */}
+      <div style={{ fontSize: 13, fontWeight: 700, margin: "2px 0 6px" }}>功能導覽</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 8 }}>
         {FEATURES.map((f) => (
-          <div key={f.nav} style={{ border: "1px solid #eef1f5", borderRadius: 8, padding: "10px 14px", background: "#fafbfc" }}>
-            <Tag color="blue" style={{ margin: "0 0 6px" }}>{f.nav}</Tag>
-            <div style={{ fontSize: 13, color: "#333", lineHeight: 1.65 }}>{f.what}</div>
-            <div style={{ fontSize: 12.5, color: "#888", marginTop: 4, lineHeight: 1.6 }}>
+          <div key={f.nav} style={{ border: "1px solid #eef1f5", borderRadius: 6, padding: "6px 10px", background: "#fafbfc" }}>
+            <Tag color="blue" style={{ margin: "0 0 3px", fontSize: 11 }}>{f.nav}</Tag>
+            <div style={{ fontSize: 12, color: "#333", lineHeight: 1.5 }}>{f.what}</div>
+            <div style={{ fontSize: 11.5, color: "#888", marginTop: 2, lineHeight: 1.5 }}>
               <span style={{ color: "#1677ff" }}>怎麼用:</span>{f.how}
             </div>
           </div>
@@ -122,16 +119,16 @@ export default function UsageGuide() {
       </div>
 
       {/* 操作技巧 */}
-      <div style={{ fontSize: 14, fontWeight: 700, margin: "18px 0 8px" }}>操作技巧</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", columnGap: 24, rowGap: 2 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, margin: "10px 0 4px" }}>操作技巧</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", columnGap: 20, rowGap: 0 }}>
         {TIPS.map((t, i) => (
-          <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#555", padding: "4px 0", lineHeight: 1.6 }}>
+          <div key={i} style={{ display: "flex", gap: 6, fontSize: 11.5, color: "#555", padding: "2px 0", lineHeight: 1.5 }}>
             <span style={{ color: "#1677ff" }}>•</span><span>{t}</span>
           </div>
         ))}
       </div>
 
-      <div style={{ color: "#bbb", fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>
+      <div style={{ color: "#bbb", fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>
         平台為 V1 版,部分數值以業界預設值估算、模型涵蓋北電錶區;校正進度與待辦見「驗證中心」。
       </div>
     </div>
