@@ -62,9 +62,17 @@ def _parse_campus_model(net, index: NetIndex) -> CampusModel:
         # feeder_id 須與 VCB / 其他節點 id 不撞名;line_name 才是反查 net.line 的鍵
         if feeder_id and feeder_id not in seen_feeders:
             cs = cable.get("cross_section") if cable else None
+            # 整段 R/X 取自 net.line 實際參數 (r/x_ohm_per_km × 長度;已含並聯 qty)
+            r_ohm = x_ohm = None
+            li = index.line_by_name.get(line_name)
+            if li is not None:
+                lkm = float(net.line.at[li, "length_km"])
+                r_ohm = round(float(net.line.at[li, "r_ohm_per_km"]) * lkm, 3)
+                x_ohm = round(float(net.line.at[li, "x_ohm_per_km"]) * lkm, 3)
             feeders.append(Feeder(id=feeder_id, name=feeder_id, vcb_id=vcb_id,
                                   length_m=float((cable or {}).get("length", 0) or 0), line_name=line_name,
-                                  cross_section_mm2=float(cs) if cs else None))
+                                  cross_section_mm2=float(cs) if cs else None,
+                                  resistance_ohm=r_ohm, reactance_ohm=x_ohm))
             seen_feeders.add(feeder_id)
 
     for vcb_key, vcb_def in FEEDERS.items():

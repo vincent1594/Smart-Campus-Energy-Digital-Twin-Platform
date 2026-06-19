@@ -140,7 +140,10 @@ class FeederDetail(BaseModel):
     vcb_id: str
     vcb_name: str
     length_m: float
+    length_estimated: bool = True            # 長度為推估值(實際佈線長度未量測)
     cross_section_mm2: Optional[float] = None
+    resistance_ohm: Optional[float] = None   # 整段 R (Ω),依線徑單位阻抗 × 長度推算
+    reactance_ohm: Optional[float] = None    # 整段 X (Ω)
     overloaded: bool = False
     transformer_count: int
     transformers: list[str]

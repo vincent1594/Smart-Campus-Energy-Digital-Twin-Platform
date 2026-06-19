@@ -117,6 +117,8 @@ def _feeder_detail(feeder_id: str) -> FeederDetail:
         vcb_id=vcb.id if vcb else "", vcb_name=vcb.name if vcb else "",
         length_m=f.length_m,
         cross_section_mm2=f.cross_section_mm2,
+        resistance_ohm=f.resistance_ohm,
+        reactance_ohm=f.reactance_ohm,
         overloaded=(ratio is not None and ratio > 100),
         transformer_count=len(transformers),
         transformers=[t.name for t in transformers],

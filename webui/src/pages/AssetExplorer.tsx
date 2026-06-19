@@ -81,17 +81,25 @@ function Feeders() {
   const { setFocus } = useFocus();
   useEffect(() => { api.feeders().then(setRows).catch((e) => message.error(String(e.message ?? e))); }, []);
   return (
-    <Table<FeederDetail> rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: 12 }} scroll={{ y: "calc(100vh - 280px)" }}
-      onRow={(r) => ({ onClick: () => setFocus({ kind: "feeder", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
-      columns={[
-        { title: "編號", dataIndex: "id" },
-        { title: "所屬 VCB", dataIndex: "vcb_name" },
-        { title: "長度 (m)", dataIndex: "length_m", align: "right", render: (v: number) => v.toFixed(0), sorter: (a, b) => a.length_m - b.length_m },
-        { title: "變壓器數", dataIndex: "transformer_count", align: "right" },
-        { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: (v) => <LoadRatioTag ratio={v} /> },
-        { title: "連接建築", dataIndex: "connected_building_count", align: "right" },
-      ]}
-    />
+    <>
+      <Table<FeederDetail> rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: 12 }} scroll={{ y: "calc(100vh - 300px)" }}
+        onRow={(r) => ({ onClick: () => setFocus({ kind: "feeder", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
+        columns={[
+          { title: "編號", dataIndex: "id" },
+          { title: "所屬 VCB", dataIndex: "vcb_name" },
+          { title: "線徑", dataIndex: "cross_section_mm2", align: "right", width: 84, render: (v: number | null) => (v != null ? `${v} mm²` : "—") },
+          { title: <span>長度 <Tag color="default" style={{ marginInlineStart: 2, fontSize: 10, padding: "0 4px", lineHeight: "16px" }}>估</Tag></span>, dataIndex: "length_m", align: "right", width: 96, render: (v: number) => `${v.toFixed(0)} m`, sorter: (a, b) => a.length_m - b.length_m },
+          { title: "R (Ω)", dataIndex: "resistance_ohm", align: "right", width: 82, render: (v: number | null) => (v != null ? v.toFixed(3) : "—"), sorter: (a, b) => (a.resistance_ohm ?? 0) - (b.resistance_ohm ?? 0) },
+          { title: "X (Ω)", dataIndex: "reactance_ohm", align: "right", width: 82, render: (v: number | null) => (v != null ? v.toFixed(3) : "—") },
+          { title: "變壓器數", dataIndex: "transformer_count", align: "right" },
+          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: (v) => <LoadRatioTag ratio={v} /> },
+          { title: "連接建築", dataIndex: "connected_building_count", align: "right" },
+        ]}
+      />
+      <div style={{ color: "#bbb", fontSize: 11, marginTop: 6, lineHeight: 1.5 }}>
+        長度為推估值(實際佈線未量測);R/X 依線徑單位阻抗（60mm² 0.32+j0.07、38mm² 0.5+j0.07 Ω/km）× 長度推算。
+      </div>
+    </>
   );
 }
 

@@ -29,6 +29,8 @@ class Feeder:
     length_m: float
     line_name: str    # 用來反查 net.line index
     cross_section_mm2: Optional[float] = None  # 線徑 (mm²)
+    resistance_ohm: Optional[float] = None     # 整段電阻 R (Ω) = r_ohm_per_km × 長度
+    reactance_ohm: Optional[float] = None       # 整段電抗 X (Ω) = x_ohm_per_km × 長度
 
 
 @dataclass
