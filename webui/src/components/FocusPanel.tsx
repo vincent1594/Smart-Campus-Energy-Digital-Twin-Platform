@@ -1,5 +1,6 @@
 import { Button, Descriptions, Divider, Empty, List, Space, Tag } from "antd";
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { BuildingDetail, BuildingSummary, DashboardSummary, FeederDetail, SupplyPathNode, TransformerDetail, VcbDetail } from "../api/types";
@@ -10,6 +11,66 @@ import { useActiveScenario } from "../scenario/ActiveScenarioContext";
 import LoadRatioTag from "./LoadRatioTag";
 
 const kindStep: Record<string, string> = { source: "台電進線", vcb: "VCB", feeder: "饋線", transformer: "變壓器", building: "建築" };
+
+// 未選取時的右欄總覽:負載率最高設備 + 用電最高建築 + 需留意數(皆可點跳焦點)
+function OverviewSummary({ buildings, trafos, dash, onPick }: {
+  buildings: BuildingSummary[]; trafos: TransformerDetail[]; dash?: DashboardSummary;
+  onPick: (f: Focus) => void;
+}) {
+  const ratioColor = (r: number) => (r > 100 ? "#cf1322" : r >= 80 ? "#fa8c16" : r >= 50 ? "#1677ff" : "#52c41a");
+
+  const topTrafos = useMemo(
+    () => [...trafos].filter((t) => t.load_ratio_percent != null)
+      .sort((a, b) => (b.load_ratio_percent ?? 0) - (a.load_ratio_percent ?? 0)).slice(0, 5),
+    [trafos],
+  );
+  const topZones = useMemo(() => {
+    const m = new Map<string, { letter: string; name: string; load: number; repId: string }>();
+    for (const b of buildings) {
+      const L = buildingLetter(b.id);
+      const z = m.get(L) ?? { letter: L, name: b.name.replace(/\s*\(.*\)/, ""), load: 0, repId: b.id };
+      z.load += b.estimated_load_kw; m.set(L, z);
+    }
+    return [...m.values()].sort((a, b) => b.load - a.load).slice(0, 5);
+  }, [buildings]);
+  const watch = useMemo(() => trafos.filter((t) => (t.load_ratio_percent ?? 0) >= 80).length, [trafos]);
+  const maxZone = topZones[0]?.load || 1;
+  const Row = ({ left, right, bar, color, onClick }: { left: ReactNode; right: ReactNode; bar: number; color: string; onClick: () => void }) => (
+    <div onClick={onClick} style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, padding: "5px 8px", marginBottom: 4, borderRadius: 5, overflow: "hidden", background: "#fafafa", cursor: "pointer" }}>
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${Math.min(100, bar)}%`, background: `${color}1f` }} />
+      <span style={{ position: "relative", color: "#444" }}>{left}</span>
+      <span style={{ position: "relative", fontWeight: 600, color }}>{right}</span>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 2 }}>
+        <b style={{ fontSize: 15 }}>校園供電總覽</b>
+        <span style={{ fontSize: 11, color: "#bbb" }}>點地圖 / 清單看細節</span>
+      </div>
+      <div style={{ display: "flex", gap: 6, color: "#888", fontSize: 12, marginBottom: 10 }}>
+        <span>供電建築 <b style={{ color: "#555" }}>{dash?.substation_count != null ? dash.substation_count + 1 : "—"}</b> 棟</span>
+        <span>·</span>
+        <span>變壓器 <b style={{ color: "#555" }}>{trafos.length}</b> 台</span>
+        {watch > 0 && <><span>·</span><span style={{ color: "#fa8c16" }}>{watch} 台負載 ≥80%</span></>}
+      </div>
+
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#666", margin: "0 0 6px" }}>負載率最高設備</div>
+      {topTrafos.map((t) => {
+        const r = t.load_ratio_percent ?? 0;
+        return <Row key={t.id} bar={r} color={ratioColor(r)} onClick={() => onPick({ kind: "transformer", id: t.id, label: t.name })}
+          left={<>{t.name} <span style={{ color: "#aaa" }}>{t.capacity_kva}kVA</span></>} right={`${r.toFixed(0)}%`} />;
+      })}
+
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#666", margin: "12px 0 6px" }}>用電最高建築</div>
+      {topZones.map((z) => (
+        <Row key={z.letter} bar={(z.load / maxZone) * 100} color="#1677ff" onClick={() => onPick({ kind: "building", id: z.repId, label: `${z.letter}棟` })}
+          left={<><b>{z.letter}</b> {z.name.slice(0, 8)}</>} right={`${z.load.toFixed(0)} kW`} />
+      ))}
+    </div>
+  );
+}
 
 // 供電路徑:電纜/變壓器/VCB 可點 → 切焦點
 function PathView({ nodes, onPick }: { nodes: SupplyPathNode[]; onPick: (f: Focus) => void }) {
@@ -64,7 +125,7 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
     else if (focus.kind === "vcb") api.vcbs().then((vs) => setVcb(vs.find((v) => v.id === focus.id) ?? null));
   }, [focus]);
 
-  if (!focus) return <Empty description="點地圖棟別 / 左側清單,查看詳情" style={{ paddingTop: 60 }} />;
+  if (!focus) return <OverviewSummary buildings={buildings} trafos={trafos} dash={dash} onPick={setFocus} />;
 
   // ---- 受電站 ----
   if (focus.kind === "source")
