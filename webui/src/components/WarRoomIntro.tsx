@@ -4,7 +4,7 @@
 // ④ 100% 瞬間 全螢幕白光爆閃 + 衝擊波 + 標題重擊 → ⑤ 全網同步心跳脈動 + 前景餘燼。
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
-import type { BuildingSummary, PowerFlowResult } from "../api/types";
+import type { BuildingSummary, PowerFlowResult, TransformerDetail } from "../api/types";
 import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, buildingLetter, centroid, type Pt } from "../lib/campusPositions";
 
 const SURGE = 0.95;       // 點火時刻(秒)
@@ -28,17 +28,19 @@ interface Ember { x: number; y: number; r: number; vy: number; tw: number; ph: n
 export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
   const [pf, setPf] = useState<PowerFlowResult>();
   const [buildings, setBuildings] = useState<BuildingSummary[]>([]);
+  const [trafos, setTrafos] = useState<TransformerDetail[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const burstRef = useRef<{ done: boolean; parts: Spark[] }>({ done: false, parts: [] });
   const embersRef = useRef<Ember[]>([]);
 
   useEffect(() => { const im = new Image(); im.src = MAP_IMAGE; imgRef.current = im; }, []);
-  useEffect(() => { Promise.all([api.powerflow(), api.buildings()]).then(([p, b]) => { setPf(p); setBuildings(b); }).catch(() => {}); }, []);
+  useEffect(() => { Promise.all([api.powerflow(), api.buildings(), api.transformers()]).then(([p, b, t]) => { setPf(p); setBuildings(b); setTrafos(t); }).catch(() => {}); }, []);
 
   const scene = useMemo(() => {
     const [sx, sy] = centroid(BUILDING_POS.X ?? [[220, 263]]);
     const ratioOf = new Map<string, number | null>();
+    const vcbOfLetter = new Map<string, string>();   // 棟 → 所屬 VCB(真實電路分組)
     if (pf) {
       const tr = new Map(pf.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]));
       buildings.forEach((b) => {
@@ -48,12 +50,24 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         if (r != null) ratioOf.set(L, Math.max(ratioOf.get(L) ?? 0, r));
       });
     }
+    const trVcb = new Map(trafos.map((t) => [t.name, t.vcb_id]));
+    buildings.forEach((b) => {
+      const L = buildingLetter(b.id);
+      if (!vcbOfLetter.has(L)) { const v = trVcb.get(b.transformer_name); if (v) vcbOfLetter.set(L, v); }
+    });
+
     const nodes = Object.keys(BUILDING_POS).filter((L) => L !== "X").map((L, i) => {
       const [cx, cy] = centroid(BUILDING_POS[L]);
-      return { L, cx, cy, dist: Math.hypot(cx - sx, cy - sy), color: flowColor(ratioOf.get(L) ?? null), poly: BUILDING_POS[L] as Pt[], hash: (i * 0.173) % 1 };
+      return { L, cx, cy, dist: Math.hypot(cx - sx, cy - sy), vcb: vcbOfLetter.get(L) ?? L,
+        color: flowColor(ratioOf.get(L) ?? null), poly: BUILDING_POS[L] as Pt[], hash: (i * 0.173) % 1, igniteDist: 0 };
     });
+    // 同一 VCB 的棟用「該 VCB 平均距離」當點火距離 → 整條饋線一起帶電、12 路 VCB 由近到遠串聯
+    const grp = new Map<string, { sum: number; n: number }>();
+    nodes.forEach((n) => { const e = grp.get(n.vcb) ?? { sum: 0, n: 0 }; e.sum += n.dist; e.n++; grp.set(n.vcb, e); });
+    nodes.forEach((n) => { const e = grp.get(n.vcb)!; n.igniteDist = e.sum / e.n; });
+    // 高潮/閃光時序仍用最遠棟真實距離(維持原電影節奏);igniteDist 只決定分組點火順序
     return { sx, sy, nodes, maxDist: Math.max(...nodes.map((n) => n.dist), 1) };
-  }, [pf, buildings]);
+  }, [pf, buildings, trafos]);
 
   const sceneRef = useRef(scene);
   useEffect(() => { sceneRef.current = scene; }, [scene]);
@@ -112,8 +126,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
 
       for (const n of nodes) {
         const cx = TX(n.cx), cy = TY(n.cy);
-        const charged = Math.max(0, Math.min(1, waveR / n.dist));
-        const igniteT = SURGE + n.dist / WAVE_SPEED;
+        const charged = Math.max(0, Math.min(1, waveR / n.igniteDist));
+        const igniteT = SURGE + n.igniteDist / WAVE_SPEED;
         const lit = e >= igniteT;
         if (lit) litCount++;
         const flash = lit ? Math.max(0, 1 - (e - igniteT) / 0.55) : 0;
