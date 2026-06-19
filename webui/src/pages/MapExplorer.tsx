@@ -26,6 +26,8 @@ export default function MapExplorer() {
   const [trafos, setTrafos] = useState<TransformerDetail[]>([]);
   const [graph, setGraph] = useState<TopologyGraph>();
   const [err, setErr] = useState<string>();
+  const [showGuide, setShowGuide] = useState(() => !localStorage.getItem("bg_guide_seen"));   // 第一次使用提示
+  const dismissGuide = () => { localStorage.setItem("bg_guide_seen", "1"); setShowGuide(false); };
 
   useEffect(() => {
     Promise.all([api.dashboard(), api.powerflow(), api.buildings(), api.transformers(), api.topology()])
@@ -103,6 +105,21 @@ export default function MapExplorer() {
         <span style={{ color: "#333" }}>部分數值為規劃估算、模型涵蓋北電錶區。各數據來源與待校正項目請見</span>
         <a style={{ fontWeight: 600 }} onClick={() => navigate("/verify")}>驗證中心 →</a>
       </div>
+
+      {/* 第一次使用提示:導到「報表匯出 → 使用說明」;看過/關閉後不再出現 */}
+      {showGuide && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 10px", background: "#f6ffed", border: "1px solid #b7eb8f", borderRadius: 6, fontSize: 13, lineHeight: 1.5, color: "#389e0d", flexWrap: "wrap" }}>
+          <span style={{ flex: 1 }}>
+            👋 第一次使用?到{" "}
+            <a style={{ fontWeight: 600, color: "#237804" }}
+              onClick={() => { dismissGuide(); navigate("/report", { state: { tab: "guide" } }); }}>
+              「報表匯出 → 使用說明」
+            </a>
+            {" "}看操作指南 →
+          </span>
+          <a onClick={dismissGuide} title="不再顯示" style={{ color: "#52c41a", fontSize: 15, lineHeight: 1, padding: "0 2px" }}>×</a>
+        </div>
+      )}
 
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
       {/* 左:狀態 + KPI 面板 */}
