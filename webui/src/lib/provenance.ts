@@ -41,7 +41,7 @@ export const PROVENANCE: ProvenanceItem[] = [
 
   // 🔴 示範·未接
   { feature: "告警紀錄", tier: "placeholder", source: "示範情境(連動真實負載觸發)", note: "用以演示告警邏輯;尚未接即時告警源 / 歷史告警庫", page: "告警紀錄" },
-  { feature: "南電錶區域", tier: "placeholder", source: "未建模", note: "目前僅北電錶(X 棟為 TPC/VCB 收斂);全校覆蓋待補", page: "—" },
+  { feature: "南電錶區域", tier: "placeholder", source: "未建模", note: "目前僅北電錶(X 棟為 TPC/VCB 收斂);潮流模型僅 37/52 台變壓器、缺 ~36% 容量(見下方模型⇄Excel核對)", page: "—" },
 ];
 
 export const LIMITATIONS: string[] = [
@@ -53,6 +53,32 @@ export const LIMITATIONS: string[] = [
   "全平台為單時點 / 情境快照,無長期時序資料庫(EMS 實測僅 2 個月)。",
 ];
 
+// 模型(pandapower 拓樸)⇄ Excel 規格表 涵蓋度核對 —— 兩者為獨立來源
+export interface ReconRow { label: string; model: string; excel: string; gap: boolean }
+export const MODEL_RECON: {
+  summary: string;
+  rows: ReconRow[];
+  missing: { name: string; detail: string }[];
+  verifyNote: string;
+} = {
+  summary:
+    "潮流模型(pandapower)的拓樸/容量是手刻定義(network_structure.py),Excel 規格表是另一份獨立來源。兩者涵蓋範圍不同:模型僅含北電錶區,故模型算出的負載率/電壓只代表北電錶區,勿當全校。",
+  rows: [
+    { label: "變壓器台數", model: "37 台(另 2 台停用)", excel: "52 台", gap: true },
+    { label: "裝置總容量", model: "22,000 kVA", excel: "34,250 kVA", gap: true },
+    { label: "1000 kVA 機組", model: "0 台", excel: "8 台", gap: true },
+    { label: "200/250/500/600/1500 kVA 級距", model: "相符", excel: "相符", gap: false },
+  ],
+  missing: [
+    { name: "E圖書資訊館", detail: "5 台 / 4,750 kVA(含 4×1000kVA)" },
+    { name: "H6第六宿舍", detail: "4 台 / 3,750 kVA(含 3×1000kVA)" },
+    { name: "H1第一宿舍", detail: "3 台 / 1,700 kVA(含 1×1000kVA)" },
+    { name: "其餘零星", detail: "O活動中心 / U學生活動 / 雨水處理等,及部分站別少計(如 N棟 Excel 2 台、模型 1 台)" },
+  ],
+  verifyNote:
+    "待確認:上述未建模建築是否皆屬南電錶/他表(與「北電錶 only」範圍一致),或有北電該建而漏建者 → 補建模或在介面明確標示涵蓋範圍。",
+};
+
 export interface VerifyItem { item: string; done: boolean; owner: string; impact: string; }
 
 export const VERIFY: VerifyItem[] = [
@@ -62,6 +88,7 @@ export const VERIFY: VerifyItem[] = [
   { item: "變壓器實際屆齡 / 廠牌年份", done: false, owner: "現場 / 財產清冊", impact: "核對汰換優先序" },
   { item: "學校 EUI 歷史申報值", done: false, owner: "營繕組", impact: "校正節能基準" },
   { item: "是否功因不足被罰", done: false, owner: "營繕組", impact: "決定是否新增功因防線" },
+  { item: "未建模建築(E圖書資訊館 / H1·H6 宿舍等 15 台)是否屬南電錶", done: false, owner: "營繕組", impact: "釐清模型涵蓋範圍;模型負載率/電壓僅代北電錶區" },
   { item: "南電錶逐時 / 拓樸資料", done: false, owner: "營繕組", impact: "達成全校覆蓋" },
 ];
 
