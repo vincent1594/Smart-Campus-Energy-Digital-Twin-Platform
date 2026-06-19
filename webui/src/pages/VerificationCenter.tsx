@@ -3,7 +3,7 @@
 import { Card, Tag, Tooltip } from "antd";
 import { CheckCircleTwoTone, ClockCircleOutlined } from "@ant-design/icons";
 import {
-  LIMITATIONS, PROVENANCE, ROADMAP, TIERS, VERIFY,
+  LIMITATIONS, MODEL_RECON, PROVENANCE, ROADMAP, TIERS, VERIFY,
   type Tier,
 } from "../lib/provenance";
 
@@ -38,6 +38,37 @@ export default function VerificationCenter() {
               </Tooltip>
             ))}
           </div>
+        </div>
+      </Card>
+
+      {/* 模型 ⇄ Excel 規格核對(拓樸對得上嗎) */}
+      <Card size="small" style={{ marginBottom: 10, borderColor: "#ffd591" }}
+        title={<span><span style={{ color: "#fa8c16" }}>⚠ 模型 ⇄ Excel 規格核對</span> <span style={{ color: "#aaa", fontSize: 11, fontWeight: 400 }}>拓樸/容量對得上嗎</span></span>}
+        styles={{ body: { padding: "10px 14px" } }}>
+        <div style={{ fontSize: 12, color: "#666", marginBottom: 10, lineHeight: 1.6 }}>{MODEL_RECON.summary}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignItems: "start" }}>
+          <div>
+            {MODEL_RECON.rows.map((r) => (
+              <div key={r.label} style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 16px", gap: 6, alignItems: "center", fontSize: 12.5, padding: "5px 0", borderBottom: "1px solid #f5f5f5" }}>
+                <span style={{ color: "#555" }}>{r.label}</span>
+                <span style={{ textAlign: "right", color: r.gap ? "#cf1322" : "#333" }}>模型 {r.model}</span>
+                <span style={{ textAlign: "right", color: "#333" }}>Excel {r.excel}</span>
+                <span style={{ textAlign: "center" }}>{r.gap ? <span style={{ color: "#cf1322" }}>✕</span> : <span style={{ color: "#52c41a" }}>✓</span>}</span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#cf1322", marginBottom: 4 }}>未納入潮流模型的建築(8 台 1000kVA 全在此)</div>
+            {MODEL_RECON.missing.map((m) => (
+              <div key={m.name} style={{ fontSize: 12, padding: "3px 0", display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <b style={{ color: "#444", whiteSpace: "nowrap" }}>{m.name}</b>
+                <span style={{ color: "#999", textAlign: "right" }}>{m.detail}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginTop: 10, padding: "7px 10px", background: "#fffbe6", border: "1px solid #ffe58f", borderRadius: 4, fontSize: 12, color: "#7a5a00", lineHeight: 1.5 }}>
+          {MODEL_RECON.verifyNote}
         </div>
       </Card>
 
