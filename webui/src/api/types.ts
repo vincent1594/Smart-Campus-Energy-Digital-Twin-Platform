@@ -362,6 +362,17 @@ export interface ContractOptimization {
   note: string;
 }
 
+// ---------- 訪客統計 ----------
+export interface DailyVisit { day: string; visits: number; people: number; }
+export interface VisitStats {
+  today_visits: number;
+  today_people: number;
+  total_visits: number;
+  total_people: number;
+  since: string | null;
+  daily: DailyVisit[];
+}
+
 // ---------- 時間電價 月電費試算 ----------
 export interface TariffRates {
   summer_peak_kwh: number;

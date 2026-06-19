@@ -18,3 +18,6 @@ validation_report.json
 
 # Windows
 Thumbs.db
+# 訪客統計本機 DB(勿提交;Render 用 Postgres)
+webapi/data/analytics.db
+*.db

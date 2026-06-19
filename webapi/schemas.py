@@ -411,6 +411,22 @@ class ContractOptimization(BaseModel):
     note: str                             # 資料/假設說明
 
 
+# ---------- 訪客統計 ----------
+class DailyVisit(BaseModel):
+    day: str          # YYYY-MM-DD
+    visits: int       # 當日拜訪次數
+    people: int       # 當日不重複訪客數
+
+
+class VisitStats(BaseModel):
+    today_visits: int
+    today_people: int
+    total_visits: int
+    total_people: int
+    since: Optional[str] = None      # 起始統計日
+    daily: list[DailyVisit] = []     # 近 N 天逐日
+
+
 # ---------- 時間電價 月電費試算 ----------
 class TariffRates(BaseModel):
     """台電高壓三段式時間電價費率 (可編輯)。非夏月無尖峰,故無 nonsummer_peak。"""

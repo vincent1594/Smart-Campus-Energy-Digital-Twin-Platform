@@ -22,6 +22,7 @@ import type {
   TransformerRisk,
   TransformerSpec,
   VcbDetail,
+  VisitStats,
 } from "./types";
 // 開發時用相對路徑 → 由 Vite proxy 轉到本機後端 (127.0.0.1:8126);正式版打 Render
 const API_BASE_URL = import.meta.env.DEV ? "" : "https://smart-campus-energy-digital-twin.onrender.com";
@@ -97,4 +98,6 @@ export const api = {
   history: () => get<HistoryReport>("/api/history"),
   tariff: () => get<TariffInfo>("/api/demand/tariff"),
   bill: (req: BillRequest) => post<MonthlyBill>("/api/demand/bill", req),
+  recordVisit: (visitorId: string) => post<VisitStats>("/api/visit", { visitor_id: visitorId }),
+  visitStats: () => get<VisitStats>("/api/visit/stats"),
 };
