@@ -93,7 +93,7 @@ function exportPdf() {
 
 export default function UsageGuide() {
   return (
-    <div style={{ maxWidth: 820 }}>
+    <div style={{ maxWidth: 1180 }}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <Button size="small" icon={<FilePdfOutlined />} onClick={exportPdf}>匯出 PDF / 列印</Button>
       </div>
@@ -107,27 +107,29 @@ export default function UsageGuide() {
         </div>
       </div>
 
-      {/* 功能導覽 */}
+      {/* 功能導覽:兩欄卡片 */}
       <div style={{ fontSize: 14, fontWeight: 700, margin: "4px 0 8px" }}>功能導覽</div>
-      {FEATURES.map((f, i) => (
-        <div key={f.nav} style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: i < FEATURES.length - 1 ? "1px solid #f0f0f0" : "none" }}>
-          <div style={{ flex: "0 0 84px" }}>
-            <Tag color="blue" style={{ margin: 0 }}>{f.nav}</Tag>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+        {FEATURES.map((f) => (
+          <div key={f.nav} style={{ border: "1px solid #eef1f5", borderRadius: 8, padding: "10px 14px", background: "#fafbfc" }}>
+            <Tag color="blue" style={{ margin: "0 0 6px" }}>{f.nav}</Tag>
+            <div style={{ fontSize: 13, color: "#333", lineHeight: 1.65 }}>{f.what}</div>
+            <div style={{ fontSize: 12.5, color: "#888", marginTop: 4, lineHeight: 1.6 }}>
+              <span style={{ color: "#1677ff" }}>怎麼用:</span>{f.how}
+            </div>
           </div>
-          <div style={{ flex: 1, fontSize: 13, lineHeight: 1.65 }}>
-            <div style={{ color: "#333" }}>{f.what}</div>
-            <div style={{ color: "#888", marginTop: 3 }}><span style={{ color: "#1677ff" }}>怎麼用:</span>{f.how}</div>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {/* 操作技巧 */}
       <div style={{ fontSize: 14, fontWeight: 700, margin: "18px 0 8px" }}>操作技巧</div>
-      {TIPS.map((t, i) => (
-        <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#555", padding: "4px 0", lineHeight: 1.6 }}>
-          <span style={{ color: "#1677ff" }}>•</span><span>{t}</span>
-        </div>
-      ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", columnGap: 24, rowGap: 2 }}>
+        {TIPS.map((t, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#555", padding: "4px 0", lineHeight: 1.6 }}>
+            <span style={{ color: "#1677ff" }}>•</span><span>{t}</span>
+          </div>
+        ))}
+      </div>
 
       <div style={{ color: "#bbb", fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>
         平台為 V1 版,部分數值以業界預設值估算、模型涵蓋北電錶區;校正進度與待辦見「驗證中心」。
