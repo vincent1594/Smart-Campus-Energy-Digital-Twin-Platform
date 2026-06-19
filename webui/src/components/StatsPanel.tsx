@@ -106,11 +106,11 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
   const n1 = (v?: number, f = 0) => (v == null ? null : v.toFixed(f));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, height: "100%" }}>
-      {/* 系統狀態 */}
-      <div style={{ ...panel, textAlign: "center", padding: "10px 12px", background: dark ? C.bg : `${statusColor}0d`, borderColor: dark ? C.border : `${statusColor}40` }}>
-        <div style={{ color: C.muted, fontSize: 12, letterSpacing: 0.5 }}>系統狀態 SYSTEM STATUS</div>
-        <div style={{ fontSize: 30, fontWeight: 800, textShadow: `0 0 14px ${statusColor}99`, color: statusColor, lineHeight: 1.25 }}>{dash.status}</div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, height: "100%" }}>
+      {/* 系統狀態(精簡:標題與狀態同列,把高度還給日負載曲線) */}
+      <div style={{ ...panel, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "6px 12px", background: dark ? C.bg : `${statusColor}0d`, borderColor: dark ? C.border : `${statusColor}40` }}>
+        <span style={{ color: C.muted, fontSize: 12, letterSpacing: 0.5 }}>系統狀態 SYSTEM STATUS</span>
+        <span style={{ fontSize: 22, fontWeight: 800, textShadow: `0 0 14px ${statusColor}99`, color: statusColor, lineHeight: 1.1 }}>{dash.status}</span>
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
