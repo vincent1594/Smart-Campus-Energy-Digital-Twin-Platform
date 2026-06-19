@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from sqlalchemy import Column, Integer, MetaData, String, Table, Text, create_engine, text
+from sqlalchemy import Column, Integer, MetaData, String, Table, Text, create_engine, inspect, text
 from sqlalchemy.engine import Engine
 
 metadata = MetaData()
@@ -20,6 +20,7 @@ visits = Table(
     Column("visitor_id", String(64), nullable=False),
     Column("day", String(10), nullable=False, index=True),
     Column("ts", String(32), nullable=False),
+    Column("ip", String(64), nullable=True),
 )
 
 app_settings = Table(
@@ -59,8 +60,13 @@ def _make_engine() -> Engine:
 engine = _make_engine()
 try:
     metadata.create_all(engine)
-except Exception as exc:  # noqa: BLE001 - 建表失敗不應讓整個 app 起不來
-    print(f"[db] create_all 失敗:{exc}")
+    # 既有 visits 表(早於 ip 欄)補欄;create_all 不會替既有表加欄
+    cols = [c["name"] for c in inspect(engine).get_columns("visits")]
+    if "ip" not in cols:
+        with engine.begin() as _c:
+            _c.execute(text("ALTER TABLE visits ADD COLUMN ip VARCHAR(64)"))
+except Exception as exc:  # noqa: BLE001 - 建表/補欄失敗不應讓整個 app 起不來
+    print(f"[db] create_all/migrate 失敗:{exc}")
 
 
 def is_postgres() -> bool:

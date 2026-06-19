@@ -10,18 +10,28 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import distinct, func, insert, select
 
 from webapi.db import engine, visits
-from webapi.schemas import DailyVisit, VisitStats
+from webapi.schemas import DailyVisit, RecentVisit, VisitStats
 
 
-def record_visit(visitor_id: str) -> VisitStats:
+def record_visit(visitor_id: str, ip: str = "") -> VisitStats:
     visitor_id = (visitor_id or "anon").strip()[:64]
     now = datetime.now()
     with engine.begin() as c:
         c.execute(insert(visits).values(
             visitor_id=visitor_id, day=now.date().isoformat(),
-            ts=now.isoformat(timespec="seconds"),
+            ts=now.isoformat(timespec="seconds"), ip=(ip or "")[:64] or None,
         ))
     return get_stats()
+
+
+def get_recent(limit: int = 30) -> list[RecentVisit]:
+    """最近拜訪紀錄(含 IP)—— 個資,僅供登入後檢視。"""
+    with engine.connect() as c:
+        rows = c.execute(
+            select(visits.c.ts, visits.c.ip, visits.c.visitor_id)
+            .order_by(visits.c.id.desc()).limit(min(200, max(1, limit)))
+        ).all()
+    return [RecentVisit(ts=r[0], ip=r[1], visitor_id=r[2]) for r in rows]
 
 
 def get_stats(days: int = 14) -> VisitStats:
