@@ -93,7 +93,7 @@ function exportPdf() {
 
 export default function UsageGuide() {
   return (
-    <div style={{ maxWidth: 1180 }}>
+    <div>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <Button size="small" icon={<FilePdfOutlined />} onClick={exportPdf}>匯出 PDF / 列印</Button>
       </div>
@@ -109,7 +109,7 @@ export default function UsageGuide() {
 
       {/* 功能導覽:兩欄卡片 */}
       <div style={{ fontSize: 14, fontWeight: 700, margin: "4px 0 8px" }}>功能導覽</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 12 }}>
         {FEATURES.map((f) => (
           <div key={f.nav} style={{ border: "1px solid #eef1f5", borderRadius: 8, padding: "10px 14px", background: "#fafbfc" }}>
             <Tag color="blue" style={{ margin: "0 0 6px" }}>{f.nav}</Tag>
@@ -123,7 +123,7 @@ export default function UsageGuide() {
 
       {/* 操作技巧 */}
       <div style={{ fontSize: 14, fontWeight: 700, margin: "18px 0 8px" }}>操作技巧</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", columnGap: 24, rowGap: 2 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", columnGap: 24, rowGap: 2 }}>
         {TIPS.map((t, i) => (
           <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#555", padding: "4px 0", lineHeight: 1.6 }}>
             <span style={{ color: "#1677ff" }}>•</span><span>{t}</span>
