@@ -19,10 +19,15 @@ function OverviewSummary({ buildings, trafos, dash, onPick }: {
 }) {
   const ratioColor = (r: number) => (r > 100 ? "#cf1322" : r >= 80 ? "#fa8c16" : r >= 50 ? "#1677ff" : "#52c41a");
 
+  // 套用作用中模擬情境的變壓器負載率(無情境則用 base)
+  const { scenario } = useActiveScenario();
+  const sMap = useMemo(() => new Map(scenario?.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]) ?? []), [scenario]);
+  const effR = (t: TransformerDetail) => (scenario ? sMap.get(t.id) ?? t.load_ratio_percent ?? 0 : t.load_ratio_percent ?? 0);
+
   const topTrafos = useMemo(
     () => [...trafos].filter((t) => t.load_ratio_percent != null)
-      .sort((a, b) => (b.load_ratio_percent ?? 0) - (a.load_ratio_percent ?? 0)).slice(0, 5),
-    [trafos],
+      .sort((a, b) => effR(b) - effR(a)).slice(0, 5),
+    [trafos, scenario],   // eslint-disable-line react-hooks/exhaustive-deps
   );
   const topZones = useMemo(() => {
     const m = new Map<string, { letter: string; name: string; load: number; repId: string }>();
@@ -33,7 +38,7 @@ function OverviewSummary({ buildings, trafos, dash, onPick }: {
     }
     return [...m.values()].sort((a, b) => b.load - a.load).slice(0, 5);
   }, [buildings]);
-  const watch = useMemo(() => trafos.filter((t) => (t.load_ratio_percent ?? 0) >= 80).length, [trafos]);
+  const watch = useMemo(() => trafos.filter((t) => effR(t) >= 80).length, [trafos, scenario]);   // eslint-disable-line react-hooks/exhaustive-deps
   const maxZone = topZones[0]?.load || 1;
   const Row = ({ left, right, bar, color, onClick }: { left: ReactNode; right: ReactNode; bar: number; color: string; onClick: () => void }) => (
     <div onClick={onClick} style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, padding: "5px 8px", marginBottom: 4, borderRadius: 5, overflow: "hidden", background: "#fafafa", cursor: "pointer" }}>
@@ -47,7 +52,8 @@ function OverviewSummary({ buildings, trafos, dash, onPick }: {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 2 }}>
         <b style={{ fontSize: 15 }}>校園供電總覽</b>
-        <span style={{ fontSize: 11, color: "#bbb" }}>點地圖 / 清單看細節</span>
+        {scenario ? <Tag color="orange" style={{ margin: 0, fontSize: 11 }}>模擬情境</Tag>
+          : <span style={{ fontSize: 11, color: "#bbb" }}>點地圖 / 清單看細節</span>}
       </div>
       <div style={{ display: "flex", gap: 6, color: "#888", fontSize: 12, marginBottom: 10 }}>
         <span>供電建築 <b style={{ color: "#555" }}>{dash?.substation_count != null ? dash.substation_count + 1 : "—"}</b> 棟</span>
@@ -58,7 +64,7 @@ function OverviewSummary({ buildings, trafos, dash, onPick }: {
 
       <div style={{ fontSize: 12.5, fontWeight: 600, color: "#666", margin: "0 0 6px" }}>負載率最高設備</div>
       {topTrafos.map((t) => {
-        const r = t.load_ratio_percent ?? 0;
+        const r = effR(t);
         return <Row key={t.id} bar={r} color={ratioColor(r)} onClick={() => onPick({ kind: "transformer", id: t.id, label: t.name })}
           left={<>{t.name} <span style={{ color: "#aaa" }}>{t.capacity_kva}kVA</span></>} right={`${r.toFixed(0)}%`} />;
       })}
