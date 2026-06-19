@@ -6,7 +6,7 @@ import LoadRatioTag from "../components/LoadRatioTag";
 import { useFocus } from "../focus/FocusContext";
 import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
 import { downloadCSV, stamp } from "../lib/csv";
-import { useFillHeight } from "../lib/useFillHeight";
+import { useFitPageSize } from "../lib/useFillHeight";
 import { BuildingsPanel } from "./BuildingExplorer";
 
 const RISK_COLOR: Record<string, string> = { "高": "#ff4d4f", "中": "#fa8c16", "低": "#52c41a" };
@@ -16,7 +16,7 @@ function Transformers() {
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<TransformerDetail | null>(null);
   const { setFocus } = useFocus();
-  const fh = useFillHeight();
+  const fh = useFitPageSize();
   useEffect(() => {
     setLoading(true);
     api.transformers().then(setRows).catch((e) => message.error(String(e.message ?? e))).finally(() => setLoading(false));
@@ -25,7 +25,7 @@ function Transformers() {
     <>
       <div ref={fh.ref}>
       <Table<TransformerDetail>
-        rowKey="id" size="small" loading={loading} dataSource={rows} pagination={false} scroll={{ y: fh.height }}
+        rowKey="id" size="small" loading={loading} dataSource={rows} pagination={{ pageSize: fh.pageSize }}
         onRow={(r) => ({ onClick: () => { setDetail(r); setFocus({ kind: "transformer", id: r.id, label: r.name }); }, style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "id" },
@@ -64,11 +64,11 @@ function Transformers() {
 function Vcbs() {
   const [rows, setRows] = useState<VcbDetail[]>([]);
   const { setFocus } = useFocus();
-  const fh = useFillHeight();
+  const fh = useFitPageSize();
   useEffect(() => { api.vcbs().then(setRows).catch((e) => message.error(String(e.message ?? e))); }, []);
   return (
     <div ref={fh.ref}>
-    <Table<VcbDetail> rowKey="id" size="small" dataSource={rows} pagination={false} scroll={{ y: fh.height }}
+    <Table<VcbDetail> rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: fh.pageSize }}
       onRow={(r) => ({ onClick: () => setFocus({ kind: "vcb", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
       columns={[
         { title: "編號", dataIndex: "id" },
@@ -86,11 +86,11 @@ function Vcbs() {
 function Feeders() {
   const [rows, setRows] = useState<FeederDetail[]>([]);
   const { setFocus } = useFocus();
-  const fh = useFillHeight(84);
+  const fh = useFitPageSize(100);
   useEffect(() => { api.feeders().then(setRows).catch((e) => message.error(String(e.message ?? e))); }, []);
   return (
     <div ref={fh.ref}>
-      <Table<FeederDetail> rowKey="id" size="small" dataSource={rows} pagination={false} scroll={{ y: fh.height }}
+      <Table<FeederDetail> rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: fh.pageSize }}
         onRow={(r) => ({ onClick: () => setFocus({ kind: "feeder", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "id" },
@@ -127,7 +127,7 @@ function Specs() {
     return rows.filter((r) => `${r.tag} ${r.building} ${r.circuit} ${r.brand}`.toLowerCase().includes(k));
   }, [rows, q]);
   const pct = (v: number | null) => (v == null ? "—" : `${v}%`);
-  const fh = useFillHeight();
+  const fh = useFitPageSize();
   return (
     <>
       <Input.Search allowClear placeholder="搜尋 編號 / 建築物 / 迴路 / 廠牌" value={q}
@@ -135,7 +135,7 @@ function Specs() {
       <div ref={fh.ref}>
       <Table<TransformerSpec>
         rowKey="seq" loading={loading} dataSource={filtered} size="small"
-        pagination={false} scroll={{ y: fh.height }}
+        pagination={{ pageSize: fh.pageSize }}
         onRow={(r) => ({ onClick: () => setDetail(r), style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "tag", width: 70 },
@@ -212,7 +212,7 @@ function Replacement() {
     { label: "風險等級", value: (r) => r.risk_level },
     { label: "建議", value: (r) => r.reason },
   ]);
-  const fh = useFillHeight();
+  const fh = useFitPageSize();
 
   return (
     <>
@@ -229,7 +229,7 @@ function Replacement() {
       <div ref={fh.ref}>
       <Table<TransformerRisk>
         rowKey="tag" loading={loading} dataSource={rows} size="small"
-        pagination={false} scroll={{ y: fh.height }}
+        pagination={{ pageSize: fh.pageSize }}
         onRow={(r) => ({ onClick: () => setDetail(r), style: { cursor: "pointer" } })}
         columns={[
           { title: "序", render: (_v, _r, i) => i + 1, width: 48, align: "center" },
@@ -324,7 +324,7 @@ function Economics() {
 
   const paybackColor = (y: number | null) =>
     y == null ? "#bbb" : y <= 10 ? "#3f8600" : y <= 15 ? "#fa8c16" : "#cf1322";
-  const fh = useFillHeight(84);
+  const fh = useFitPageSize(100);
 
   return (
     <>
@@ -355,7 +355,7 @@ function Economics() {
       <div ref={fh.ref}>
       <Table<ReplacementEconomics>
         rowKey="tag" loading={loading} dataSource={data?.items ?? []} size="small"
-        pagination={false} scroll={{ y: fh.height }}
+        pagination={{ pageSize: fh.pageSize }}
         columns={[
           { title: "回收序", render: (_v, _r, i) => i + 1, width: 64, align: "center" },
           { title: "編號", dataIndex: "tag", width: 70 },

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { BuildingDetail, BuildingSummary } from "../api/types";
 import { useFocus } from "../focus/FocusContext";
-import { useFillHeight } from "../lib/useFillHeight";
+import { useFitPageSize } from "../lib/useFillHeight";
 
 const kindLabel: Record<string, string> = {
   source: "台電進線",
@@ -19,7 +19,7 @@ export function BuildingsPanel() {
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<BuildingDetail | null>(null);
   const { setFocus } = useFocus();
-  const fh = useFillHeight();
+  const fh = useFitPageSize();
 
   const load = (query?: string) => {
     setLoading(true);
@@ -47,8 +47,7 @@ export function BuildingsPanel() {
         size="small"
         loading={loading}
         dataSource={rows}
-        pagination={false}
-        scroll={{ y: fh.height }}
+        pagination={{ pageSize: fh.pageSize }}
         onRow={(r) => ({ onClick: () => { openDetail(r.id); setFocus({ kind: "building", id: r.id, label: r.name }); }, style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "id", width: 120 },
