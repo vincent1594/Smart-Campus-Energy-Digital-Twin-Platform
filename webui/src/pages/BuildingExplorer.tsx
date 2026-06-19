@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { BuildingDetail, BuildingSummary } from "../api/types";
 import { useFocus } from "../focus/FocusContext";
+import { useFillHeight } from "../lib/useFillHeight";
 
 const kindLabel: Record<string, string> = {
   source: "台電進線",
@@ -18,6 +19,7 @@ export function BuildingsPanel() {
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<BuildingDetail | null>(null);
   const { setFocus } = useFocus();
+  const fh = useFillHeight();
 
   const load = (query?: string) => {
     setLoading(true);
@@ -39,13 +41,14 @@ export function BuildingsPanel() {
         style={{ maxWidth: 420, marginBottom: 8 }}
         onSearch={(v) => load(v)}
       />
+      <div ref={fh.ref}>
       <Table<BuildingSummary>
         rowKey="id"
         size="small"
         loading={loading}
         dataSource={rows}
-        pagination={{ pageSize: 12 }}
-        scroll={{ y: "calc(100vh - 280px)" }}
+        pagination={false}
+        scroll={{ y: fh.height }}
         onRow={(r) => ({ onClick: () => { openDetail(r.id); setFocus({ kind: "building", id: r.id, label: r.name }); }, style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "id", width: 120 },
@@ -60,6 +63,7 @@ export function BuildingsPanel() {
           { title: "所屬變壓器", dataIndex: "transformer_name" },
         ]}
       />
+      </div>
 
       <Drawer width={560} open={!!detail} onClose={() => setDetail(null)} title={detail ? `建築:${detail.name}` : ""}>
         {detail && (
