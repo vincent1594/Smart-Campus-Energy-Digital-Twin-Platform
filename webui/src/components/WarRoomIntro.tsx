@@ -315,14 +315,14 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
     <div style={{ position: "absolute", inset: 0, background: "#010206" }}>
       <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       <style>{`
-        @keyframes wrIntroTitle { 0% { opacity: 0; transform: scale(1.22); letter-spacing: 22px } 60% { opacity: 1 } 100% { opacity: 1; transform: scale(1); letter-spacing: 8px } }
+        @keyframes wrIntroTitle { 0% { opacity: 0; transform: scale(1.18); letter-spacing: 18px } 16% { opacity: 1; transform: scale(1); letter-spacing: 6px } 64% { opacity: 1 } 100% { opacity: 0 } }
         @keyframes wrIntroBtn { to { opacity: 1; transform: none } }
       `}</style>
       <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
 
       {/* 標題移上方(避開中央剛點亮的校園)、按鈕留下緣 */}
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "12% 0 8%", pointerEvents: "none" }}>
-        <div style={{ opacity: 0, animation: "wrIntroTitle 0.9s cubic-bezier(.2,.8,.2,1) 5.4s forwards", textAlign: "center" }}>
+        <div style={{ opacity: 0, animation: "wrIntroTitle 3.8s ease 5.0s forwards", textAlign: "center" }}>
           <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 6, textShadow: "0 0 24px #1677ffaa", color: "#eaf2ff" }}>GRID ENERGIZED</div>
           <div style={{ fontSize: 14, letterSpacing: 5, color: "#9ccbff", marginTop: 4 }}>北電錶 · 全線帶電</div>
         </div>
