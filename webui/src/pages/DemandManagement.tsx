@@ -1,7 +1,7 @@
 // 需量契約:兩個視圖切換 ——
 //   ① 需量預警:現況需量 vs 契約 + XGBoost 逐時尖峰 → 超約罰款 + 卸載建議
 //   ② 時間電價電費:台電高壓三段式月電費試算(各時段度數×費率 + 基本電費 + 超約)
-import { Alert, Card, DatePicker, Divider, InputNumber, Progress, Segmented, Slider, Spin, Statistic, Tag, message } from "antd";
+import { Alert, Button, Card, DatePicker, Divider, InputNumber, Progress, Segmented, Slider, Spin, Statistic, Tag, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
@@ -94,6 +94,12 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
         <div style={{ color: "#888", fontSize: 12, margin: "8px 0 2px" }}>基本電費單價</div>
         <InputNumber size="small" style={{ width: "100%" }} addonAfter="元/kW" min={0} step={0.1} value={rate} onChange={(v) => setRate(v ?? 0)} />
         <div style={{ color: "#bbb", fontSize: 11, marginTop: 4 }}>依台電合約填寫,即時試算超約罰款</div>
+        <Button size="small" block style={{ marginTop: 8 }}
+          onClick={() => api.putSettings({ "demand.contract_kw": contract, "demand.rate": rate }, "admin")
+            .then(() => message.success("已存為全站預設"))
+            .catch((e) => message.error(String(e.message ?? e)))}>
+          存為預設(全站套用)
+        </Button>
 
         <Divider style={{ margin: "10px 0 8px" }} orientation="left" plain>現況需量</Divider>
         {status ? (

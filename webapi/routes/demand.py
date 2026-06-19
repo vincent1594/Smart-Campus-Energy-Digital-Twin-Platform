@@ -25,12 +25,26 @@ from webapi.services import bill_service, contract_service, demand_service
 router = APIRouter(prefix="/api/demand", tags=["demand"])
 
 
+def _default_contract() -> float:
+    from webapi.services import settings_service
+    return float(settings_service.get("demand.contract_kw", CONTRACT_CAPACITY_KW))
+
+
+def _default_rate() -> float:
+    from webapi.services import settings_service
+    return float(settings_service.get("demand.rate", DEMAND_CHARGE_NT_PER_KW))
+
+
 @router.get("/", response_model=DemandStatus)
 def get_demand(
-    contract_kw: float = Query(CONTRACT_CAPACITY_KW, gt=0),
-    rate: float = Query(DEMAND_CHARGE_NT_PER_KW, ge=0),
+    contract_kw: Optional[float] = Query(None, gt=0),
+    rate: Optional[float] = Query(None, ge=0),
 ) -> DemandStatus:
-    return demand_service.get_status(contract_kw, rate)
+    # 未帶參數 → 用已存設定(營繕組校正過的)為預設,否則回退常數
+    return demand_service.get_status(
+        contract_kw if contract_kw is not None else _default_contract(),
+        rate if rate is not None else _default_rate(),
+    )
 
 
 @router.get("/forecast", response_model=DemandForecast)

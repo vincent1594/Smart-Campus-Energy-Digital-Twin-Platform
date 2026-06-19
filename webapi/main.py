@@ -48,4 +48,5 @@ app.include_router(settings.router)
 
 @app.get("/api/health", tags=["health"])
 def health():
-    return {"status": "ok"}
+    from webapi.db import is_postgres
+    return {"status": "ok", "db": "postgres" if is_postgres() else "sqlite"}
