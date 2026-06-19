@@ -1,6 +1,7 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Spin } from "antd";
+import { api } from "./api/client";
 import AppLayout from "./components/AppLayout";
 import WarRoomBackdrop from "./components/WarRoomBackdrop";
 import WarRoomIntro from "./components/WarRoomIntro";
@@ -27,6 +28,16 @@ export default function App() {
   const [entered, setEntered] = useState(seen);
   const [showIntro, setShowIntro] = useState(!seen);   // 開場覆蓋層是否仍掛載
   const enter = () => { localStorage.setItem(INTRO_KEY, today()); setEntered(true); };
+
+  // 記錄拜訪:一載入網頁就記(不論有沒有點進開場),每 session 一次。
+  useEffect(() => {
+    let vid = localStorage.getItem("bg_visitor_id");
+    if (!vid) { vid = (crypto.randomUUID?.() ?? String(Math.random()).slice(2)); localStorage.setItem("bg_visitor_id", vid); }
+    if (!sessionStorage.getItem("bg_visited")) {
+      sessionStorage.setItem("bg_visited", "1");
+      api.recordVisit(vid).catch(() => undefined);
+    }
+  }, []);
 
   return (
     <>

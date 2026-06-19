@@ -36,16 +36,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const topSelected = topNav.find((i) => i.key === pathname)?.key ?? "/";
 
-  // 記錄拜訪(每瀏覽器一個 visitor_id 算人數、每 session 記一次);不顯示,統計改在帳號面板看。
-  useEffect(() => {
-    let vid = localStorage.getItem("bg_visitor_id");
-    if (!vid) { vid = (crypto.randomUUID?.() ?? String(Math.random()).slice(2)); localStorage.setItem("bg_visitor_id", vid); }
-    if (!sessionStorage.getItem("bg_visited")) {
-      sessionStorage.setItem("bg_visited", "1");
-      api.recordVisit(vid).catch(() => undefined);
-    }
-  }, []);
-
   // 冷啟動提示:後端閒置會休眠,首次喚醒約 30–60 秒。慢於 3.5s 才顯示「喚醒中」提示,回應即消。
   useEffect(() => {
     let done = false;
