@@ -13,6 +13,7 @@ import HistoryTrends from "./pages/HistoryTrends";
 import MapExplorer from "./pages/MapExplorer";
 import Report from "./pages/Report";
 import Scenario from "./pages/Scenario";
+import VerificationCenter from "./pages/VerificationCenter";
 
 const INTRO_KEY = "bg_intro_date";
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/history" element={<HistoryTrends />} />
         <Route path="/alarms" element={<Alarms />} />
         <Route path="/report" element={<Report />} />
+        <Route path="/verify" element={<VerificationCenter />} />
       </Routes>
     </AppLayout>
   );
