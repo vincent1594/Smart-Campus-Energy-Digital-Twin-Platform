@@ -388,11 +388,11 @@ export default function AssetExplorer() {
         items={[
           { key: "bld", label: "建築", children: <BuildingsPanel /> },
           { key: "tr", label: "變壓器", children: <Transformers /> },
-          { key: "replace", label: "汰換優先序", children: <Replacement /> },
-          { key: "econ", label: "汰換投資回收", children: <Economics /> },
           { key: "spec", label: "規格明細", children: <Specs /> },
           { key: "vcb", label: "VCB", children: <Vcbs /> },
           { key: "fd", label: "饋線", children: <Feeders /> },
+          { key: "replace", label: "汰換優先序", children: <Replacement /> },
+          { key: "econ", label: "汰換投資回收", children: <Economics /> },
         ]}
       />
     </Card>
