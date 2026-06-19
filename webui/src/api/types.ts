@@ -299,6 +299,39 @@ export interface EUIReport {
   buildings: BuildingEUI[];
 }
 
+// ---------- 契約容量最佳化 (殺手功能) ----------
+export interface MeasuredMonthPeak {
+  month: string;            // "2023-06"
+  peak_kw: number;
+  overshoot_kw: number;     // max(0, 實測尖峰 - 現況契約)
+  penalty_nt: number;       // 該月實測超約罰款
+}
+
+export interface ContractCurvePoint {
+  contract_kw: number;
+  basic_nt: number;         // 基本電費 (整年 12 月)
+  penalty_nt: number;       // 全年超約罰款
+  total_nt: number;         // 年總成本
+}
+
+export interface ContractOptimization {
+  rate_nt_per_kw: number;
+  high_months: number;      // 假設:全年高需量月數
+  offseason_ratio: number;  // 假設:離峰季尖峰 / 夏季尖峰
+  summer_peak_kw: number;   // 尖峰錨點 (EMS 實測)
+  measured: MeasuredMonthPeak[];
+  current_contract_kw: number;
+  current_annual_nt: number;
+  current_penalty_nt: number;
+  recommended_contract_kw: number;
+  recommended_annual_nt: number;
+  recommended_penalty_nt: number;
+  annual_savings_nt: number;     // 純調契約估省
+  peakshave_savings_nt: number;  // 削峰至契約內可省 (= 現況全年罰款)
+  curve: ContractCurvePoint[];
+  note: string;
+}
+
 // ---------- 時間電價 月電費試算 ----------
 export interface TariffRates {
   summer_peak_kwh: number;
