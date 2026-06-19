@@ -1,8 +1,7 @@
 // 校園地圖(照片底 + SVG 多邊形疊圖)。各棟為「不規則多邊形」,發光描邊依負載率,中心透明。
 // 顯示:focusLetter/highlight 連動、dark 深色發光、showConnectors 受電站→棟連線。
 // 編輯(editable):拖頂點移動、雙擊多邊形邊加頂點、雙擊頂點刪除;onPolyChange 回拋。
-import { Switch } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, type Pt, centroid, ratioColor } from "../lib/campusPositions";
 
 export interface MapMarker {
@@ -33,7 +32,6 @@ export default function CampusMapStatic({
   onPolyChange?: (letter: string, pts: Pt[]) => void;
   fitHeight?: boolean; // 依高度縮放(置中、不溢出)
 }) {
-  const [showBox, setShowBox] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ letter: string; idx: number } | null>(null);
   const POS = polys ?? BUILDING_POS;
@@ -75,16 +73,9 @@ export default function CampusMapStatic({
     <div ref={ref} style={{ position: "relative", lineHeight: 0, touchAction: editable ? "none" : undefined, ...(fitHeight ? { width: "100%", height: "100%" } : { width: "100%" }) }}>
       <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.85)" : "saturate(.42) brightness(1.06)", ...(fitHeight ? { width: "100%", height: "100%", objectFit: "contain" } : { width: "100%" }) }} />
 
-      {!editable && (
-        <div style={{ position: "absolute", top: 8, right: 8, background: dark ? "rgba(0,0,0,.5)" : "rgba(255,255,255,.85)", color: dark ? "#fff" : "#000", borderRadius: 6, padding: "2px 8px", zIndex: 30 }}>
-          <span style={{ fontSize: 12, marginInlineEnd: 6 }}>顯示範圍框</span>
-          <Switch size="small" checked={showBox} disabled={dark} onChange={setShowBox} />
-        </div>
-      )}
-
       {/* 負載率色階圖例 */}
       {!editable && (
-        <div style={{ position: "absolute", left: 8, bottom: 8, zIndex: 20, display: "flex", alignItems: "center", gap: 10,
+        <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 20, display: "flex", alignItems: "center", gap: 10,
           background: dark ? "rgba(0,0,0,.5)" : "rgba(255,255,255,.86)", color: dark ? "#cfe9ff" : "#666",
           borderRadius: 6, padding: "3px 9px", fontSize: 11, lineHeight: 1.6, boxShadow: "0 1px 4px rgba(0,0,0,.12)" }}>
           <span style={{ color: dark ? "#5f86a8" : "#999" }}>負載率</span>
@@ -122,22 +113,22 @@ export default function CampusMapStatic({
         )}
 
         {/* 聚光燈:其餘變暗,只有焦點棟+同供電群保持明亮全彩 */}
-        {!editable && !showBox && hasFocus && (
+        {!editable && hasFocus && (
           <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="#0a1830" opacity={0.58} mask="url(#cmsSpot)" pointerEvents="none" />
         )}
         {/* 焦點棟:一抹柔和色光,與同群區分 */}
-        {!editable && !showBox && focusLetter && POS[focusLetter] && (
+        {!editable && focusLetter && POS[focusLetter] && (
           <polygon points={POS[focusLetter].map((p) => p.join(",")).join(" ")} fill={accent} opacity={0.14} pointerEvents="none" />
         )}
 
-        {/* 各棟:多邊形(無框模式下透明,僅當點擊熱區);showBox/編輯模式才顯示框與字 */}
+        {/* 各棟:多邊形(預設依負載率淡色填,無框無字);編輯模式才顯示框與頂點 */}
         {markers.map((m) => {
           const pts = POS[m.letter]; if (!pts) return null;
           const c = ratioColor(m.ratio);
           const cen = centroid(pts);
           const isFocus = m.letter === focusLetter;
           const isHi = !!highlight?.has(m.letter);
-          const showShape = editable || showBox;   // 是否顯示範圍框與字母
+          const showShape = editable;   // 僅編輯模式顯示範圍框與字母
           let stroke = "transparent", fill = "transparent";
           if (showShape) {
             if (editable) { stroke = accent; fill = "rgba(22,119,255,.18)"; }
