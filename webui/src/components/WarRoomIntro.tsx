@@ -7,7 +7,7 @@ import { api } from "../api/client";
 import type { BuildingSummary, PowerFlowResult, TransformerDetail } from "../api/types";
 import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, buildingLetter, centroid, type Pt } from "../lib/campusPositions";
 
-const SURGE = 0.95;       // 點火時刻(秒)
+const SURGE = 3.0;        // 點火時刻(秒)— 延後以醞釀「發射前序列」張力
 const WAVE_SPEED = 470;   // 能量波速(校園座標單位 / 秒)
 const CAM_DUR = 3.1;      // 鏡頭拉遠時長(秒)
 const CAM_START = 2.5;    // 開場特寫倍率
@@ -66,7 +66,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
     nodes.forEach((n) => { const e = grp.get(n.vcb) ?? { sum: 0, n: 0 }; e.sum += n.dist; e.n++; grp.set(n.vcb, e); });
     nodes.forEach((n) => { const e = grp.get(n.vcb)!; n.igniteDist = e.sum / e.n; });
     // 高潮/閃光時序仍用最遠棟真實距離(維持原電影節奏);igniteDist 只決定分組點火順序
-    return { sx, sy, nodes, maxDist: Math.max(...nodes.map((n) => n.dist), 1) };
+    return { sx, sy, nodes, maxDist: Math.max(...nodes.map((n) => n.dist), 1), totalKw: pf ? pf.total_load_kw : 0 };
   }, [pf, buildings, trafos]);
 
   const sceneRef = useRef(scene);
@@ -95,7 +95,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       if (!start) start = ts;
       const e = (ts - start) / 1000;
       const dt = 0.016;
-      const { sx, sy, nodes, maxDist } = sceneRef.current;
+      const { sx, sy, nodes, maxDist, totalKw } = sceneRef.current;
       const energT = SURGE + maxDist / WAVE_SPEED;   // 全亮時刻
 
       ctx.save(); ctx.scale(dpr, dpr);
@@ -107,9 +107,9 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       const TX = (x: number) => x * sX, TY = (y: number) => y * sY;
       const SXc = TX(sx), SYc = TY(sy);
 
-      // === 鏡頭:特寫 X → 拉遠揭示 ===
+      // === 鏡頭:醞釀時держ特寫 X → 點火後才拉遠揭示 ===
       ctx.save();
-      const cp = easeOut(Math.min(e / CAM_DUR, 1));
+      const cp = easeOut(Math.max(0, Math.min((e - SURGE) / CAM_DUR, 1)));
       const cz = CAM_START - (CAM_START - 1) * cp;
       ctx.translate(SXc, SYc); ctx.scale(cz, cz); ctx.translate(-SXc, -SYc);
 
@@ -216,12 +216,20 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         ctx.globalCompositeOperation = "source-over";
       }
 
-      // 受電站 X
-      if (e < SURGE) { const c0 = e / SURGE; ctx.strokeStyle = `rgba(120,180,255,${0.5 * c0})`; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(SXc, SYc, 6 + (1 - c0) * 40, 0, Math.PI * 2); ctx.stroke(); }
+      // 受電站 X — 醞釀:多道收束預充環(能量被吸入,越接近點火越急)
+      const chg = Math.min(1, e / SURGE);
+      if (e < SURGE) {
+        for (let k = 0; k < 4; k++) {
+          const ph = (e * (0.5 + chg * 1.8) + k * 0.25) % 1;     // 1→0 收束
+          const rr = 8 + (1 - ph) * (130 - chg * 70);
+          const a = 0.45 * (1 - ph) * (0.25 + chg * 0.75);
+          ctx.strokeStyle = `rgba(120,180,255,${a})`; ctx.lineWidth = 1.1 + chg;
+          ctx.beginPath(); ctx.arc(SXc, SYc, rr, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
       const surge = Math.max(0, 1 - Math.abs(e - SURGE) / 0.45);
-      const coreR = 5 + surge * 20 + Math.sin(e * 4) * 1.2;
-      ctx.shadowBlur = 22 + surge * 50; ctx.shadowColor = "#9cc8ff"; ctx.fillStyle = "#5fa8ff";
+      const coreR = 5 + chg * 8 + surge * 20 + Math.sin(e * (4 + chg * 9)) * (1.2 + chg);
+      ctx.shadowBlur = 22 + chg * 28 + surge * 50; ctx.shadowColor = "#9cc8ff"; ctx.fillStyle = "#5fa8ff";
       ctx.beginPath(); ctx.arc(SXc, SYc, coreR, 0, Math.PI * 2); ctx.fill();
       ctx.shadowBlur = 0; ctx.fillStyle = "#ffffff";
       ctx.beginPath(); ctx.arc(SXc, SYc, 2.5 + surge * 3, 0, Math.PI * 2); ctx.fill();
@@ -252,18 +260,48 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       vig.addColorStop(0, "rgba(0,0,0,0)"); vig.addColorStop(1, "rgba(0,0,0,0.62)");
       ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
 
-      // 通電進度遙測
-      if (e > SURGE - 0.1) {
+      // === 任務控制 HUD(遙測 / 倒數)===
+      {
         const pct = nodes.length ? litCount / nodes.length : 0;
-        const bw = 300, bx = W / 2 - bw / 2, by = 30;
-        ctx.globalAlpha = Math.min(1, (e - (SURGE - 0.1)) / 0.4);
-        ctx.fillStyle = "#7db8ff"; ctx.font = `12px ${MONO}`; ctx.textAlign = "left";
-        ctx.fillText(pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中", bx, by - 8);
-        ctx.strokeStyle = "rgba(120,160,220,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 6);
-        ctx.fillStyle = pct >= 1 ? "#3ad07a" : "#5fa8ff"; ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
-        ctx.fillRect(bx, by, bw * pct, 6); ctx.shadowBlur = 0;
-        ctx.fillStyle = "#cfe2ff"; ctx.textAlign = "right"; ctx.font = `13px ${MONO}`;
-        ctx.fillText(`${Math.round(pct * 100)}%`, bx + bw + 38, by + 6);
+        const chgH = Math.min(1, e / SURGE);
+        const armWin = Math.max(0.1, SURGE - 0.6);
+        const vcbOnline = e < SURGE ? Math.max(0, Math.min(12, Math.floor(((e - 0.6) / armWin) * 12))) : 12;
+        const freq = e < 0.6 ? 0 : Math.min(60, 59.2 + chgH * 0.8);
+        const volt = e < SURGE ? chgH : Math.min(1, 0.97 + pct * 0.03);
+        const loadNow = e < SURGE ? 0 : Math.round(totalKw * pct);
+        ctx.globalAlpha = Math.min(1, e / 0.6);
+
+        ctx.textAlign = "center";
+        if (e < SURGE) {
+          const tm = Math.max(1, Math.ceil(SURGE - e));
+          ctx.fillStyle = "#9ccbff"; ctx.font = `13px ${MONO}`;
+          ctx.fillText("發射前序列 · PRE-ENERGIZE SEQUENCE", W / 2, 40);
+          const beat = 1 - ((SURGE - e) % 1);           // 每秒一跳
+          ctx.fillStyle = "#7db8ff"; ctx.font = `bold ${48 + beat * 10}px ${MONO}`;
+          ctx.shadowBlur = 16 + beat * 16; ctx.shadowColor = "#5fa8ff"; ctx.globalAlpha = Math.min(1, e / 0.6) * (0.6 + beat * 0.4);
+          ctx.fillText(`T- ${tm}`, W / 2, 98); ctx.shadowBlur = 0; ctx.globalAlpha = Math.min(1, e / 0.6);
+        } else {
+          const label = e < SURGE + 0.5 ? "◆ IGNITION · 點火" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
+          ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`;
+          ctx.fillText(label, W / 2, 42);
+          const bw = 320, bx = W / 2 - bw / 2, by = 54;
+          ctx.strokeStyle = "rgba(120,160,220,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 6);
+          ctx.fillStyle = pct >= 1 ? "#3ad07a" : "#5fa8ff"; ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
+          ctx.fillRect(bx, by, bw * pct, 6); ctx.shadowBlur = 0;
+          ctx.fillStyle = "#cfe2ff"; ctx.font = `13px ${MONO}`; ctx.textAlign = "left";
+          ctx.fillText(`${Math.round(pct * 100)}%`, bx + bw + 12, by + 6);
+        }
+
+        // 左下:遙測讀數
+        const tx = 30, ty = H - 116;
+        ctx.font = `12px ${MONO}`;
+        ([["總負載 LOAD", `${loadNow.toLocaleString()} kW`], ["頻率 FREQ", `${freq.toFixed(1)} Hz`],
+          ["VCB 上線", `${vcbOnline} / 12`], ["電壓 BUS", `${volt.toFixed(2)} pu`]] as [string, string][])
+          .forEach((r, i) => {
+            const yy = ty + i * 22;
+            ctx.textAlign = "left"; ctx.fillStyle = "#5f86a8"; ctx.fillText(r[0], tx, yy);
+            ctx.textAlign = "right"; ctx.fillStyle = "#cfe2ff"; ctx.fillText(r[1], tx + 178, yy);
+          });
         ctx.globalAlpha = 1;
       }
 
@@ -283,12 +321,12 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
 
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: "9%", pointerEvents: "none" }}>
-        <div style={{ opacity: 0, animation: "wrIntroTitle 0.9s cubic-bezier(.2,.8,.2,1) 3.4s forwards", textAlign: "center" }}>
+        <div style={{ opacity: 0, animation: "wrIntroTitle 0.9s cubic-bezier(.2,.8,.2,1) 5.4s forwards", textAlign: "center" }}>
           <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: 8, textShadow: "0 0 40px #1677ffcc", color: "#eaf2ff" }}>GRID ENERGIZED</div>
           <div style={{ fontSize: 18, letterSpacing: 6, color: "#9ccbff", marginTop: 6 }}>北電錶 · 全線帶電</div>
         </div>
         <button onClick={onEnter} style={{
-          marginTop: 28, opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 4.6s forwards", pointerEvents: "auto",
+          marginTop: 28, opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 6.6s forwards", pointerEvents: "auto",
           background: "rgba(95,168,255,0.10)", border: "1px solid rgba(120,180,255,0.5)", color: "#cfe2ff", fontFamily: MONO,
           fontSize: 15, letterSpacing: 3, padding: "11px 30px", cursor: "pointer", borderRadius: 2,
         }}>進入系統 ▸</button>
