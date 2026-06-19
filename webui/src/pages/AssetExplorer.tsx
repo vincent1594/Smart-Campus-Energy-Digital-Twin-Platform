@@ -1,7 +1,7 @@
-import { Button, Card, Descriptions, Drawer, Input, List, Progress, Table, Tabs, Tag, message } from "antd";
+import { Button, Card, Descriptions, Drawer, Input, InputNumber, List, Progress, Statistic, Table, Tabs, Tag, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
-import type { FeederDetail, TransformerDetail, TransformerRisk, TransformerSpec, VcbDetail } from "../api/types";
+import type { FeederDetail, ReplacementEconomics, ReplacementEconomicsReport, TransformerDetail, TransformerRisk, TransformerSpec, VcbDetail } from "../api/types";
 import LoadRatioTag from "../components/LoadRatioTag";
 import { useFocus } from "../focus/FocusContext";
 import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
@@ -266,6 +266,94 @@ function Replacement() {
   );
 }
 
+// 汰換投資回收:換新成本 vs 換高效機年省電費 → 回收年限,供資本門效益評估
+const ntd = (n: number) => `NT$ ${Math.round(n).toLocaleString()}`;
+const wan = (n: number) => `${(n / 1e4).toLocaleString(undefined, { maximumFractionDigits: 1 })} 萬`;
+
+function Economics() {
+  const [unitPrice, setUnitPrice] = useState<number>(600);
+  const [energyPrice, setEnergyPrice] = useState<number>(3.0);
+  const [data, setData] = useState<ReplacementEconomicsReport>();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLoading(true);
+      api.replacementEconomics(unitPrice, energyPrice)
+        .then(setData).catch((e) => message.error(String(e.message ?? e))).finally(() => setLoading(false));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [unitPrice, energyPrice]);
+
+  const exportCsv = () => data && downloadCSV<ReplacementEconomics>(`設備汰換投資回收_${stamp()}.csv`, data.items, [
+    { label: "回收序", value: (e) => data.items.indexOf(e) + 1 },
+    { label: "編號", value: (e) => e.tag },
+    { label: "建築物", value: (e) => e.building },
+    { label: "容量(kVA)", value: (e) => e.capacity_kva ?? "" },
+    { label: "型式", value: (e) => e.trafo_type },
+    { label: "屆齡(年)", value: (e) => e.age_years ?? "" },
+    { label: "負載率(%)", value: (e) => e.load_ratio_percent ?? "" },
+    { label: "風險等級", value: (e) => e.risk_level },
+    { label: "換新成本(NT$)", value: (e) => e.capex_nt },
+    { label: "年省電費(NT$)", value: (e) => e.annual_saving_nt },
+    { label: "年省度數(kWh)", value: (e) => e.annual_saving_kwh },
+    { label: "回收年限(年)", value: (e) => e.payback_years ?? "僅風險" },
+  ]);
+
+  const paybackColor = (y: number | null) =>
+    y == null ? "#bbb" : y <= 10 ? "#3f8600" : y <= 15 ? "#fa8c16" : "#cf1322";
+
+  return (
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
+          <Statistic title="高風險汰換需投資" value={data ? Math.round(data.high_risk_capex_nt) : 0} prefix="NT$" valueStyle={{ fontSize: 18, color: "#cf1322" }}
+            formatter={(v) => wan(Number(v))} />
+          <Statistic title="汰換後年省電費" value={data ? Math.round(data.high_risk_annual_saving_nt) : 0} valueStyle={{ fontSize: 18, color: "#3f8600" }}
+            formatter={(v) => `NT$ ${wan(Number(v))}`} />
+          <Statistic title="整體回收年限" value={data?.high_risk_blended_payback_years ?? "—"} suffix="年" valueStyle={{ fontSize: 18 }} />
+          <div style={{ color: "#999", fontSize: 12, maxWidth: 230, lineHeight: 1.4 }}>
+            高風險群 {data?.high_risk_count ?? 0} 台合計。換新主因為風險;節能回收較長者,以可靠度為汰換理由。
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+          <div>
+            <div style={{ color: "#888", fontSize: 12, marginBottom: 2 }}>換新單價</div>
+            <InputNumber size="small" addonAfter="元/kVA" min={1} step={50} value={unitPrice} onChange={(v) => setUnitPrice(v ?? 0)} style={{ width: 150 }} />
+          </div>
+          <div>
+            <div style={{ color: "#888", fontSize: 12, marginBottom: 2 }}>電價</div>
+            <InputNumber size="small" addonAfter="元/度" min={0.1} step={0.1} value={energyPrice} onChange={(v) => setEnergyPrice(v ?? 0)} style={{ width: 140 }} />
+          </div>
+          <Button size="small" onClick={exportCsv} disabled={!data?.items.length}>匯出回收評估 (CSV)</Button>
+        </div>
+      </div>
+
+      <Table<ReplacementEconomics>
+        rowKey="tag" loading={loading} dataSource={data?.items ?? []} size="small"
+        pagination={{ pageSize: 12 }} scroll={{ y: "calc(100vh - 340px)" }}
+        columns={[
+          { title: "回收序", render: (_v, _r, i) => i + 1, width: 64, align: "center" },
+          { title: "編號", dataIndex: "tag", width: 70 },
+          { title: "建築物", dataIndex: "building", ellipsis: true },
+          { title: "容量", dataIndex: "capacity_kva", align: "right", width: 76, render: (v) => (v ? `${v} kVA` : "—") },
+          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", width: 72, render: (v) => (v != null ? `${v}%` : "—") },
+          { title: "風險", dataIndex: "risk_level", align: "center", width: 60, render: (v: string) => <Tag color={RISK_COLOR[v]} style={{ margin: 0 }}>{v}</Tag> },
+          { title: "換新成本", dataIndex: "capex_nt", align: "right", width: 110, sorter: (a, b) => a.capex_nt - b.capex_nt, render: (v) => ntd(v) },
+          { title: "年省電費", dataIndex: "annual_saving_nt", align: "right", width: 110, sorter: (a, b) => a.annual_saving_nt - b.annual_saving_nt, render: (v) => <span style={{ color: "#3f8600" }}>{ntd(v)}</span> },
+          {
+            title: "回收年限", dataIndex: "payback_years", width: 120, align: "right",
+            defaultSortOrder: "ascend",
+            sorter: (a, b) => (a.payback_years ?? 9e9) - (b.payback_years ?? 9e9),
+            render: (v: number | null) => <b style={{ color: paybackColor(v) }}>{v == null ? "—(僅風險)" : `${v} 年`}</b>,
+          },
+        ]}
+      />
+      <div style={{ color: "#bbb", fontSize: 11, marginTop: 6, lineHeight: 1.5 }}>{data?.loss_note}</div>
+    </>
+  );
+}
+
 export default function AssetExplorer() {
   return (
     <Card style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto", padding: "8px 12px" } }}>
@@ -276,6 +364,7 @@ export default function AssetExplorer() {
           { key: "bld", label: "建築", children: <BuildingsPanel /> },
           { key: "tr", label: "變壓器", children: <Transformers /> },
           { key: "replace", label: "汰換優先序", children: <Replacement /> },
+          { key: "econ", label: "汰換投資回收", children: <Economics /> },
           { key: "spec", label: "規格明細", children: <Specs /> },
           { key: "vcb", label: "VCB", children: <Vcbs /> },
           { key: "fd", label: "饋線", children: <Feeders /> },

@@ -14,6 +14,7 @@ import type {
   TariffInfo,
   PowerFlowResult,
   ForecastRequest,
+  ReplacementEconomicsReport,
   ScenarioComparison,
   ScenarioRequest,
   TopologyGraph,
@@ -56,6 +57,13 @@ export const api = {
   transformer: (id: string) => get<TransformerDetail>(`/api/assets/transformers/${encodeURIComponent(id)}`),
   transformerSpecs: () => get<TransformerSpec[]>("/api/assets/transformer-specs"),
   replacementPriority: () => get<TransformerRisk[]>("/api/assets/replacement-priority"),
+  replacementEconomics: (unitPrice?: number, energyPrice?: number) => {
+    const q = new URLSearchParams();
+    if (unitPrice != null) q.set("unit_price", String(unitPrice));
+    if (energyPrice != null) q.set("energy_price", String(energyPrice));
+    const s = q.toString();
+    return get<ReplacementEconomicsReport>(`/api/assets/replacement-economics${s ? `?${s}` : ""}`);
+  },
   vcbs: () => get<VcbDetail[]>("/api/assets/vcbs"),
   feeders: () => get<FeederDetail[]>("/api/assets/feeders"),
   feeder: (id: string) => get<FeederDetail>(`/api/assets/feeders/${encodeURIComponent(id)}`),

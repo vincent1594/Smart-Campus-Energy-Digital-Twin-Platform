@@ -37,6 +37,7 @@ export const PROVENANCE: ProvenanceItem[] = [
   { feature: "EUI 參考基準 120", tier: "assumption", source: "全國大專參考區間", note: "建議填學校歷史值;前端可編輯", page: "用電強度" },
   { feature: "汰換風險權重", tier: "assumption", source: "工程判斷(屆齡.40/負載.25/溫度.20/效率.15)", note: "相對排序,非絕對壽命", page: "設備查詢 · 汰換優先序" },
   { feature: "各棟年用電量", tier: "assumption", source: "現況負載占比 × 全校年預測", note: "近似分配,非各棟獨立電錶", page: "用電強度" },
+  { feature: "汰換投資回收(成本/年省/回收年限)", tier: "assumption", source: "標準變壓器損耗模型 + 換新單價假設", note: "節能用銘牌典型損耗(非 spec.efficiency,其值域不合理);單價/電價前端可編輯", page: "設備查詢 · 汰換投資回收" },
 
   // 🔴 示範·未接
   { feature: "告警紀錄", tier: "placeholder", source: "示範情境(連動真實負載觸發)", note: "用以演示告警邏輯;尚未接即時告警源 / 歷史告警庫", page: "告警紀錄" },
@@ -73,8 +74,8 @@ export const ROADMAP: RoadmapItem[] = [
   { title: "用電強度 EUI", status: "done" },
   { title: "設備汰換風險排序", status: "done" },
   { title: "歷史趨勢 + 互動單線圖", status: "done" },
-  { title: "驗證中心", status: "doing", note: "本頁" },
-  { title: "設備汰換投資回收(NT$/回收年限)", status: "planned" },
+  { title: "驗證中心", status: "done" },
+  { title: "設備汰換投資回收(NT$/回收年限)", status: "done", note: "高風險群換新總額/年省/回收年限" },
   { title: "功因罰款防線", status: "planned" },
   { title: "南電錶建模(全校覆蓋)", status: "planned" },
   { title: "即時 EMS 串接", status: "planned" },

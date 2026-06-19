@@ -121,6 +121,33 @@ export interface TransformerRisk {
   reason: string;
 }
 
+// ---------- 設備汰換 投資回收 ----------
+export interface ReplacementEconomics {
+  tag: string;
+  building: string;
+  capacity_kva: number | null;
+  trafo_type: string;
+  age_years: number | null;
+  load_ratio_percent: number | null;
+  risk_level: string;          // 高/中/低
+  risk_score: number;
+  capex_nt: number;            // 換新成本
+  annual_saving_kwh: number;
+  annual_saving_nt: number;    // 年省電費
+  payback_years: number | null; // 回收年限(節省≤0 時 null)
+}
+
+export interface ReplacementEconomicsReport {
+  unit_price_nt_per_kva: number;
+  energy_price_nt_per_kwh: number;
+  loss_note: string;
+  items: ReplacementEconomics[];
+  high_risk_count: number;
+  high_risk_capex_nt: number;
+  high_risk_annual_saving_nt: number;
+  high_risk_blended_payback_years: number | null;
+}
+
 export interface VcbDetail {
   id: string;
   name: string;
