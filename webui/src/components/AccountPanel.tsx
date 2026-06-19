@@ -4,7 +4,7 @@ import { Button, Divider, Input, Tag, Tooltip, message } from "antd";
 import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { VisitStats } from "../api/types";
+import type { RecentVisit, VisitStats } from "../api/types";
 
 // ⚠ 展示用前端驗證(非真實安全);正式帳密/權限角色為 V2(見驗證中心路線圖)。
 const DEMO_USER = "admin";
@@ -15,8 +15,11 @@ export default function AccountPanel() {
   const [acc, setAcc] = useState("");
   const [pwd, setPwd] = useState("");
   const [role, setRole] = useState<string | null>(() => localStorage.getItem("bg_role"));
+  const [recent, setRecent] = useState<RecentVisit[]>([]);
 
   useEffect(() => { api.visitStats().then(setStats).catch(() => undefined); }, []);
+  // 最近訪客 IP 屬個資 → 僅登入後才抓
+  useEffect(() => { if (role) api.recentVisits(40).then(setRecent).catch(() => undefined); }, [role]);
 
   const login = () => {
     if (acc.trim() === DEMO_USER && pwd === DEMO_PASS) {
@@ -69,7 +72,22 @@ export default function AccountPanel() {
       {/* 登入 */}
       <Divider orientation="left" plain style={{ margin: "10px 0 8px", fontSize: 12 }}>{role ? "帳號" : "登入"}</Divider>
       {role ? (
-        <Button size="small" block icon={<LogoutOutlined />} onClick={logout}>登出</Button>
+        <>
+          <Button size="small" block icon={<LogoutOutlined />} onClick={logout}>登出</Button>
+          <Divider orientation="left" plain style={{ margin: "12px 0 6px", fontSize: 12 }}>
+            最近訪客 IP <span style={{ color: "#bbb", fontWeight: 400 }}>({recent.length})</span>
+          </Divider>
+          <div style={{ maxHeight: 168, overflow: "auto", border: "1px solid #f0f0f0", borderRadius: 4 }}>
+            {recent.length === 0 ? <div style={{ fontSize: 11, color: "#bbb", padding: "8px 10px" }}>尚無紀錄</div>
+              : recent.map((r, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11, padding: "4px 8px", borderBottom: "1px solid #fafafa" }}>
+                  <span style={{ color: "#333", fontFamily: "monospace" }}>{r.ip ?? "—"}</span>
+                  <span style={{ color: "#999", whiteSpace: "nowrap" }}>{r.ts.slice(5, 16).replace("T", " ")}</span>
+                </div>
+              ))}
+          </div>
+          <div style={{ fontSize: 10, color: "#bbb", marginTop: 6 }}>IP 屬個資,僅登入後可見。</div>
+        </>
       ) : (
         <>
           <Input size="small" placeholder="帳號" prefix={<UserOutlined />} value={acc} onChange={(e) => setAcc(e.target.value)} style={{ marginBottom: 6 }} />

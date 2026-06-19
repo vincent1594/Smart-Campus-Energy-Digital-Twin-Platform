@@ -364,6 +364,7 @@ export interface ContractOptimization {
 
 // ---------- 訪客統計 ----------
 export interface DailyVisit { day: string; visits: number; people: number; }
+export interface RecentVisit { ts: string; ip: string | null; visitor_id: string; }
 export interface VisitStats {
   today_visits: number;
   today_people: number;

@@ -427,6 +427,12 @@ class VisitStats(BaseModel):
     daily: list[DailyVisit] = []     # 近 N 天逐日
 
 
+class RecentVisit(BaseModel):
+    ts: str                          # 時間
+    ip: Optional[str] = None         # 來源 IP(個資,僅登入後可見)
+    visitor_id: str
+
+
 # ---------- 時間電價 月電費試算 ----------
 class TariffRates(BaseModel):
     """台電高壓三段式時間電價費率 (可編輯)。非夏月無尖峰,故無 nonsummer_peak。"""
