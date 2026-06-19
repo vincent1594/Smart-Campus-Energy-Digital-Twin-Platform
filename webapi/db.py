@@ -31,6 +31,19 @@ app_settings = Table(
     Column("updated_by", String(64), nullable=True),
 )
 
+# 使用者回饋:星等 + 留言 + 選填身分;一人(visitor_id)一則、可更新
+feedback = Table(
+    "feedback", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("visitor_id", String(64), nullable=False, unique=True),
+    Column("rating", Integer, nullable=False),   # 1–5 星
+    Column("comment", Text, nullable=True),
+    Column("role", String(32), nullable=True),   # 選填身分
+    Column("ip", String(64), nullable=True),
+    Column("ts", String(32), nullable=False),    # 首次送出時間
+    Column("updated_at", String(32), nullable=True),
+)
+
 
 def _sqlite_engine() -> Engine:
     path = Path(__file__).resolve().parent / "data" / "app.db"

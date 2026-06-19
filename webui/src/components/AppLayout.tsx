@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { api } from "../api/client";
 import AccountPanel from "./AccountPanel";
+import FeedbackButton from "./FeedbackButton";
 
 const { Header, Content } = Layout;
 
@@ -68,6 +69,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <Content style={{ margin: 10, flex: 1, minHeight: 0, overflow: "auto" }}>
         {children}
       </Content>
+      <FeedbackButton />
     </Layout>
   );
 }

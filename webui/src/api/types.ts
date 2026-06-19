@@ -374,6 +374,12 @@ export interface VisitStats {
   daily: DailyVisit[];
 }
 
+// ---------- 使用者回饋(評分 + 留言)----------
+export interface MyFeedback { rating: number; comment: string; role: string; }
+export interface FeedbackItem { rating: number; comment: string; role: string; ts: string; visitor_id: string; ip: string | null; }
+export interface FeedbackList { count: number; average: number; items: FeedbackItem[]; }
+export interface FeedbackResult { ok: boolean; average: number; count: number; }
+
 // ---------- 時間電價 月電費試算 ----------
 export interface TariffRates {
   summer_peak_kwh: number;

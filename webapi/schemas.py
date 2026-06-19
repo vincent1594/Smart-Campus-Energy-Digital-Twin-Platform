@@ -433,6 +433,41 @@ class RecentVisit(BaseModel):
     visitor_id: str
 
 
+# ---------- 使用者回饋(評分 + 留言)----------
+class FeedbackIn(BaseModel):
+    visitor_id: str = "anon"
+    rating: int                      # 1–5 星
+    comment: str = ""
+    role: str = ""                   # 選填身分:營繕組/總務處/長官/老師/訪客
+
+
+class MyFeedback(BaseModel):
+    rating: int
+    comment: str = ""
+    role: str = ""
+
+
+class FeedbackItem(BaseModel):
+    rating: int
+    comment: str = ""
+    role: str = ""
+    ts: str
+    visitor_id: str
+    ip: Optional[str] = None         # 個資,僅登入後可見
+
+
+class FeedbackList(BaseModel):
+    count: int
+    average: float
+    items: list[FeedbackItem] = []
+
+
+class FeedbackResult(BaseModel):
+    ok: bool
+    average: float
+    count: int
+
+
 # ---------- 時間電價 月電費試算 ----------
 class TariffRates(BaseModel):
     """台電高壓三段式時間電價費率 (可編輯)。非夏月無尖峰,故無 nonsummer_peak。"""
