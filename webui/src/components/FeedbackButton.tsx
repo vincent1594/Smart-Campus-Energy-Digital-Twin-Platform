@@ -44,9 +44,9 @@ export default function FeedbackButton() {
 
   return (
     <>
-      {/* 頂部列連結(不浮動、不擋頁面內容) */}
-      <a onClick={openModal} title="意見回饋"
-        style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+      {/* 放在淺藍 V1 條(連結樣式,不浮動、不擋內容) */}
+      <a onClick={openModal} title="給我們評分 / 留言"
+        style={{ color: "#0958d9", fontWeight: 600, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", whiteSpace: "nowrap" }}>
         <CommentOutlined /><span>意見回饋</span>
       </a>
 

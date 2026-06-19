@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { BuildingSummary, DashboardSummary, PowerFlowResult, TopologyGraph, TransformerDetail } from "../api/types";
 import CampusMapStatic, { type MapMarker } from "../components/CampusMapStatic";
+import FeedbackButton from "../components/FeedbackButton";
 import FocusPanel from "../components/FocusPanel";
 import SingleLineSvg from "../components/SingleLineSvg";
 import StatsPanel from "../components/StatsPanel";
@@ -114,6 +115,7 @@ export default function MapExplorer() {
             <a onClick={dismissGuide} title="不再顯示" style={{ color: "#52c41a", fontSize: 15, lineHeight: 1, padding: "0 2px" }}>×</a>
           </>
         )}
+        <span style={{ marginLeft: "auto", display: "inline-flex" }}><FeedbackButton /></span>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
