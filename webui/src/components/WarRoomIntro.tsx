@@ -105,8 +105,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
       const sX = W / MAP_W, sY = H / MAP_H;           // 填滿整個畫面
-      const yOff = H * 0.07;                          // 整體下移,上方留白給標題
-      const TX = (x: number) => x * sX, TY = (y: number) => y * sY + yOff;
+      const TX = (x: number) => x * sX, TY = (y: number) => y * sY;
       const SXc = TX(sx), SYc = TY(sy);
 
       // === 鏡頭:醞釀時держ特寫 X → 點火後才拉遠揭示 ===
@@ -119,7 +118,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       if (img && img.complete && img.naturalWidth) {
         ctx.globalAlpha = Math.min(0.14, Math.max(0, (e - 0.3) / 2.2));
         ctx.filter = "grayscale(1) brightness(1.8)";
-        ctx.drawImage(img, 0, yOff, W, H);
+        ctx.drawImage(img, 0, 0, W, H);
         ctx.filter = "none"; ctx.globalAlpha = 1;
       }
 
@@ -281,14 +280,13 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           ctx.fillStyle = "#7db8ff"; ctx.font = `bold ${46 + beat * 6}px ${MONO}`;
           ctx.shadowBlur = 14 + beat * 14; ctx.shadowColor = "#5fa8ff"; ctx.globalAlpha = Math.min(1, e / 0.6);
           ctx.fillText(`${(chgH * 11.4).toFixed(1)} kV`, W / 2, 98); ctx.shadowBlur = 0;
-        } else if (pct < 1 || e < SURGE + 0.6) {
-          // 送電中才畫頂部進度;全線帶電後不畫,讓位給最上方的 DOM 標題
-          const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : "SYSTEM ENERGIZING · 送電中";
-          ctx.fillStyle = e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`;
+        } else {
+          const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
+          ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`;
           ctx.fillText(label, W / 2, 24);
           const bw = 320, bx = W / 2 - bw / 2, by = 36;
           ctx.strokeStyle = "rgba(120,160,220,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 6);
-          ctx.fillStyle = "#5fa8ff"; ctx.shadowBlur = 10; ctx.shadowColor = "#5fa8ff";
+          ctx.fillStyle = pct >= 1 ? "#3ad07a" : "#5fa8ff"; ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
           ctx.fillRect(bx, by, bw * pct, 6); ctx.shadowBlur = 0;
           ctx.fillStyle = "#cfe2ff"; ctx.font = `13px ${MONO}`; ctx.textAlign = "left";
           ctx.fillText(`${Math.round(pct * 100)}%`, bx + bw + 12, by + 6);
@@ -317,19 +315,18 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
     <div style={{ position: "absolute", inset: 0, background: "#010206" }}>
       <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       <style>{`
-        @keyframes wrIntroTitle { 0% { opacity: 0; transform: scale(1.16); letter-spacing: 16px } 60% { opacity: 1 } 100% { opacity: 1; transform: scale(1); letter-spacing: 6px } }
+        @keyframes wrIntroTitle { 0% { opacity: 0; transform: scale(1.22); letter-spacing: 22px } 60% { opacity: 1 } 100% { opacity: 1; transform: scale(1); letter-spacing: 8px } }
         @keyframes wrIntroBtn { to { opacity: 1; transform: none } }
       `}</style>
       <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
 
-      {/* 標題釘最上方(全線帶電後接手 canvas 頂部位置)、按鈕留下緣 */}
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "14px 0 8%", pointerEvents: "none" }}>
-        <div style={{ opacity: 0, animation: "wrIntroTitle 1s ease 5.0s forwards", textAlign: "center" }}>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: 6, textShadow: "0 0 22px #1677ffaa", color: "#eaf2ff" }}>GRID ENERGIZED</div>
-          <div style={{ fontSize: 13, letterSpacing: 4, color: "#9ccbff", marginTop: 3 }}>北電錶 · 全線帶電</div>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: "9%", pointerEvents: "none" }}>
+        <div style={{ opacity: 0, animation: "wrIntroTitle 0.9s cubic-bezier(.2,.8,.2,1) 5.4s forwards", textAlign: "center" }}>
+          <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: 8, textShadow: "0 0 40px #1677ffcc", color: "#eaf2ff" }}>GRID ENERGIZED</div>
+          <div style={{ fontSize: 18, letterSpacing: 6, color: "#9ccbff", marginTop: 6 }}>北電錶 · 全線帶電</div>
         </div>
         <button onClick={onEnter} style={{
-          opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 6.6s forwards", pointerEvents: "auto",
+          marginTop: 28, opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 6.6s forwards", pointerEvents: "auto",
           background: "rgba(95,168,255,0.10)", border: "1px solid rgba(120,180,255,0.5)", color: "#cfe2ff", fontFamily: MONO,
           fontSize: 15, letterSpacing: 3, padding: "11px 30px", cursor: "pointer", borderRadius: 2,
         }}>進入系統 ▸</button>
