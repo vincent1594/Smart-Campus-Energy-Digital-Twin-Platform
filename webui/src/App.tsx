@@ -27,30 +27,35 @@ export default function App() {
 
   return (
     <>
-      {/* 儀表板:entered 後掛載,於開場淡出時於底下淡入(交叉融接,KPI 同步跳數) */}
+      <style>{"@keyframes bgDashEnter{from{opacity:0;transform:scale(1.035)}to{opacity:1;transform:none}}"}</style>
+
+      {/* 儀表板:entered 後掛載;由開場進來時從微放大收回 + 淡入(鏡頭落定,KPI 同步跳數) */}
       {entered && (
-        <AppLayout>
-          <Routes>
-            <Route path="/" element={<MapExplorer />} />
-            <Route path="/map" element={<CampusMapPage />} />
-            <Route path="/buildings" element={<BuildingExplorer />} />
-            <Route path="/assets" element={<AssetExplorer />} />
-            <Route path="/scenario" element={<Scenario />} />
-            <Route path="/demand" element={<DemandManagement />} />
-            <Route path="/eui" element={<EnergyIntensity />} />
-            <Route path="/history" element={<HistoryTrends />} />
-            <Route path="/alarms" element={<Alarms />} />
-            <Route path="/report" element={<Report />} />
-            <Route path="/verify" element={<VerificationCenter />} />
-          </Routes>
-        </AppLayout>
+        <div style={{ height: "100vh", animation: seen ? undefined : "bgDashEnter .85s cubic-bezier(.2,.7,.2,1) both" }}>
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<MapExplorer />} />
+              <Route path="/map" element={<CampusMapPage />} />
+              <Route path="/buildings" element={<BuildingExplorer />} />
+              <Route path="/assets" element={<AssetExplorer />} />
+              <Route path="/scenario" element={<Scenario />} />
+              <Route path="/demand" element={<DemandManagement />} />
+              <Route path="/eui" element={<EnergyIntensity />} />
+              <Route path="/history" element={<HistoryTrends />} />
+              <Route path="/alarms" element={<Alarms />} />
+              <Route path="/report" element={<Report />} />
+              <Route path="/verify" element={<VerificationCenter />} />
+            </Routes>
+          </AppLayout>
+        </div>
       )}
 
-      {/* 開場覆蓋層:enter 後淡出(.7s)再卸載,露出底下的儀表板 */}
+      {/* 開場覆蓋層:enter 後「往中心推進 + 淡出」(.85s),像鏡頭穿過開場落進儀表板 */}
       {showIntro && (
         <div style={{ position: "fixed", inset: 0, background: "#02030a", overflow: "hidden", zIndex: 1000,
-          opacity: entered ? 0 : 1, transition: "opacity .7s ease", pointerEvents: entered ? "none" : "auto" }}
-          onTransitionEnd={() => { if (entered) setShowIntro(false); }}>
+          opacity: entered ? 0 : 1, transform: entered ? "scale(1.14)" : "none", transformOrigin: "50% 52%",
+          transition: "opacity .85s ease, transform .85s cubic-bezier(.4,0,.6,1)", pointerEvents: entered ? "none" : "auto" }}
+          onTransitionEnd={(e) => { if (entered && e.propertyName === "opacity") setShowIntro(false); }}>
           <WarRoomBackdrop />
           <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
             <WarRoomIntro onEnter={enter} />
