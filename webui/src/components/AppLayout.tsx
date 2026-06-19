@@ -3,13 +3,14 @@ import {
   EnvironmentOutlined, FileTextOutlined, FundProjectionScreenOutlined,
   HomeOutlined, LineChartOutlined, SafetyCertificateOutlined, ThunderboltOutlined, UserOutlined,
 } from "@ant-design/icons";
-import { EyeOutlined } from "@ant-design/icons";
-import { Layout, Menu, Space, Tooltip } from "antd";
+import { DownOutlined, EyeOutlined } from "@ant-design/icons";
+import { Layout, Menu, Popover, Space, Tooltip } from "antd";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { api } from "../api/client";
 import type { VisitStats } from "../api/types";
+import AccountPanel from "./AccountPanel";
 
 const { Header, Content } = Layout;
 
@@ -69,7 +70,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <VisitorBadge />
           <a onClick={() => { localStorage.removeItem("bg_intro_date"); window.location.reload(); }}
             style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 }} title="重新播放通電序列開場">重看開場</a>
-          <Space size={6}><UserOutlined /><span>總務處 admin</span></Space>
+          <Popover trigger="click" placement="bottomRight" content={<AccountPanel />} destroyTooltipOnHide>
+            <span style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }} title="帳號 / 訪客統計">
+              <UserOutlined /><span>總務處 admin</span><DownOutlined style={{ fontSize: 10, opacity: 0.7 }} />
+            </span>
+          </Popover>
         </Space>
       </Header>
 
