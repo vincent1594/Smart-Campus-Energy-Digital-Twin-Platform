@@ -1,10 +1,10 @@
 // 帳號面板:點 header 的「總務處 admin」展開。
 // 上:訪客統計(今日/累計 人數+次數 + 近 14 天迷你長條);下:登入表單(展示版)。
-import { Button, Divider, Input, Tag, Tooltip, message } from "antd";
+import { Button, Divider, Input, Rate, Tag, Tooltip, message } from "antd";
 import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { RecentVisit, VisitStats } from "../api/types";
+import type { FeedbackList, RecentVisit, VisitStats } from "../api/types";
 
 // ⚠ 展示用前端驗證(非真實安全);正式帳密/權限角色為 V2(見驗證中心路線圖)。
 const DEMO_USER = "admin";
@@ -16,10 +16,15 @@ export default function AccountPanel() {
   const [pwd, setPwd] = useState("");
   const [role, setRole] = useState<string | null>(() => localStorage.getItem("bg_role"));
   const [recent, setRecent] = useState<RecentVisit[]>([]);
+  const [fb, setFb] = useState<FeedbackList>();
 
   useEffect(() => { api.visitStats().then(setStats).catch(() => undefined); }, []);
-  // 最近訪客 IP 屬個資 → 僅登入後才抓
-  useEffect(() => { if (role) api.recentVisits(40).then(setRecent).catch(() => undefined); }, [role]);
+  // 最近訪客 IP / 回饋明細 屬個資 → 僅登入後才抓
+  useEffect(() => {
+    if (!role) return;
+    api.recentVisits(40).then(setRecent).catch(() => undefined);
+    api.feedbackList(50).then(setFb).catch(() => undefined);
+  }, [role]);
 
   const login = () => {
     if (acc.trim() === DEMO_USER && pwd === DEMO_PASS) {
@@ -87,6 +92,33 @@ export default function AccountPanel() {
               ))}
           </div>
           <div style={{ fontSize: 10, color: "#bbb", marginTop: 6 }}>IP 屬個資,僅登入後可見。</div>
+
+          {/* 使用者回饋(評分 + 留言)—— 僅管理者可見 */}
+          <Divider orientation="left" plain style={{ margin: "12px 0 6px", fontSize: 12 }}>
+            使用者回饋 <span style={{ color: "#bbb", fontWeight: 400 }}>({fb?.count ?? 0})</span>
+          </Divider>
+          {fb && fb.count > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 22, fontWeight: 700, color: "#faad14", lineHeight: 1 }}>{fb.average.toFixed(1)}</span>
+              <Rate disabled allowHalf value={fb.average} style={{ fontSize: 13 }} />
+              <span style={{ fontSize: 11, color: "#999" }}>· {fb.count} 則</span>
+            </div>
+          )}
+          <div style={{ maxHeight: 200, overflow: "auto", border: "1px solid #f0f0f0", borderRadius: 4 }}>
+            {!fb || fb.items.length === 0 ? <div style={{ fontSize: 11, color: "#bbb", padding: "8px 10px" }}>尚無回饋</div>
+              : fb.items.map((it, i) => (
+                <div key={i} style={{ padding: "6px 8px", borderBottom: "1px solid #fafafa" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <Rate disabled value={it.rating} style={{ fontSize: 11 }} />
+                      {it.role && <Tag color="blue" style={{ margin: 0, fontSize: 10, lineHeight: "16px", padding: "0 5px" }}>{it.role}</Tag>}
+                    </span>
+                    <span style={{ fontSize: 10, color: "#bbb", whiteSpace: "nowrap" }}>{it.ts.slice(5, 16).replace("T", " ")}</span>
+                  </div>
+                  {it.comment && <div style={{ fontSize: 12, color: "#444", marginTop: 3, lineHeight: 1.5 }}>{it.comment}</div>}
+                </div>
+              ))}
+          </div>
         </>
       ) : (
         <>
