@@ -1,7 +1,7 @@
 import {
   AlertOutlined, AppstoreOutlined, BarChartOutlined, DashboardOutlined,
   EnvironmentOutlined, FileTextOutlined, FundProjectionScreenOutlined,
-  HomeOutlined, LineChartOutlined, ThunderboltOutlined, UserOutlined,
+  HomeOutlined, LineChartOutlined, SafetyCertificateOutlined, ThunderboltOutlined, UserOutlined,
 } from "@ant-design/icons";
 import { Layout, Menu, Space } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -17,6 +17,7 @@ const topNav = [
   { key: "/history", label: "歷史趨勢" },
   { key: "/alarms", label: "告警紀錄" },
   { key: "/report", label: "報表匯出" },
+  { key: "/verify", label: "驗證中心" },
 ];
 
 const topIcon: Record<string, ReactNode> = {
@@ -24,6 +25,7 @@ const topIcon: Record<string, ReactNode> = {
   "/assets": <AppstoreOutlined />, "/scenario": <FundProjectionScreenOutlined />,
   "/demand": <ThunderboltOutlined />, "/eui": <BarChartOutlined />,
   "/history": <LineChartOutlined />, "/alarms": <AlertOutlined />, "/report": <FileTextOutlined />,
+  "/verify": <SafetyCertificateOutlined />,
 };
 
 export default function AppLayout({ children }: { children: ReactNode }) {
