@@ -3,7 +3,7 @@ import {
   DownOutlined, EnvironmentOutlined, FileTextOutlined, FundProjectionScreenOutlined,
   HomeOutlined, LineChartOutlined, SafetyCertificateOutlined, ThunderboltOutlined, UserOutlined,
 } from "@ant-design/icons";
-import { Layout, Menu, Popover, Space } from "antd";
+import { Layout, Menu, Popover, Space, message } from "antd";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
@@ -44,6 +44,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       sessionStorage.setItem("bg_visited", "1");
       api.recordVisit(vid).catch(() => undefined);
     }
+  }, []);
+
+  // 冷啟動提示:後端閒置會休眠,首次喚醒約 30–60 秒。慢於 3.5s 才顯示「喚醒中」提示,回應即消。
+  useEffect(() => {
+    let done = false;
+    let hide: (() => void) | undefined;
+    const t = setTimeout(() => {
+      if (!done) hide = message.loading("伺服器喚醒中,免費方案首次開啟約需 30–60 秒…", 0);
+    }, 3500);
+    api.health().catch(() => undefined).finally(() => { done = true; clearTimeout(t); hide?.(); });
   }, []);
 
   return (

@@ -100,4 +100,5 @@ export const api = {
   bill: (req: BillRequest) => post<MonthlyBill>("/api/demand/bill", req),
   recordVisit: (visitorId: string) => post<VisitStats>("/api/visit", { visitor_id: visitorId }),
   visitStats: () => get<VisitStats>("/api/visit/stats"),
+  health: () => get<{ status: string }>("/api/health"),
 };
