@@ -10,6 +10,25 @@ import type { DashboardSummary, PowerFlowResult } from "../api/types";
 // 示意日負載曲線(形狀),於基準時點縮放對齊真實總負載
 const TREND_SHAPE = [1900, 1500, 1300, 1400, 2600, 3800, 4200, 4300, 4100, 3600, 2800, 2100, 1700];
 
+// KPI 數字「從 0 跳數到真實值」—— 本次 session 只跳一次(進場時),之後值變動直接顯示。
+let kpiCounted = false;
+function CountUp({ value, decimals = 0, format }: { value: number; decimals?: number; format?: (n: number) => string }) {
+  const [disp, setDisp] = useState(kpiCounted ? value : 0);
+  useEffect(() => {
+    if (kpiCounted) { setDisp(value); return; }
+    let raf = 0, t0 = 0;
+    const step = (ts: number) => {
+      if (!t0) t0 = ts;
+      const p = Math.min(1, (ts - t0) / 1000);
+      setDisp(value * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) raf = requestAnimationFrame(step); else kpiCounted = true;
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{format ? format(disp) : disp.toFixed(decimals)}</>;
+}
+
 // 南臺科技大學(台南永康)
 const LAT = 22.9925, LON = 120.2255;
 
@@ -54,7 +73,7 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
   const Demo = <Tag style={{ marginInlineStart: 4, color: C.muted, borderColor: C.border, background: "transparent", fontSize: 10 }}>示意</Tag>;
   const env = useEnv();
 
-  const Kpi = ({ label, value, unit, accent, demo, extra, icon }: { label: React.ReactNode; value: string | number; unit?: string; accent: string; demo?: boolean; extra?: string; icon?: React.ReactNode }) => (
+  const Kpi = ({ label, value, unit, accent, demo, extra, icon }: { label: React.ReactNode; value: React.ReactNode; unit?: string; accent: string; demo?: boolean; extra?: string; icon?: React.ReactNode }) => (
     <div style={{ ...panel, padding: "8px 10px 8px 12px", flex: 1, borderLeft: `3px solid ${accent}`, position: "relative", overflow: "hidden" }}>
       {icon && <span style={{ position: "absolute", top: 8, right: 10, color: accent, opacity: dark ? 0.5 : 0.26, fontSize: 16 }}>{icon}</span>}
       <div style={{ color: C.muted, fontSize: 12 }}>{label}{demo && Demo}</div>
@@ -123,16 +142,16 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
-        <Kpi label="總負載" value={dash.total_load_kw} unit="kW" accent={C.accent} extra={`${dash.total_load_kvar} kVAR`} icon={<ThunderboltOutlined />} />
-        <Kpi label="系統損耗" value={dash.system_loss_kw} unit="kW" accent="#fa8c16" extra={`${dash.system_loss_kvar} kVAR`} icon={<FireOutlined />} />
+        <Kpi label="總負載" value={<CountUp value={dash.total_load_kw} decimals={0} />} unit="kW" accent={C.accent} extra={`${dash.total_load_kvar} kVAR`} icon={<ThunderboltOutlined />} />
+        <Kpi label="系統損耗" value={<CountUp value={dash.system_loss_kw} decimals={1} />} unit="kW" accent="#fa8c16" extra={`${dash.system_loss_kvar} kVAR`} icon={<FireOutlined />} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <Kpi label="最低電壓" value={dash.min_voltage_pu} unit="pu" accent={dash.min_voltage_pu < 0.95 ? "#ff4d4f" : "#52c41a"} icon={<DashboardOutlined />} />
-        <Kpi label="最大變壓器" value={dash.max_transformer_load_ratio_percent} unit="%" accent="#faad14" extra={maxTr?.transformer_name} icon={<DeploymentUnitOutlined />} />
+        <Kpi label="最低電壓" value={<CountUp value={dash.min_voltage_pu} decimals={4} />} unit="pu" accent={dash.min_voltage_pu < 0.95 ? "#ff4d4f" : "#52c41a"} icon={<DashboardOutlined />} />
+        <Kpi label="最大變壓器" value={<CountUp value={dash.max_transformer_load_ratio_percent} decimals={1} />} unit="%" accent="#faad14" extra={maxTr?.transformer_name} icon={<DeploymentUnitOutlined />} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <Kpi label="系統總功因" value={sysPf.toFixed(2)} accent={pfColor} icon={<PercentageOutlined />} />
-        <Kpi label="目前碳排放" value={Math.round((dash.grid_import_kw || 0) * CO2_EF).toLocaleString()} unit="kg/h" accent="#9e7d4e" icon={<CloudOutlined />} />
+        <Kpi label="系統總功因" value={<CountUp value={sysPf} decimals={2} />} accent={pfColor} icon={<PercentageOutlined />} />
+        <Kpi label="目前碳排放" value={<CountUp value={(dash.grid_import_kw || 0) * CO2_EF} format={(n) => Math.round(n).toLocaleString()} />} unit="kg/h" accent="#9e7d4e" icon={<CloudOutlined />} />
       </div>
 
       {/* 日負載曲線 */}
