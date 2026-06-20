@@ -70,6 +70,49 @@ const REPORTS: ReportDef[] = [
     ],
   },
   {
+    key: "replacement-priority",
+    title: "變壓器汰換優先序",
+    desc: "依風險評分排序:屆齡、負載率、溫度、效率四因子加權,附風險等級與評估理由(資本門排序依據)。",
+    filename: "變壓器汰換優先序",
+    load: () => api.replacementPriority(),
+    cols: [
+      { label: "風險等級", value: (r) => r.risk_level },
+      { label: "風險分數", value: (r) => r.risk_score },
+      { label: "變壓器編號", value: (r) => r.tag },
+      { label: "建築物", value: (r) => r.building },
+      { label: "廠牌", value: (r) => r.brand },
+      { label: "製造年份", value: (r) => r.year },
+      { label: "屆齡(年)", value: (r) => r.age_years ?? "" },
+      { label: "容量(kVA)", value: (r) => r.capacity_kva ?? "" },
+      { label: "型式", value: (r) => r.trafo_type },
+      { label: "負載率(%)", value: (r) => r.load_ratio_percent ?? "" },
+      { label: "溫度(°C)", value: (r) => r.temperature_c ?? "" },
+      { label: "效率", value: (r) => r.efficiency ?? "" },
+      { label: "評估理由", value: (r) => r.reason },
+    ],
+  },
+  {
+    key: "replacement-economics",
+    title: "變壓器汰換投資回收",
+    desc: "各台換新成本、年省電量/電費、回收年限(以後端預設單價/電價估算,供簽呈金額參考)。",
+    filename: "變壓器汰換投資回收",
+    load: async () => (await api.replacementEconomics()).items,
+    cols: [
+      { label: "風險等級", value: (r) => r.risk_level },
+      { label: "風險分數", value: (r) => r.risk_score },
+      { label: "變壓器編號", value: (r) => r.tag },
+      { label: "建築物", value: (r) => r.building },
+      { label: "容量(kVA)", value: (r) => r.capacity_kva ?? "" },
+      { label: "型式", value: (r) => r.trafo_type },
+      { label: "屆齡(年)", value: (r) => r.age_years ?? "" },
+      { label: "負載率(%)", value: (r) => r.load_ratio_percent ?? "" },
+      { label: "換新成本(NT$)", value: (r) => r.capex_nt },
+      { label: "年省電量(kWh)", value: (r) => r.annual_saving_kwh },
+      { label: "年省電費(NT$)", value: (r) => r.annual_saving_nt },
+      { label: "回收年限(年)", value: (r) => r.payback_years ?? "" },
+    ],
+  },
+  {
     key: "buildings",
     title: "建築清單",
     desc: "各棟估計負載、所屬變壓器與饋線。",
@@ -122,6 +165,39 @@ const REPORTS: ReportDef[] = [
       { label: "類型", value: (r) => r.type },
       { label: "設備", value: (r) => r.equipment },
       { label: "訊息", value: (r) => r.message },
+    ],
+  },
+  {
+    key: "contract-optimize",
+    title: "契約容量最佳化",
+    desc: "現況 vs 建議契約容量、預估年省金額,附各月實測尖峰與超約罰款(以後端已存契約/費率設定計算)。",
+    filename: "契約容量最佳化",
+    load: async () => {
+      const o = await api.contractOptimize();
+      const rows: { item: string; value: string | number }[] = [
+        { item: "基本電費單價(NT$/kW/月)", value: o.rate_nt_per_kw },
+        { item: "尖峰錨點(夏季實測, kW)", value: o.summer_peak_kw },
+        { item: "假設高需量月數", value: o.high_months },
+        { item: "假設離峰季尖峰比例", value: o.offseason_ratio },
+        { item: "現況契約容量(kW)", value: o.current_contract_kw },
+        { item: "現況年度費用(NT$)", value: o.current_annual_nt },
+        { item: "現況年度罰款(NT$)", value: o.current_penalty_nt },
+        { item: "建議契約容量(kW)", value: o.recommended_contract_kw },
+        { item: "建議年度費用(NT$)", value: o.recommended_annual_nt },
+        { item: "建議年度罰款(NT$)", value: o.recommended_penalty_nt },
+        { item: "調整契約估省(NT$/年)", value: o.annual_savings_nt },
+        { item: "削峰至契約內可省(NT$/年)", value: o.peakshave_savings_nt },
+      ];
+      o.measured.forEach((m) =>
+        rows.push({
+          item: `實測尖峰 ${m.month}`,
+          value: `${m.peak_kw} kW｜超約 ${m.overshoot_kw} kW｜罰款 NT$ ${m.penalty_nt}`,
+        }));
+      return rows;
+    },
+    cols: [
+      { label: "項目", value: (r) => r.item },
+      { label: "數值", value: (r) => r.value },
     ],
   },
   {
@@ -185,14 +261,19 @@ export default function Report() {
     <>
       <div style={{ color: "#999", fontSize: 12, marginBottom: 8 }}>先預覽再匯出 · CSV(UTF-8,Excel 可直接開啟)· 取目前現況快照</div>
       <List
+        grid={{ gutter: 10, xs: 1, sm: 2, md: 2, lg: 3, xl: 3, xxl: 3 }}
         dataSource={REPORTS}
         renderItem={(r) => (
-          <List.Item
-            actions={[
-              <Button key="pv" type="primary" icon={<EyeOutlined />} onClick={() => preview(r)}>預覽</Button>,
-              <Button key="dl" type="link" icon={<DownloadOutlined />} loading={busy === r.key} onClick={() => directExport(r)}>直接匯出</Button>,
-            ]}>
-            <List.Item.Meta title={<span>{r.title} <Tag color="blue">CSV</Tag></span>} description={r.desc} />
+          <List.Item style={{ marginBottom: 10 }}>
+            <Card size="small" hoverable
+              title={<span style={{ fontSize: 13 }}>{r.title} <Tag color="blue">CSV</Tag></span>}
+              styles={{ body: { padding: "8px 12px" } }}>
+              <div style={{ color: "#888", fontSize: 12, lineHeight: 1.4, minHeight: 50, marginBottom: 8 }}>{r.desc}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Button size="small" type="primary" icon={<EyeOutlined />} onClick={() => preview(r)}>預覽</Button>
+                <Button size="small" icon={<DownloadOutlined />} loading={busy === r.key} onClick={() => directExport(r)}>匯出</Button>
+              </div>
+            </Card>
           </List.Item>
         )}
       />
