@@ -20,7 +20,7 @@ export interface ProvenanceItem {
 
 export const PROVENANCE: ProvenanceItem[] = [
   // 🟢 實測
-  { feature: "逐時負載(11 饋線)", tier: "measured", source: "校內 EMS 北電錶實測 2023/05–06", note: "歷史趨勢、契約最佳化尖峰錨點、XGBoost 訓練皆源此;僅 2 個月", page: "歷史趨勢" },
+  { feature: "逐時負載(11 饋線)", tier: "measured", source: "校內 EMS 北電錶實測 2023/03–06(各饋線)、9–10(僅總量)", note: "歷史趨勢、契約尖峰錨點、預測訓練皆源此;各饋線約 4 個月,缺 7–8 月暑假與整年", page: "歷史趨勢" },
   { feature: "變壓器銘牌規格", tier: "measured", source: "各站變壓器規格容量表 (Excel)", note: "設備查詢「規格明細」忠實呈現,不對應潮流模型", page: "設備查詢" },
   { feature: "樓地板面積", tier: "measured", source: "112 年校舍統計表", note: "建築查詢 / EUI 分母", page: "設備查詢 · 用電強度" },
   { feature: "契約容量 3,250 kW", tier: "measured", source: "營繕組確認", note: "北電錶經常契約;影響全部需量/罰款計算", page: "能源管理" },
@@ -28,7 +28,7 @@ export const PROVENANCE: ProvenanceItem[] = [
 
   // 🔵 模型推算
   { feature: "電壓 / 負載率 / 系統損耗 / 市電進線", tier: "model", source: "pandapower Newton-Raphson 潮流", note: "單時點 / 情境快照", page: "校園總覽 · 規劃模擬" },
-  { feature: "逐時負載預測", tier: "model", source: "XGBoost(11 饋線各一模型)", note: "驅動需量預警 / 電費 / EUI 年用電 / 模擬時點", page: "能源管理 · 規劃模擬" },
+  { feature: "逐時負載預測", tier: "model", source: "XGBoost(11 饋線各一模型)", note: "需量預測加學期行事曆+近期負載(lag)特徵 → 逐週不同、含假日(3–5月訓/6月驗,MAPE~20%);電費 / EUI 年用電 / 模擬時點用純時間版", page: "能源管理 · 規劃模擬" },
 
   // 🟡 假設·待校正
   { feature: "台電三段式時間電價費率", tier: "assumption", source: "預設範例值", note: "請依台電最新電價表 / 自家合約校正", page: "能源管理 · 時間電價" },
@@ -46,12 +46,13 @@ export const PROVENANCE: ProvenanceItem[] = [
 ];
 
 export const LIMITATIONS: string[] = [
-  "XGBoost 僅有時刻/星期特徵,無氣溫與月份 → 夏季尖峰可能偏低、不反映季節差異。",
+  "需量預測已加學期行事曆+近期負載特徵(逐週不同、含假日);但電費/EUI 年預測仍為純時間版,無季節 → 夏季可能偏低。實測氣溫對本校負載預測力弱(已驗證),真正驅動為學期行事曆。",
+  "需量預測為 holdout(3–5月訓練、6月驗證);無 7–8 月暑假資料,故無法預測暑假等未見過的狀態。",
   "逐時 kW 以 1 小時積分為度數;台電以 15 分鐘需量計,屬規劃估算。",
-  "超約罰款簡化為單一經常契約 vs 全月最高需量;未計國定假日。",
+  "超約罰款簡化為單一經常契約 vs 全月最高需量。",
   "EUI 各棟以負載占比近似;樓地板 < 2,000 m² 易受分母放大失真,僅供參考。",
   "設備汰換為相對風險排序,需現場檢測(油測 / 紅外線)佐證。",
-  "全平台為單時點 / 情境快照,無長期時序資料庫(EMS 實測僅 2 個月)。",
+  "全平台為單時點 / 情境快照,無長期時序資料庫(EMS 各饋線約 4 個月〔3–6月〕、另 9–10 月僅總量;缺 7–8 月暑假與整年)。",
 ];
 
 // 模型(pandapower 拓樸)⇄ Excel 規格表 涵蓋度核對 —— 兩者為獨立來源
@@ -88,6 +89,7 @@ export const VERIFY: VerifyItem[] = [
   { item: "實際超約罰款帳單", done: false, owner: "營繕組", impact: "對照估算 ~NT$ 231 萬/年準不準" },
   { item: "變壓器實際屆齡 / 廠牌年份", done: false, owner: "現場 / 財產清冊", impact: "核對汰換優先序" },
   { item: "學校 EUI 歷史申報值", done: false, owner: "營繕組", impact: "校正節能基準" },
+  { item: "學期行事曆考試週 / 學期末確切日期", done: false, owner: "教務 / 營繕組", impact: "校正需量預測學期末降載(現僅含端午/清明連假)" },
   { item: "是否功因不足被罰", done: false, owner: "營繕組", impact: "決定是否新增功因防線" },
   { item: "未建模建築(E圖書資訊館 / H1·H6 宿舍等 15 台)是否屬南電錶", done: false, owner: "營繕組", impact: "釐清模型涵蓋範圍;模型負載率/電壓僅代北電錶區" },
   { item: "南電錶逐時 / 拓樸資料", done: false, owner: "營繕組", impact: "達成全校覆蓋" },
@@ -104,6 +106,8 @@ export const ROADMAP: RoadmapItem[] = [
   { title: "歷史趨勢 + 互動單線圖", status: "done" },
   { title: "驗證中心", status: "done" },
   { title: "設備汰換投資回收(NT$/回收年限)", status: "done", note: "高風險群換新總額/年省/回收年限" },
+  { title: "需量預測升級:行事曆 + 近期負載(逐週不同)", status: "done", note: "3–5月訓/6月驗 MAPE~20%;預測vs實際對照、點圖查逐時各饋線" },
+  { title: "擴充 EMS 月份(9–10月總量 / 7–8月暑假)", status: "planned", note: "9–10 僅總量需另建總量模型;補暑假才能預測整年" },
   { title: "功因罰款防線", status: "planned" },
   { title: "南電錶建模(全校覆蓋)", status: "planned" },
   { title: "即時 EMS 串接", status: "planned" },
