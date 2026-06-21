@@ -115,7 +115,10 @@ export default function MapExplorer() {
             <a onClick={dismissGuide} title="不再顯示" style={{ color: "#52c41a", fontSize: 15, lineHeight: 1, padding: "0 2px" }}>×</a>
           </>
         )}
-        <span style={{ marginLeft: "auto", display: "inline-flex" }}><FeedbackButton /></span>
+        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{ color: "#555", fontSize: 12, whiteSpace: "nowrap" }}>用得順手嗎?歡迎留下您的</span>
+          <FeedbackButton />
+        </span>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
