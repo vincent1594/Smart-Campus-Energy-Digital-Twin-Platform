@@ -1,4 +1,4 @@
-// 歷史趨勢:EMS 北電錶實測逐時(2023/05–06)聚合 —— 每日尖峰/平均、典型日曲線、各饋線占比。
+// 歷史趨勢:EMS 北電錶實測逐時(2023/03–06)聚合 —— 每日尖峰/平均、典型日曲線、各饋線占比。
 import { Card, Spin, Statistic, message } from "antd";
 import { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
