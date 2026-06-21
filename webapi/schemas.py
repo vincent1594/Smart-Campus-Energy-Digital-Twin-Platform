@@ -343,7 +343,8 @@ class DemandStatus(BaseModel):
 
 class HourlyDemand(BaseModel):
     hour: int                             # 0~23
-    demand_kw: float
+    demand_kw: float                      # 預測
+    actual_kw: Optional[float] = None     # EMS 實測 (資料期內才有,供預測vs實際比較)
 
 
 class FeederDemand(BaseModel):
@@ -373,6 +374,10 @@ class DemandForecast(BaseModel):
     status: str = "OK"                    # OK / WARNING / EXCEED
     peak_feeders: list[FeederDemand]      # 尖峰時刻各饋線需量 (降冪)
     shed_suggestions: list[ShedSuggestion]
+    # 預測 vs 實際 (資料期內才有;未來日期為 None)
+    actual_peak_kw: Optional[float] = None
+    mae_kw: Optional[float] = None        # 當日逐時平均絕對誤差
+    mape_pct: Optional[float] = None      # 當日逐時 MAPE
 
 
 # ---------- 契約容量最佳化 (營繕組殺手功能) ----------

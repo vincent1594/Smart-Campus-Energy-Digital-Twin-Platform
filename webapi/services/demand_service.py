@@ -62,6 +62,20 @@ def _predict_day(date: str) -> list[dict]:
     return predict_day_feeders(date, lag=True)
 
 
+def _actual_day(date: str) -> list[float | None]:
+    """該日 0-23 時 EMS 實測總量 (Σ VCB1~11,與預測同口徑);無實測的時段為 None。"""
+    import pandas as pd
+
+    from analysis.xgb_forecast import FEEDER_COLS
+    from data.ems_loads import _read_ems
+
+    t = _read_ems()
+    day = t[t["dt"].dt.strftime("%Y-%m-%d") == date]
+    by_hour = {int(r["dt"].hour): sum(float(r[c]) for c in FEEDER_COLS)
+               for _, r in day.iterrows()}
+    return [round(by_hour[h], 1) if h in by_hour else None for h in range(24)]
+
+
 def get_forecast(
     date: str,
     contract_kw: float = CONTRACT_CAPACITY_KW,
@@ -72,7 +86,18 @@ def get_forecast(
         rows = _predict_day(date)
         _pred_cache[date] = rows
 
-    hourly = [HourlyDemand(hour=h, demand_kw=round(sum(rows[h].values()), 1)) for h in range(24)]
+    actual = _actual_day(date)            # EMS 實測 (資料期內才有),供預測 vs 實際
+    hourly = [
+        HourlyDemand(hour=h, demand_kw=round(sum(rows[h].values()), 1), actual_kw=actual[h])
+        for h in range(24)
+    ]
+    # 當日逐時準度 (僅就有實測的小時計算)
+    pairs = [(sum(rows[h].values()), actual[h]) for h in range(24) if actual[h] is not None]
+    actual_peak_kw = round(max((a for _, a in pairs), default=0.0), 1) if pairs else None
+    mae_kw = round(sum(abs(p - a) for p, a in pairs) / len(pairs), 1) if pairs else None
+    mape_pct = (round(sum(abs(p - a) / a for p, a in pairs if a) / len(pairs) * 100, 1)
+                if pairs else None)
+
     peak_hour = max(range(24), key=lambda h: sum(rows[h].values()))
     peak_row = rows[peak_hour]
     peak_kw = round(sum(peak_row.values()), 1)
@@ -122,4 +147,7 @@ def get_forecast(
         status=demand_status(util),
         peak_feeders=peak_feeders,
         shed_suggestions=shed,
+        actual_peak_kw=actual_peak_kw,
+        mae_kw=mae_kw,
+        mape_pct=mape_pct,
     )

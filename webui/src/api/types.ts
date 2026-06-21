@@ -262,6 +262,7 @@ export interface DemandStatus {
 export interface HourlyDemand {
   hour: number;
   demand_kw: number;
+  actual_kw?: number | null;   // EMS 實測 (資料期內才有)
 }
 
 export interface FeederDemand {
@@ -289,6 +290,9 @@ export interface DemandForecast {
   status: string;          // OK / WARNING / EXCEED
   peak_feeders: FeederDemand[];
   shed_suggestions: ShedSuggestion[];
+  actual_peak_kw?: number | null;
+  mae_kw?: number | null;
+  mape_pct?: number | null;
 }
 
 // ---------- 歷史趨勢 (EMS 實測) ----------
