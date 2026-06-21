@@ -36,6 +36,43 @@ def _read_ems():
     return t.dropna(subset=["dt"])
 
 
+def _read_one_ems(f):
+    """讀單一 EMS 檔 → DataFrame(dt + 各饋線);非完整饋線格式(如僅總盤)回 None。"""
+    try:
+        try:
+            t = pd.read_excel(f, sheet_name=0, header=None)
+        except Exception:  # noqa: BLE001 - 舊版 HTML 偽 .xls 後備
+            t = pd.read_html(f)[0]
+    except Exception:  # noqa: BLE001
+        return None
+    if t.shape[1] < len(_COLS):            # 欄數不足(如只有總盤2欄)→ 非各饋線檔,略過
+        return None
+    t = t.iloc[:, :len(_COLS)].copy()
+    t.columns = _COLS
+    t = t.drop(0).reset_index(drop=True)
+    t["dt"] = pd.to_datetime(t["dt"], errors="coerce")
+    for c in _COLS[1:]:
+        t[c] = pd.to_numeric(t[c], errors="coerce")
+    return t.dropna(subset=["dt"])
+
+
+def read_feeder_ems_all():
+    """合併 EMS 內所有「各饋線」檔(3-4、5-6…),依 dt 排序去重。
+
+    僅含總盤(無 VCB 分項)的檔(如 9-10月 11209-10)會自動略過,因模型需逐饋線。
+    找不到任何完整檔時退回單檔 _read_ems()。
+    """
+    frames = []
+    for f in sorted(glob.glob(str(_EMS_DIR / "11*(北)*"))):
+        df = _read_one_ems(f)
+        if df is not None:
+            frames.append(df)
+    if not frames:
+        return _read_ems()
+    return (pd.concat(frames, ignore_index=True)
+            .drop_duplicates("dt").sort_values("dt").reset_index(drop=True))
+
+
 def get_feeder_kw(timestamp=DEFAULT_TIMESTAMP):
     """回傳該時刻各饋線實測 kW {VCBx: kw}。"""
     t = _read_ems()
