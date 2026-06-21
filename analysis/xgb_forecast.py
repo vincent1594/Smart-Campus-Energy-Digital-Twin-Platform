@@ -183,7 +183,10 @@ _LAGS = (24, 168)                                # 昨日同時、上週同時 (
 
 
 def _ems_sorted():
-    return _load_ems().sort_values("dt").reset_index(drop=True)
+    """所有可用「各饋線」月份 (3-4、5-6…) 合併排序,供 lag 模型訓練/查值。"""
+    sys.path.insert(0, str(ROOT))
+    from data.ems_loads import read_feeder_ems_all
+    return read_feeder_ems_all().sort_values("dt").reset_index(drop=True)
 
 
 def _feeder_series(t):
@@ -203,9 +206,9 @@ def _lag_frame(series_c, when):
 def train_lag_model(save=True):
     """時間&行事曆&近期實測(lag) 特徵,各饋線一模型。
 
-    嚴格 holdout:**只用 5 月訓練、只驗 6 月**,印 6 月驗證 MAE/MAPE/R²,存 5 月模型。
-    lag 特徵在 6 月預測時取「6 月當週/前一日實測」為輸入,故逐週仍不同;但端午/
-    考試等 6 月才有的事件 5 月未見過,屬誠實 holdout 的限制 (預測會較差)。
+    嚴格 holdout:**6 月之前 (3-5月) 訓練、只驗 6 月**,印 6 月驗證 MAE/MAPE/R²,存模型。
+    3-4 月含清明/兒童節連假,模型訓練時即見過「放假→低載」→ 6 月端午等假日預測改善。
+    lag 特徵在 6 月預測取「當週/前一日實測」為輸入,故逐週仍不同。
     """
     import joblib
     import xgboost as xgb
@@ -220,7 +223,7 @@ def train_lag_model(save=True):
     for c in FEEDER_COLS:
         valid &= lagf[c].notna().all(axis=1).values
     month = t["dt"].dt.month.values
-    tr_idx = np.where(valid & (month == 5))[0]   # 訓練 = 5 月
+    tr_idx = np.where(valid & (month < 6))[0]    # 訓練 = 6 月之前 (3-5月)
     te_idx = np.where(valid & (month == 6))[0]   # 驗證 = 6 月
 
     params = dict(n_estimators=400, max_depth=5, learning_rate=0.05,
@@ -239,7 +242,7 @@ def train_lag_model(save=True):
     ytot = t[FEEDER_COLS].sum(axis=1).values[te_idx]
     mae = mean_absolute_error(ytot, ptot)
     mape = np.mean(np.abs((ytot - ptot) / np.clip(np.abs(ytot), 1e-6, None))) * 100
-    print(f"lag 模型 5月訓練→6月驗證 總量: MAE {mae:.0f} kW  MAPE {mape:.1f}%  "
+    print(f"lag 模型 3-5月訓練→6月驗證 總量: MAE {mae:.0f} kW  MAPE {mape:.1f}%  "
           f"R² {r2_score(ytot, ptot):.2f}  (訓練 {len(tr_idx)} / 驗證 {len(te_idx)} 列)")
 
     if save:
