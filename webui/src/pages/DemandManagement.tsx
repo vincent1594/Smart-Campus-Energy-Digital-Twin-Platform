@@ -90,10 +90,7 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
         areaStyle: { color: "rgba(22,119,255,0.10)" },
         markLine: {
           symbol: "none", silent: true,
-          data: [
-            { yAxis: contract, label: { formatter: `契約 ${contract.toLocaleString()} kW`, position: "insideEndTop", fontSize: 11, color: "#cf1322" }, lineStyle: { color: "#cf1322", type: "dashed", width: 1.5 } },
-            { xAxis: hour, label: { formatter: `${hour}:00`, fontSize: 10, color: "#1677ff" }, lineStyle: { color: "#1677ff", type: "dotted", width: 1 } },
-          ],
+          data: [{ yAxis: contract, label: { formatter: `契約 ${contract.toLocaleString()} kW`, position: "insideEndTop", fontSize: 11, color: "#cf1322" }, lineStyle: { color: "#cf1322", type: "dashed", width: 1.5 } }],
         },
         markPoint: {
           symbolSize: 46,
