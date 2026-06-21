@@ -341,16 +341,17 @@ class DemandStatus(BaseModel):
     load_basis: str = ""                  # 現況需量的負載基準說明
 
 
-class HourlyDemand(BaseModel):
-    hour: int                             # 0~23
-    demand_kw: float                      # 預測
-    actual_kw: Optional[float] = None     # EMS 實測 (資料期內才有,供預測vs實際比較)
-
-
 class FeederDemand(BaseModel):
     feeder_id: str
     feeder_name: str
     demand_kw: float
+
+
+class HourlyDemand(BaseModel):
+    hour: int                             # 0~23
+    demand_kw: float                      # 預測
+    actual_kw: Optional[float] = None     # EMS 實測 (資料期內才有,供預測vs實際比較)
+    feeders: list[FeederDemand] = []      # 該小時各饋線需量 (降冪),供逐時查詢
 
 
 class ShedSuggestion(BaseModel):

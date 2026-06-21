@@ -263,6 +263,7 @@ export interface HourlyDemand {
   hour: number;
   demand_kw: number;
   actual_kw?: number | null;   // EMS 實測 (資料期內才有)
+  feeders?: FeederDemand[];    // 該小時各饋線需量 (降冪),供逐時查詢
 }
 
 export interface FeederDemand {

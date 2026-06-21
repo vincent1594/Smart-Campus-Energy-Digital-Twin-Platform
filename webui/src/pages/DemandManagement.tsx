@@ -52,6 +52,7 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
   const [status, setStatus] = useState<DemandStatus>();
   const [fc, setFc] = useState<DemandForecast>();
   const [loading, setLoading] = useState(true);
+  const [selHour, setSelHour] = useState<number | null>(null);  // 點圖查詢的小時;null=預設尖峰
 
   useEffect(() => { api.demand().then((s) => setRate(s.demand_charge_nt_per_kw)).catch(() => undefined); }, []);
 
@@ -60,12 +61,15 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
     const t = setTimeout(() => {
       setLoading(true);
       Promise.all([api.demand(contract, rate), api.demandForecast(ds, contract, rate)])
-        .then(([s, f]) => { setStatus(s); setFc(f); })
+        .then(([s, f]) => { setStatus(s); setFc(f); setSelHour(null); })  // 換日期回到尖峰
         .catch((e) => message.error(String(e.message ?? e)))
         .finally(() => setLoading(false));
     }, 350);
     return () => clearTimeout(t);
   }, [contract, rate, date]);
+
+  const hour = selHour ?? fc?.peak_hour ?? 0;            // 目前查詢的小時
+  const hourData = fc?.hourly[hour];
 
   const hasActual = !!fc && fc.hourly.some((h) => h.actual_kw != null);
   const chartOption = fc && {
@@ -86,7 +90,10 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
         areaStyle: { color: "rgba(22,119,255,0.10)" },
         markLine: {
           symbol: "none", silent: true,
-          data: [{ yAxis: contract, label: { formatter: `契約 ${contract.toLocaleString()} kW`, position: "insideEndTop", fontSize: 11, color: "#cf1322" }, lineStyle: { color: "#cf1322", type: "dashed", width: 1.5 } }],
+          data: [
+            { yAxis: contract, label: { formatter: `契約 ${contract.toLocaleString()} kW`, position: "insideEndTop", fontSize: 11, color: "#cf1322" }, lineStyle: { color: "#cf1322", type: "dashed", width: 1.5 } },
+            { xAxis: hour, label: { formatter: `${hour}:00`, fontSize: 10, color: "#1677ff" }, lineStyle: { color: "#1677ff", type: "dotted", width: 1 } },
+          ],
         },
         markPoint: {
           symbolSize: 46,
@@ -142,9 +149,10 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
           onChange={(d) => d && setDate(d)} />}>
         {loading || !chartOption ? <Spin size="large" style={{ margin: "auto" }} /> : (
           <>
-            <ReactECharts option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge />
+            <ReactECharts option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge
+              onEvents={{ click: (p: { dataIndex?: number }) => p.dataIndex != null && setSelHour(p.dataIndex) }} />
             <div style={{ color: "#999", fontSize: 11, textAlign: "center", lineHeight: 1.4 }}>
-              各饋線預測需量加總(≈台電進線);紅虛線=契約容量。特徵:時間+學期行事曆+近期實際負載(逐週不同)。資料期 2023/05–06。
+              點圖任一時刻可在右側查各饋線。各饋線預測需量加總(≈台電進線);紅虛線=契約容量。特徵:時間+學期行事曆+近期實際負載(逐週不同)。資料期 2023/05–06。
               {fc?.mae_kw != null && (
                 <span style={{ color: "#555" }}>　當日預測vs實際 MAE {fc.mae_kw.toLocaleString()} kW · MAPE {fc.mape_pct}%
                   {fc.actual_peak_kw != null && ` · 實際尖峰 ${fc.actual_peak_kw.toLocaleString()} kW`}</span>
@@ -184,17 +192,28 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
               </>
             )}
 
-            <Divider style={{ margin: "10px 0 6px" }} orientation="left" plain>尖峰各饋線需量</Divider>
-            {fc.peak_feeders.map((f) => {
-              const pct = fc.peak_feeders[0].demand_kw > 0 ? (f.demand_kw / fc.peak_feeders[0].demand_kw) * 100 : 0;
-              return (
-                <div key={f.feeder_id} style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "2px 6px", marginBottom: 2, borderRadius: 3, overflow: "hidden", background: "#fafafa" }}>
-                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: "rgba(22,119,255,0.13)" }} />
-                  <span style={{ position: "relative", color: "#555" }}>{f.feeder_name}</span>
-                  <span style={{ position: "relative", color: "#333" }}>{f.demand_kw.toLocaleString()} kW</span>
-                </div>
-              );
-            })}
+            <Divider style={{ margin: "10px 0 6px" }} orientation="left" plain>
+              各饋線需量 @ {hour}:00{selHour == null ? "(尖峰)" : ""}
+            </Divider>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#888", margin: "0 2px 6px" }}>
+              <span>預測 {hourData ? Math.round(hourData.demand_kw).toLocaleString() : "—"} kW</span>
+              {hourData?.actual_kw != null && <span>實際 {Math.round(hourData.actual_kw).toLocaleString()} kW</span>}
+              <span style={{ color: "#bbb" }}>點圖表切換時刻</span>
+            </div>
+            {(() => {
+              const feeders = hourData?.feeders ?? [];
+              const top = feeders[0]?.demand_kw ?? 0;
+              return feeders.map((f) => {
+                const pct = top > 0 ? (f.demand_kw / top) * 100 : 0;
+                return (
+                  <div key={f.feeder_id} style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "2px 6px", marginBottom: 2, borderRadius: 3, overflow: "hidden", background: "#fafafa" }}>
+                    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: "rgba(22,119,255,0.13)" }} />
+                    <span style={{ position: "relative", color: "#555" }}>{f.feeder_name}</span>
+                    <span style={{ position: "relative", color: "#333" }}>{f.demand_kw.toLocaleString()} kW</span>
+                  </div>
+                );
+              });
+            })()}
           </>
         )}
       </Card>
