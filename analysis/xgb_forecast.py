@@ -201,11 +201,15 @@ def _lag_frame(series_c, when):
 
 
 def train_lag_model(save=True):
-    """全期資料 + 時間&行事曆&近期實測(lag) 特徵,各饋線一模型;5-fold CV;存檔。"""
+    """時間&行事曆&近期實測(lag) 特徵,各饋線一模型。
+
+    嚴格 holdout:**只用 5 月訓練、只驗 6 月**,印 6 月驗證 MAE/MAPE/R²,存 5 月模型。
+    lag 特徵在 6 月預測時取「6 月當週/前一日實測」為輸入,故逐週仍不同;但端午/
+    考試等 6 月才有的事件 5 月未見過,屬誠實 holdout 的限制 (預測會較差)。
+    """
     import joblib
     import xgboost as xgb
     from sklearn.metrics import mean_absolute_error, r2_score
-    from sklearn.model_selection import KFold
 
     t = _ems_sorted()
     base = _features_cal(t["dt"])                # 時間 + 行事曆 (n 列)
@@ -215,31 +219,33 @@ def train_lag_model(save=True):
     valid = np.ones(len(t), bool)                # 全饋線 lag 皆有值的列 (去起首無 lag168)
     for c in FEEDER_COLS:
         valid &= lagf[c].notna().all(axis=1).values
-    idx = np.where(valid)[0]
+    month = t["dt"].dt.month.values
+    tr_idx = np.where(valid & (month == 5))[0]   # 訓練 = 5 月
+    te_idx = np.where(valid & (month == 6))[0]   # 驗證 = 6 月
 
     params = dict(n_estimators=400, max_depth=5, learning_rate=0.05,
                   subsample=0.9, colsample_bytree=0.9, random_state=0)
-    Xc = {c: pd.concat([base.iloc[idx].reset_index(drop=True),
-                        lagf[c].iloc[idx].reset_index(drop=True)], axis=1)
-          for c in FEEDER_COLS}
-    yv = {c: t[c].values[idx] for c in FEEDER_COLS}
-    ytot = t[FEEDER_COLS].sum(axis=1).values[idx]
 
-    oof = np.zeros(len(idx))                     # 5-fold CV 袋外總量
-    for tr, te in KFold(5, shuffle=True, random_state=0).split(idx):
-        for c in FEEDER_COLS:
-            m = xgb.XGBRegressor(**params).fit(Xc[c].iloc[tr], yv[c][tr])
-            oof[te] += np.clip(m.predict(Xc[c].iloc[te]), 0, None)
-    mae = mean_absolute_error(ytot, oof)
-    mape = np.mean(np.abs((ytot - oof) / np.clip(np.abs(ytot), 1e-6, None))) * 100
-    print(f"lag 模型 5-fold CV 總量: MAE {mae:.0f} kW  MAPE {mape:.1f}%  "
-          f"R² {r2_score(ytot, oof):.2f}  (有效列 {len(idx)}/{len(t)})")
+    def _X(c, idx):
+        return pd.concat([base.iloc[idx].reset_index(drop=True),
+                          lagf[c].iloc[idx].reset_index(drop=True)], axis=1)
 
-    models = {c: xgb.XGBRegressor(**params).fit(Xc[c], yv[c]) for c in FEEDER_COLS}
+    models, ptot = {}, np.zeros(len(te_idx))     # 6 月各饋線預測加總
+    for c in FEEDER_COLS:
+        m = xgb.XGBRegressor(**params).fit(_X(c, tr_idx), t[c].values[tr_idx])
+        models[c] = m
+        ptot += np.clip(m.predict(_X(c, te_idx)), 0, None)
+
+    ytot = t[FEEDER_COLS].sum(axis=1).values[te_idx]
+    mae = mean_absolute_error(ytot, ptot)
+    mape = np.mean(np.abs((ytot - ptot) / np.clip(np.abs(ytot), 1e-6, None))) * 100
+    print(f"lag 模型 5月訓練→6月驗證 總量: MAE {mae:.0f} kW  MAPE {mape:.1f}%  "
+          f"R² {r2_score(ytot, ptot):.2f}  (訓練 {len(tr_idx)} / 驗證 {len(te_idx)} 列)")
+
     if save:
         MODEL_FILE_LAG.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(models, MODEL_FILE_LAG)
-        print(f"✓ lag 模型已存: {MODEL_FILE_LAG}")
+        print(f"✓ lag 模型(5月訓練)已存: {MODEL_FILE_LAG}")
     return models
 
 

@@ -14,9 +14,9 @@ const STATUS_TEXT: Record<string, string> = { OK: "正常", WARNING: "接近契�
 const ntd = (n: number) => `NT$ ${Math.round(n).toLocaleString()}`;
 const statusColor = (s: string) => STATUS_COLOR[s] ?? "#888";
 
-// 模型資料涵蓋期 (EMS 2023/05–06)。逐時預測用「近期實際負載」特徵,
-// 僅此區間有實測可參考 → 預設與可選日期皆限定此區間,逐週才會真正不同。
-const DATA_MIN = dayjs("2023-05-08");   // 起首一週無上週 lag,故自 5/8 起
+// 模型:5 月訓練、6 月驗證 (holdout)。需量分頁顯示 6 月驗證期 —— 此區間預測對
+// 模型而言是「沒看過的考卷」,與實際比較才有意義 (5 月為訓練集,顯示無意義)。
+const DATA_MIN = dayjs("2023-06-01");
 const DATA_MAX = dayjs("2023-06-30");
 const DATA_DEFAULT = dayjs("2023-06-08");
 
@@ -149,7 +149,7 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
             <ReactECharts option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge
               onEvents={{ click: (p: { dataIndex?: number }) => p.dataIndex != null && setSelHour(p.dataIndex) }} />
             <div style={{ color: "#999", fontSize: 11, textAlign: "center", lineHeight: 1.4 }}>
-              點圖任一時刻可在右側查各饋線。各饋線預測需量加總(≈台電進線);紅虛線=契約容量。特徵:時間+學期行事曆+近期實際負載(逐週不同)。資料期 2023/05–06。
+              點圖任一時刻可在右側查各饋線。各饋線預測需量加總(≈台電進線);紅虛線=契約容量。特徵:時間+學期行事曆+近期實際負載。5月訓練→6月驗證(holdout),顯示6月。
               {fc?.mae_kw != null && (
                 <span style={{ color: "#555" }}>　當日預測vs實際 MAE {fc.mae_kw.toLocaleString()} kW · MAPE {fc.mape_pct}%
                   {fc.actual_peak_kw != null && ` · 實際尖峰 ${fc.actual_peak_kw.toLocaleString()} kW`}</span>
