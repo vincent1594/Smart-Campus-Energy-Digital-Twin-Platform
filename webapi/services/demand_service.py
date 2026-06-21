@@ -54,25 +54,12 @@ def get_status(
 
 
 def _predict_day(date: str) -> list[dict]:
-    """載入一次模型,批次預測該日 24 個整點各饋線 kW。"""
-    import joblib
-    import pandas as pd
+    """預測該日 24 個整點各饋線 kW。
 
-    from analysis.xgb_forecast import (  # 重用既有訓練好的饋線模型
-        FEEDER_COLS,
-        MODEL_FILE,
-        _features,
-        train_and_evaluate,
-    )
-
-    if not MODEL_FILE.exists():
-        train_and_evaluate(save=True)
-    models = joblib.load(MODEL_FILE)
-
-    ts = pd.Series([pd.Timestamp(f"{date} {h:02d}:00") for h in range(24)])
-    X = _features(ts)
-    preds = {c: [float(max(0.0, v)) for v in models[c].predict(X)] for c in FEEDER_COLS}
-    return [{c: preds[c][h] for c in FEEDER_COLS} for h in range(24)]
+    用 lag(近期實際負載)模型 → 逐日/逐週不同;缺 lag 的時段自動退回行事曆模型。
+    """
+    from analysis.xgb_forecast import predict_day_feeders
+    return predict_day_feeders(date, lag=True)
 
 
 def get_forecast(
