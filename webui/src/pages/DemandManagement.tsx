@@ -14,6 +14,12 @@ const STATUS_TEXT: Record<string, string> = { OK: "正常", WARNING: "接近契�
 const ntd = (n: number) => `NT$ ${Math.round(n).toLocaleString()}`;
 const statusColor = (s: string) => STATUS_COLOR[s] ?? "#888";
 
+// 模型資料涵蓋期 (EMS 2023/05–06)。逐時預測用「近期實際負載」特徵,
+// 僅此區間有實測可參考 → 預設與可選日期皆限定此區間,逐週才會真正不同。
+const DATA_MIN = dayjs("2023-05-08");   // 起首一週無上週 lag,故自 5/8 起
+const DATA_MAX = dayjs("2023-06-30");
+const DATA_DEFAULT = dayjs("2023-06-08");
+
 export default function DemandManagement() {
   const [view, setView] = useState<string>("demand");
   const [contract, setContract] = useState<number>(3250);
@@ -42,7 +48,7 @@ export default function DemandManagement() {
 // ============================================================================
 function DemandView({ contract, setContract }: { contract: number; setContract: (n: number) => void }) {
   const [rate, setRate] = useState<number>(223.6);
-  const [date, setDate] = useState<Dayjs>(dayjs());
+  const [date, setDate] = useState<Dayjs>(DATA_DEFAULT);
   const [status, setStatus] = useState<DemandStatus>();
   const [fc, setFc] = useState<DemandForecast>();
   const [loading, setLoading] = useState(true);
@@ -122,12 +128,14 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
       <Card size="small" style={{ height: "100%" }}
         styles={{ body: { padding: 8, height: "calc(100% - 39px)", display: "flex", flexDirection: "column" } }}
         title={<span>逐時需量預測(XGBoost)</span>}
-        extra={<DatePicker size="small" value={date} format="YYYY-MM-DD" allowClear={false} onChange={(d) => d && setDate(d)} />}>
+        extra={<DatePicker size="small" value={date} format="YYYY-MM-DD" allowClear={false}
+          disabledDate={(cur) => cur && (cur.isBefore(DATA_MIN, "day") || cur.isAfter(DATA_MAX, "day"))}
+          onChange={(d) => d && setDate(d)} />}>
         {loading || !chartOption ? <Spin size="large" style={{ margin: "auto" }} /> : (
           <>
             <ReactECharts option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge />
             <div style={{ color: "#999", fontSize: 11, textAlign: "center", lineHeight: 1.4 }}>
-              各饋線預測需量加總(≈台電進線);紅虛線=契約容量。無氣溫特徵,夏季可能略偏低。
+              各饋線預測需量加總(≈台電進線);紅虛線=契約容量。特徵:時間+學期行事曆+近期實際負載(逐週不同)。資料期 2023/05–06。
             </div>
           </>
         )}
