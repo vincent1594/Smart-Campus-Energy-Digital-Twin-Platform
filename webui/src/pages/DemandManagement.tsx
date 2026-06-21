@@ -67,29 +67,38 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
     return () => clearTimeout(t);
   }, [contract, rate, date]);
 
+  const hasActual = !!fc && fc.hourly.some((h) => h.actual_kw != null);
   const chartOption = fc && {
     grid: { left: 48, right: 16, top: 24, bottom: 28 },
-    tooltip: { trigger: "axis", valueFormatter: (v: number) => `${Math.round(v).toLocaleString()} kW` },
+    legend: { show: hasActual, top: 0, right: 8, itemWidth: 16, itemHeight: 8, textStyle: { fontSize: 10 } },
+    tooltip: { trigger: "axis", valueFormatter: (v: number) => (v == null ? "—" : `${Math.round(v).toLocaleString()} kW`) },
     xAxis: { type: "category", data: fc.hourly.map((h) => `${h.hour}:00`), axisLabel: { fontSize: 10, interval: 1 } },
     yAxis: {
       type: "value", name: "kW", nameTextStyle: { fontSize: 10 }, axisLabel: { fontSize: 10 },
       // 確保契約線恆在視野內:尖峰低於契約的日子也要看得到紅虛線
       max: (v: { max: number }) => Math.ceil((Math.max(v.max, contract) * 1.08) / 100) * 100,
     },
-    series: [{
-      type: "line", smooth: true, symbol: "circle", symbolSize: 4,
-      data: fc.hourly.map((h) => h.demand_kw),
-      lineStyle: { color: "#1677ff", width: 2 }, itemStyle: { color: "#1677ff" },
-      areaStyle: { color: "rgba(22,119,255,0.10)" },
-      markLine: {
-        symbol: "none", silent: true,
-        data: [{ yAxis: contract, label: { formatter: `契約 ${contract.toLocaleString()} kW`, position: "insideEndTop", fontSize: 11, color: "#cf1322" }, lineStyle: { color: "#cf1322", type: "dashed", width: 1.5 } }],
+    series: [
+      {
+        name: "預測", type: "line", smooth: true, symbol: "circle", symbolSize: 4,
+        data: fc.hourly.map((h) => h.demand_kw),
+        lineStyle: { color: "#1677ff", width: 2 }, itemStyle: { color: "#1677ff" },
+        areaStyle: { color: "rgba(22,119,255,0.10)" },
+        markLine: {
+          symbol: "none", silent: true,
+          data: [{ yAxis: contract, label: { formatter: `契約 ${contract.toLocaleString()} kW`, position: "insideEndTop", fontSize: 11, color: "#cf1322" }, lineStyle: { color: "#cf1322", type: "dashed", width: 1.5 } }],
+        },
+        markPoint: {
+          symbolSize: 46,
+          data: [{ type: "max", name: "尖峰", label: { fontSize: 10, formatter: (p: { value: number }) => `${Math.round(p.value).toLocaleString()}` }, itemStyle: { color: fc.status === "EXCEED" ? "#ff4d4f" : "#fa8c16" } }],
+        },
       },
-      markPoint: {
-        symbolSize: 46,
-        data: [{ type: "max", name: "尖峰", label: { fontSize: 10, formatter: (p: { value: number }) => `${Math.round(p.value).toLocaleString()}` }, itemStyle: { color: fc.status === "EXCEED" ? "#ff4d4f" : "#fa8c16" } }],
-      },
-    }],
+      ...(hasActual ? [{
+        name: "實際(EMS)", type: "line", smooth: true, symbol: "none",
+        data: fc.hourly.map((h) => h.actual_kw ?? null),
+        lineStyle: { color: "#8c8c8c", width: 2, type: "dashed" }, itemStyle: { color: "#8c8c8c" },
+      }] : []),
+    ],
   };
 
   return (
@@ -136,6 +145,10 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
             <ReactECharts option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge />
             <div style={{ color: "#999", fontSize: 11, textAlign: "center", lineHeight: 1.4 }}>
               各饋線預測需量加總(≈台電進線);紅虛線=契約容量。特徵:時間+學期行事曆+近期實際負載(逐週不同)。資料期 2023/05–06。
+              {fc?.mae_kw != null && (
+                <span style={{ color: "#555" }}>　當日預測vs實際 MAE {fc.mae_kw.toLocaleString()} kW · MAPE {fc.mape_pct}%
+                  {fc.actual_peak_kw != null && ` · 實際尖峰 ${fc.actual_peak_kw.toLocaleString()} kW`}</span>
+              )}
             </div>
           </>
         )}
