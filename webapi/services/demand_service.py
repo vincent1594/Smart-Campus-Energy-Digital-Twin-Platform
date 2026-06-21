@@ -86,9 +86,24 @@ def get_forecast(
         rows = _predict_day(date)
         _pred_cache[date] = rows
 
+    model = state.get_base_model()
+
+    def _name(vcb_id: str) -> str:
+        v = model.vcb(vcb_id)
+        return v.name if v else vcb_id
+
+    def _feeders(row: dict) -> list[FeederDemand]:
+        """某時刻各饋線需量 (降冪,去零),供逐時/尖峰查詢。"""
+        return [
+            FeederDemand(feeder_id=vid, feeder_name=_name(vid), demand_kw=round(kw, 1))
+            for vid, kw in sorted(row.items(), key=lambda kv: kv[1], reverse=True)
+            if kw > 0
+        ]
+
     actual = _actual_day(date)            # EMS 實測 (資料期內才有),供預測 vs 實際
     hourly = [
-        HourlyDemand(hour=h, demand_kw=round(sum(rows[h].values()), 1), actual_kw=actual[h])
+        HourlyDemand(hour=h, demand_kw=round(sum(rows[h].values()), 1),
+                     actual_kw=actual[h], feeders=_feeders(rows[h]))
         for h in range(24)
     ]
     # 當日逐時準度 (僅就有實測的小時計算)
@@ -106,31 +121,17 @@ def get_forecast(
     penalty = estimate_overshoot_penalty(contract_kw, peak_kw, rate)
     util = (peak_kw / contract_kw * 100.0) if contract_kw > 0 else 0.0
 
-    model = state.get_base_model()
-
-    def _name(vcb_id: str) -> str:
-        v = model.vcb(vcb_id)
-        return v.name if v else vcb_id
-
-    # 尖峰各饋線需量 (降冪),供卸載排序
-    ranked = sorted(peak_row.items(), key=lambda kv: kv[1], reverse=True)
-    peak_feeders = [
-        FeederDemand(feeder_id=vid, feeder_name=_name(vid), demand_kw=round(kw, 1))
-        for vid, kw in ranked
-        if kw > 0
-    ]
+    peak_feeders = _feeders(peak_row)     # 尖峰各饋線需量 (降冪)
 
     # 卸載建議:由最大饋線起,累計到足以回到契約容量內
     shed: list[ShedSuggestion] = []
     if overshoot > 0:
         cum = 0.0
-        for vid, kw in ranked:
-            if kw <= 0:
-                break
-            cum += kw
+        for f in peak_feeders:
+            cum += f.demand_kw
             shed.append(ShedSuggestion(
-                feeder_id=vid, feeder_name=_name(vid),
-                shed_kw=round(kw, 1), cumulative_kw=round(cum, 1),
+                feeder_id=f.feeder_id, feeder_name=f.feeder_name,
+                shed_kw=f.demand_kw, cumulative_kw=round(cum, 1),
             ))
             if cum >= overshoot:
                 break
