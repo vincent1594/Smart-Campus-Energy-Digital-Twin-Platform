@@ -9,6 +9,7 @@ EMS 饋線欄 VCB1~VCB12 直接對應模型 FEEDERS 同名饋線。
 """
 
 import glob
+from functools import lru_cache
 import pandas as pd
 from pathlib import Path
 from .network_structure import FEEDERS
@@ -22,6 +23,7 @@ _COLS = ["dt", "總", "VCB1", "VCB2", "VCB3", "VCB4", "VCB5", "VCB6",
          "VCB7", "VCB8", "VCB9", "VCB10", "VCB11", "VCB12"]
 
 
+@lru_cache(maxsize=1)
 def _read_ems():
     f = str(EMS_FILE)
     try:
@@ -56,6 +58,7 @@ def _read_one_ems(f):
     return t.dropna(subset=["dt"])
 
 
+@lru_cache(maxsize=1)
 def read_feeder_ems_all():
     """合併 EMS 內所有「各饋線」檔(3-4、5-6…),依 dt 排序去重。
 
