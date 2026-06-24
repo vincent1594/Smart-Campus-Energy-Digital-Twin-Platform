@@ -145,7 +145,9 @@ export default function MapExplorer() {
   } : dash;
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}
+      onClick={(e) => { if (focus && !(e.target as HTMLElement).closest("[data-focus-keep]")) setFocus(null); }}>
+      {/* 點任何「非互動背景」清除焦點;互動區(地圖、右欄焦點詳情、日曲線)標 data-focus-keep 保留 */}
       {/* V1 範圍/可信度聲明(連驗證中心)+ 第一次使用提示(接在後面,看過/關閉後不再出現) */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 10px", background: "#e6f4ff", border: "1px solid #91caff", borderRadius: 6, fontSize: 13, lineHeight: 1.5, color: "#0958d9", flexWrap: "wrap" }}>
         <span style={{ fontWeight: 600, background: "#0958d9", color: "#fff", borderRadius: 3, padding: "0 6px", fontSize: 12 }}>V1</span>
@@ -174,7 +176,7 @@ export default function MapExplorer() {
       </div>
 
       {/* 中:地圖 / 單線圖 切換 */}
-      <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#fff", border: "1px solid #eef1f5", borderRadius: 12, boxShadow: "0 1px 4px rgba(20,40,80,.05)", overflow: "hidden" }}>
+      <div data-focus-keep style={{ height: "100%", display: "flex", flexDirection: "column", background: "#fff", border: "1px solid #eef1f5", borderRadius: 12, boxShadow: "0 1px 4px rgba(20,40,80,.05)", overflow: "hidden" }}>
         <div style={{ padding: "7px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f0f2f5", gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{centerView === "map" ? "校園供電地圖" : "高壓配電單線圖"}{" "}
             <Tag color="geekblue" style={{ cursor: "pointer" }} title="點選聚焦 X棟受電站、高亮整個北側系統"
@@ -203,7 +205,7 @@ export default function MapExplorer() {
       </div>
 
       {/* 右:焦點面板 */}
-      <Card size="small" title="焦點詳情" style={{ height: "100%", overflow: "hidden", borderRadius: 12, border: "1px solid #eef1f5", boxShadow: "0 1px 4px rgba(20,40,80,.05)" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card data-focus-keep size="small" title="焦點詳情" style={{ height: "100%", overflow: "hidden", borderRadius: 12, border: "1px solid #eef1f5", boxShadow: "0 1px 4px rgba(20,40,80,.05)" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         <FocusPanel buildings={buildings} trafos={trafos} dash={dash} />
       </Card>
       </div>
