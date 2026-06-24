@@ -11,8 +11,10 @@ pandapower==3.4.0       # 釘版:潮流/負載率計算再現性 (3.x API: runpp
 networkx>=2.6.0
 
 # Data Processing
-openpyxl>=3.1.5           # Excel support
+openpyxl>=3.1.5           # Excel support (真 .xlsx,如 11205-06)
 xlrd>=2.0.0               # Excel reading
+lxml>=4.9                 # pd.read_html 解析後端:部分 EMS .xls 實為 HTML 偽裝(如 11203-04(北).xls 3-4月),本地有裝、Render 缺則 3-4月被略過
+html5lib>=1.1            # read_html 後備解析器(lxml 失敗時)
 
 # Visualization
 matplotlib>=3.4.0
