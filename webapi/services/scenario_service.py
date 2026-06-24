@@ -123,15 +123,29 @@ def _build_net_ems(timestamp: str, pv_factor: float = 0.0):
 def run_forecast_day(date: str | None = None, pv_factor: float | None = None) -> dict:
     """校園總攬日曲線:預設取「歷史尖峰最高日」(EMS 全期總負載最高那天)的 24h 實測重算。
     回傳 {date, peak_hour, snapshots};pv_factor 未指定時 = 0(用實測淨值)。"""
+    from data.ems_loads import compute_ems_loads
     date = date or _peak_day_date()
     pvf = 0.0 if pv_factor is None else pv_factor
     base = state.get_base()
+    idx = base.index
     snaps = []
     for h in range(24):
         ck = f"emsday|{date}|{h}|{pvf}"
         if ck not in _forecast_cache:
-            net = _build_net_ems(f"{date} {h:02d}:00", pvf)
-            _forecast_cache[ck] = solve_net(base.model, net, _build_index(net))
+            # 不重建網路:deepcopy base net,只改各負載點 kW(EMS 該時刻),再解潮流 → 快很多
+            loads = compute_ems_loads(f"{date} {h:02d}:00", pvf)   # {load_name: kw}
+            net = copy.deepcopy(base.net)
+            for ln, kw in loads.items():
+                li = idx.load_by_name.get(ln)
+                if li is None:
+                    continue
+                p_old = float(net.load.at[li, "p_mw"])
+                q_old = float(net.load.at[li, "q_mvar"])
+                qp = (q_old / p_old) if p_old > 0 else 0.0
+                p_new = max(0.0, kw) / 1000.0
+                net.load.at[li, "p_mw"] = p_new
+                net.load.at[li, "q_mvar"] = p_new * qp
+            _forecast_cache[ck] = solve_net(base.model, net, idx)
         snaps.append(_forecast_cache[ck])
     peak_hour = max(range(24), key=lambda h: getattr(snaps[h], "total_load_kw", 0.0))
     return {"date": date, "peak_hour": peak_hour, "snapshots": snaps}

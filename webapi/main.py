@@ -15,6 +15,17 @@ from webapi.routes import analytics, assets, buildings, dashboard, demand, eui, 
 async def lifespan(app: FastAPI):
     # 啟動時載入 base model 並算一次 base 潮流 (之後快取)
     state.init_state()
+    # 背景預熱日曲線 24h 快照(非阻塞),讓首位使用者免等;失敗不影響服務
+    import threading
+
+    def _warm():
+        try:
+            from webapi.services import scenario_service
+            scenario_service.run_forecast_day()
+        except Exception:  # noqa: BLE001
+            pass
+
+    threading.Thread(target=_warm, daemon=True).start()
     yield
 
 
