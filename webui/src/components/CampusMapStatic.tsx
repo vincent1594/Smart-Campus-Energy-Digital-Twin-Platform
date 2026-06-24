@@ -19,7 +19,7 @@ function distSeg(p: Pt, a: Pt, b: Pt): number {
 
 export default function CampusMapStatic({
   markers, focusLetter, highlight, sourceLetter, onSelect, onClear, dark = false,
-  editable = false, polys, onPolyChange, fitHeight = false,
+  editable = false, polys, onPolyChange, fitHeight = false, outage = false,
 }: {
   markers: MapMarker[];
   focusLetter?: string | null;
@@ -32,6 +32,7 @@ export default function CampusMapStatic({
   polys?: Record<string, Pt[]>;
   onPolyChange?: (letter: string, pts: Pt[]) => void;
   fitHeight?: boolean; // 依高度縮放(置中、不溢出)
+  outage?: boolean;    // 停電影響模式:highlight 棟別改用紅色亮起(聚焦 VCB 時)
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ letter: string; idx: number } | null>(null);
@@ -74,17 +75,28 @@ export default function CampusMapStatic({
     <div ref={ref} style={{ position: "relative", lineHeight: 0, touchAction: editable ? "none" : undefined, ...(fitHeight ? { width: "100%", height: "100%" } : { width: "100%" }) }}>
       <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.35) grayscale(.5)" : "saturate(.16) brightness(1.08)", ...(fitHeight ? { width: "100%", height: "100%", objectFit: "contain" } : { width: "100%" }) }} />
 
-      {/* 負載率色階圖例 */}
+      {/* 圖例:停電影響模式顯示紅色「受影響棟」,否則顯示負載率色階 */}
       {!editable && (
         <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 20, display: "flex", alignItems: "center", gap: 10,
           background: dark ? "rgba(0,0,0,.5)" : "rgba(255,255,255,.86)", color: dark ? "#cfe9ff" : "#666",
           borderRadius: 6, padding: "3px 9px", fontSize: 11, lineHeight: 1.6, boxShadow: "0 1px 4px rgba(0,0,0,.12)" }}>
-          <span style={{ color: dark ? "#5f86a8" : "#999" }}>負載率</span>
-          {[["#52c41a", "正常"], ["#fadb14", "中載"], ["#fa8c16", "吃緊"], ["#ff4d4f", "過載"]].map(([col, lab]) => (
-            <span key={lab} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 9, height: 9, borderRadius: 2, background: col, display: "inline-block" }} />{lab}
-            </span>
-          ))}
+          {outage ? (
+            <>
+              <span style={{ color: dark ? "#5f86a8" : "#999" }}>停電影響</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 9, height: 9, borderRadius: 2, background: "#ff4d4f", display: "inline-block" }} />受影響棟(停電)
+              </span>
+            </>
+          ) : (
+            <>
+              <span style={{ color: dark ? "#5f86a8" : "#999" }}>負載率</span>
+              {[["#52c41a", "正常"], ["#fadb14", "中載"], ["#fa8c16", "吃緊"], ["#ff4d4f", "過載"]].map(([col, lab]) => (
+                <span key={lab} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: 2, background: col, display: "inline-block" }} />{lab}
+                </span>
+              ))}
+            </>
+          )}
         </div>
       )}
 
@@ -142,7 +154,8 @@ export default function CampusMapStatic({
             else { stroke = c.border; fill = `${c.bg}${dark ? "33" : "55"}`; }
           } else if (!editable) {
             // 預設:無框柔和熱力填。底圖已壓近灰階,負載色不與彩照混色,稍提不透明度即可辨。
-            fill = isFocus ? `${accent}33` : isHi ? `${accent}1f` : `${c.bg}${dark ? "4d" : "66"}`;
+            // outage(聚焦 VCB):受影響棟以紅色明顯亮起,讀作「會一同停電」。
+            fill = isFocus ? `${accent}33` : isHi ? (outage ? "#ff4d4f80" : `${accent}1f`) : `${c.bg}${dark ? "4d" : "66"}`;
           }
           return (
             <g key={m.letter} style={{ cursor: editable ? "default" : "pointer" }}>

@@ -206,7 +206,7 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
             {tr.feeder_id ? <a onClick={() => setFocus({ kind: "feeder", id: tr.feeder_id!, label: tr.feeder_name ?? tr.feeder_id! })}>{tr.feeder_name}</a> : <Tag>開關耦合</Tag>}
           </Descriptions.Item>
           <Descriptions.Item label="所屬 VCB">{tr.vcb_name}</Descriptions.Item>
-          <Descriptions.Item label="連接建築">{tr.connected_building_count} 棟 / {tr.total_connected_load_kw} kW</Descriptions.Item>
+          <Descriptions.Item label="連接負載點">{tr.connected_building_count} 個 / {tr.total_connected_load_kw} kW</Descriptions.Item>
           <Descriptions.Item label="運轉狀態">{(trRatio(tr.id, tr.load_ratio_percent) ?? 0) > 100 ? <Tag color="red">過載</Tag> : <Tag color="green">正常</Tag>}</Descriptions.Item>
         </Descriptions>
         <Button type="primary" ghost size="small" onClick={() => navigate("/scenario")}>規劃模擬</Button>
@@ -228,16 +228,19 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
     );
 
   // ---- VCB ----
-  if (focus.kind === "vcb" && vcb)
+  if (focus.kind === "vcb" && vcb) {
+    // 受影響棟別 = 此 VCB 供電的不重複實體棟(以棟別代號去重),= 地圖紅色亮起的那些
+    const affected = new Set(buildings.filter((b) => trafoByName.get(b.transformer_name)?.vcb_id === vcb.id).map((b) => buildingLetter(b.id)));
     return (
       <Descriptions title={<><Tag color="cyan">VCB</Tag>{vcb.name}</>} column={1} size="small">
         <Descriptions.Item label="饋線數">{vcb.feeder_count}</Descriptions.Item>
         <Descriptions.Item label="變壓器數">{vcb.transformer_count}</Descriptions.Item>
-        <Descriptions.Item label="供電建築">{vcb.connected_building_count} 棟</Descriptions.Item>
+        <Descriptions.Item label="供電建築">{affected.size} 棟</Descriptions.Item>
         <Descriptions.Item label="合計負載">{vcb.total_connected_load_kw} kW</Descriptions.Item>
-        <Descriptions.Item label="停電影響">停此 VCB → {vcb.connected_building_count} 棟停電</Descriptions.Item>
+        <Descriptions.Item label="停電影響"><b style={{ color: "#cf1322" }}>{affected.size} 棟</b>一同停電(地圖紅標)</Descriptions.Item>
       </Descriptions>
     );
+  }
 
   return <Empty description="載入中…" style={{ paddingTop: 60 }} />;
 }

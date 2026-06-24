@@ -27,7 +27,7 @@ export const PROVENANCE: ProvenanceItem[] = [
   { feature: "電網拓樸(線徑/容量/VCB 接線)", tier: "measured", source: "校內單線圖 / 設備清冊", note: "pandapower 建模基礎(饋線長度除外,見下方)", page: "校園總覽 · 設備查詢" },
 
   // 🔵 模型推算
-  { feature: "電壓 / 負載率 / 系統損耗 / 市電進線", tier: "model", source: "pandapower Newton-Raphson 潮流", note: "單時點 / 情境快照", page: "校園總覽 · 規劃模擬" },
+  { feature: "電壓 / 負載率 / 系統損耗 / 市電進線", tier: "model", source: "pandapower Newton-Raphson 潮流", note: "基準=EMS 實測尖峰日 2023/06/08 14:00(全期最高負載日,4,220kW);校園總覽可拖曳日曲線看各時段,規劃模擬另做 what-if", page: "校園總覽 · 規劃模擬" },
   { feature: "逐時負載預測", tier: "model", source: "XGBoost(11 饋線各一模型)", note: "需量預測加學期行事曆+近期負載(lag)特徵 → 逐週不同、含假日(3–5月訓/6月驗,MAPE~20%);電費 / EUI 年用電 / 模擬時點用純時間版", page: "能源管理 · 規劃模擬" },
 
   // 🟡 假設·待校正
@@ -52,7 +52,7 @@ export const LIMITATIONS: string[] = [
   "超約罰款簡化為單一經常契約 vs 全月最高需量。",
   "EUI 各棟以負載占比近似;樓地板 < 2,000 m² 易受分母放大失真,僅供參考。",
   "設備汰換為相對風險排序,需現場檢測(油測 / 紅外線)佐證。",
-  "全平台為單時點 / 情境快照,無長期時序資料庫(EMS 各饋線約 4 個月〔3–6月〕、另 9–10 月僅總量;缺 7–8 月暑假與整年)。",
+  "校園總覽可拖曳尖峰日 24h 各時段,但全平台仍為情境快照、無長期時序資料庫(EMS 各饋線約 4 個月〔3–6月〕、另 9–10 月僅總量;缺 7–8 月暑假與整年)。",
 ];
 
 // 模型(pandapower 拓樸)⇄ Excel 規格表 涵蓋度核對 —— 兩者為獨立來源
@@ -104,6 +104,7 @@ export const ROADMAP: RoadmapItem[] = [
   { title: "用電強度 EUI", status: "done" },
   { title: "設備汰換風險排序", status: "done" },
   { title: "歷史趨勢 + 互動單線圖", status: "done" },
+  { title: "校園總覽日負載曲線:拖曳基準點看尖峰日各時段", status: "done", note: "基準改 EMS 實測尖峰日(2023/06/08, 4,220kW);拖曳即時連動 KPI/地圖/焦點" },
   { title: "驗證中心", status: "done" },
   { title: "設備汰換投資回收(NT$/回收年限)", status: "done", note: "高風險群換新總額/年省/回收年限" },
   { title: "需量預測升級:行事曆 + 近期負載(逐週不同)", status: "done", note: "3–5月訓/6月驗 MAPE~20%;預測vs實際對照、點圖查逐時各饋線" },

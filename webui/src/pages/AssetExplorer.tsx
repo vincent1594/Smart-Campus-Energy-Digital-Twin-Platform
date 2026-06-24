@@ -34,7 +34,7 @@ function Transformers() {
           { title: "二次側額定", dataIndex: "lv_kv", render: (v: number) => lvLabel(v) },
           { title: "所屬 VCB", dataIndex: "vcb_name" },
           { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: (v) => <LoadRatioTag ratio={v} /> },
-          { title: "連接建築", dataIndex: "connected_building_count", align: "right" },
+          { title: "連接負載點", dataIndex: "connected_building_count", align: "right" },
         ]}
       />
       </div>
@@ -50,7 +50,7 @@ function Transformers() {
               <Descriptions.Item label="連接負載">{detail.total_connected_load_kw} kW</Descriptions.Item>
             </Descriptions>
             <List
-              header={`連接建築（${detail.connected_building_count} 棟）`}
+              header={`連接負載點（${detail.connected_building_count} 個）`}
               size="small" bordered dataSource={detail.connected_buildings}
               renderItem={(b) => <List.Item>{b}</List.Item>}
             />
@@ -75,7 +75,7 @@ function Vcbs() {
         { title: "名稱", dataIndex: "name" },
         { title: "饋線數", dataIndex: "feeder_count", align: "right" },
         { title: "變壓器數", dataIndex: "transformer_count", align: "right" },
-        { title: "連接建築", dataIndex: "connected_building_count", align: "right" },
+        { title: "連接負載點", dataIndex: "connected_building_count", align: "right" },
         { title: "連接負載 (kW)", dataIndex: "total_connected_load_kw", align: "right", sorter: (a, b) => a.total_connected_load_kw - b.total_connected_load_kw },
       ]}
     />
@@ -101,7 +101,7 @@ function Feeders() {
           { title: "X (Ω)", dataIndex: "reactance_ohm", align: "right", width: 82, render: (v: number | null) => (v != null ? v.toFixed(3) : "—") },
           { title: "變壓器數", dataIndex: "transformer_count", align: "right" },
           { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: (v) => <LoadRatioTag ratio={v} /> },
-          { title: "連接建築", dataIndex: "connected_building_count", align: "right" },
+          { title: "連接負載點", dataIndex: "connected_building_count", align: "right" },
         ]}
       />
       <div style={{ color: "#bbb", fontSize: 11, marginTop: 6, lineHeight: 1.5 }}>
