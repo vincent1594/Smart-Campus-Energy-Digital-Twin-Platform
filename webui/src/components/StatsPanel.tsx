@@ -234,7 +234,7 @@ export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curve
               ? <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>時段資料載入中…(約 10 秒,載好可拖曳)</div>
               : dash.load_basis && <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>基準:{dash.load_basis}</div>}
         </div>
-        <div style={{ flex: 1, minHeight: 0, cursor: real ? "ew-resize" : "default" }}>
+        <div data-focus-keep style={{ flex: 1, minHeight: 0, cursor: real ? "ew-resize" : "default" }}>
           {real
             ? <ReactECharts ref={ecRef} style={{ height: "100%", width: "100%" }} option={chartOption} />
             : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11 }}>載入中…</div>}
