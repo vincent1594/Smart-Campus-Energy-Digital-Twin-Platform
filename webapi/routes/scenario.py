@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from webapi.powerflow import PowerFlowError
-from webapi.schemas import ForecastRequest, ScenarioComparison, ScenarioRequest
+from webapi.schemas import ForecastRequest, PowerFlowResult, ScenarioComparison, ScenarioRequest
 from webapi.services import scenario_service
 
 router = APIRouter(prefix="/api/scenario", tags=["scenario"])
@@ -25,3 +25,14 @@ def run_forecast(req: ForecastRequest) -> ScenarioComparison:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 - 時間格式/預測失敗轉友善訊息
         raise HTTPException(status_code=400, detail=f"預測失敗:{exc}") from exc
+
+
+# 校園總攬日曲線:歷史尖峰最高日 24h 實測快照,回傳 {date, peak_hour, snapshots},前端拖曳即時切換面板
+@router.get("/forecast-day")
+def forecast_day(date: str | None = None, pv_factor: float | None = None) -> dict:
+    try:
+        return scenario_service.run_forecast_day(date, pv_factor)
+    except PowerFlowError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - 預測失敗轉友善訊息
+        raise HTTPException(status_code=400, detail=f"當日預測失敗:{exc}") from exc

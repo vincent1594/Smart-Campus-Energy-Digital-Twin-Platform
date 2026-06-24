@@ -18,12 +18,13 @@ function distSeg(p: Pt, a: Pt, b: Pt): number {
 }
 
 export default function CampusMapStatic({
-  markers, focusLetter, highlight, onSelect, onClear, dark = false,
+  markers, focusLetter, highlight, sourceLetter, onSelect, onClear, dark = false,
   editable = false, polys, onPolyChange, fitHeight = false,
 }: {
   markers: MapMarker[];
   focusLetter?: string | null;
   highlight?: Set<string>;
+  sourceLetter?: string | null;   // 供電源(受電站):焦點為其他棟時,以金色標出電源 + 連線,與「同群」藍色區隔
   onSelect?: (letter: string) => void;
   onClear?: () => void;   // 點地圖空白處 → 取消選取
   dark?: boolean;
@@ -71,7 +72,7 @@ export default function CampusMapStatic({
 
   return (
     <div ref={ref} style={{ position: "relative", lineHeight: 0, touchAction: editable ? "none" : undefined, ...(fitHeight ? { width: "100%", height: "100%" } : { width: "100%" }) }}>
-      <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.85)" : "saturate(.42) brightness(1.06)", ...(fitHeight ? { width: "100%", height: "100%", objectFit: "contain" } : { width: "100%" }) }} />
+      <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.35) grayscale(.5)" : "saturate(.16) brightness(1.08)", ...(fitHeight ? { width: "100%", height: "100%", objectFit: "contain" } : { width: "100%" }) }} />
 
       {/* 負載率色階圖例 */}
       {!editable && (
@@ -99,7 +100,7 @@ export default function CampusMapStatic({
           <mask id="cmsSpot">
             <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="#fff" />
             <g filter="url(#cmsSoft)">
-              {markers.filter((m) => (m.letter === focusLetter || highlight?.has(m.letter)) && POS[m.letter]).map((m) => (
+              {markers.filter((m) => (m.letter === focusLetter || highlight?.has(m.letter) || m.letter === sourceLetter) && POS[m.letter]).map((m) => (
                 <polygon key={"mk" + m.letter} points={POS[m.letter].map((p) => p.join(",")).join(" ")} fill="#000" />
               ))}
             </g>
@@ -120,6 +121,10 @@ export default function CampusMapStatic({
         {!editable && focusLetter && POS[focusLetter] && (
           <polygon points={POS[focusLetter].map((p) => p.join(",")).join(" ")} fill={accent} opacity={0.14} pointerEvents="none" />
         )}
+        {/* 供電源(受電站):焦點為其他棟時,以紫色色塊填 X棟標出電從哪來(與負載率色/焦點藍區隔)。X 本身即焦點時不重複標 */}
+        {!editable && hasFocus && sourceLetter && sourceLetter !== focusLetter && POS[sourceLetter] && (
+          <polygon points={POS[sourceLetter].map((p) => p.join(",")).join(" ")} fill="#9254de" fillOpacity={0.5} pointerEvents="none" />
+        )}
 
         {/* 各棟:多邊形(預設依負載率淡色填,無框無字);編輯模式才顯示框與頂點 */}
         {markers.map((m) => {
@@ -136,8 +141,8 @@ export default function CampusMapStatic({
             else if (isHi) { stroke = accent; fill = "rgba(22,119,255,.12)"; }
             else { stroke = c.border; fill = `${c.bg}${dark ? "33" : "55"}`; }
           } else if (!editable) {
-            // 預設(無框):依負載率淡色填,讓地圖呈現負載熱力圖感(無框、無字)
-            fill = isFocus ? `${accent}26` : isHi ? `${accent}16` : `${c.bg}${dark ? "26" : "40"}`;
+            // 預設:無框柔和熱力填。底圖已壓近灰階,負載色不與彩照混色,稍提不透明度即可辨。
+            fill = isFocus ? `${accent}33` : isHi ? `${accent}1f` : `${c.bg}${dark ? "4d" : "66"}`;
           }
           return (
             <g key={m.letter} style={{ cursor: editable ? "default" : "pointer" }}>

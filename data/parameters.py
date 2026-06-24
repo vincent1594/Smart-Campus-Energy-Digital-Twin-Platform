@@ -134,8 +134,8 @@ def get_transformer_loss(trafo_type, capacity_kva):
 # 多情境定義: key = 情境代號, period = 期間/情境名, load_kw = 系統同時負載 (None=不縮放)
 SCENARIOS = {
     # method: "transformer"(變壓器平均負載比例,預設)、"area"(樓地板面積×用途密度)、"ems"(EMS實測各饋線)
-    "S0":   {"period": "EMS實測尖峰 2023/06/08 14:00", "load_kw": None, "method": "ems",
-             "timestamp": "2023-06-08 14:00", "pv_factor": 0.8},     # 夏季尖峰
+    "S0":   {"period": "EMS實測尖峰日 2023/06/08 14:00", "load_kw": None, "method": "ems",
+             "timestamp": "2023-06-08 14:00", "pv_factor": 0.0},     # 全期實測尖峰(用實測淨值,平台基準)
     "S1":   {"period": "2023/03/01 半尖峰", "load_kw": 1860.0, "method": "xgboost_profile",
              "timestamp": "2023-03-01 14:00", "pv_factor": 0.4},      # 3月冬陽,較低
     "S1.1": {"period": "2026年6月8號 14:00", "load_kw": 3400.0, "method": "xgboost_profile",
@@ -145,11 +145,11 @@ SCENARIOS = {
     "S2":   {"period": "XGBoost預測 2026/06/08 14:00", "load_kw": None, "method": "xgboost",
              "timestamp": "2026-06-08 14:00", "pv_factor": 0.8},      # ML 預測各饋線(5月訓練)
 }
-# 執行時以環境變數 BAYESGRID_SCENARIO 選擇 (預設 S1);run_s1_baseline.py 可由命令列帶入
+# 執行時以環境變數 BAYESGRID_SCENARIO 選擇 (預設 S0=歷史實測尖峰日,平台基準);run_s1_baseline.py 可由命令列帶入
 import os as _os
-ACTIVE_SCENARIO = _os.environ.get("BAYESGRID_SCENARIO", "S1").strip()
+ACTIVE_SCENARIO = _os.environ.get("BAYESGRID_SCENARIO", "S0").strip()
 if ACTIVE_SCENARIO not in SCENARIOS:
-    ACTIVE_SCENARIO = "S1"
+    ACTIVE_SCENARIO = "S0"
 _sc = SCENARIOS[ACTIVE_SCENARIO]
 SYSTEM_COINCIDENT_PEAK_KW = _sc["load_kw"]
 SYSTEM_PEAK_PERIOD = _sc["period"]

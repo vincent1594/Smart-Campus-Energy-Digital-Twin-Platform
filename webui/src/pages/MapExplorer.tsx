@@ -9,10 +9,36 @@ import FocusPanel from "../components/FocusPanel";
 import SingleLineSvg from "../components/SingleLineSvg";
 import StatsPanel from "../components/StatsPanel";
 import { useFocus, type FocusKind } from "../focus/FocusContext";
-import { SOURCE_KEY, buildingLetter } from "../lib/campusPositions";
+import { SOURCE_KEY, SOURCE_LETTER, buildingLetter } from "../lib/campusPositions";
 import { useActiveScenario } from "../scenario/ActiveScenarioContext";
 import { useTheme } from "../theme/ThemeContext";
 
+
+// 兩張小時快照線性內插 → 連續拖曳時面板數字平滑變化(KPI、各設備負載率、電壓皆內插)
+function lerpSnap(a: PowerFlowResult, b: PowerFlowResult, t: number): PowerFlowResult {
+  const L = (x: number, y: number) => x + (y - x) * t;
+  const bTr = new Map(b.transformer_loadings.map((x) => [x.transformer_id, x.load_ratio_percent]));
+  const bFd = new Map(b.feeder_loadings.map((x) => [x.feeder_id, x.load_ratio_percent]));
+  const bBv = new Map(b.building_voltages.map((x) => [x.building_id, x.voltage_pu]));
+  const minV = L(a.min_voltage_pu, b.min_voltage_pu);
+  const maxTr = L(a.max_transformer_load_ratio_percent, b.max_transformer_load_ratio_percent);
+  return {
+    ...a,
+    total_load_kw: L(a.total_load_kw, b.total_load_kw),
+    total_load_kvar: L(a.total_load_kvar, b.total_load_kvar),
+    system_loss_kw: L(a.system_loss_kw, b.system_loss_kw),
+    system_loss_kvar: L(a.system_loss_kvar, b.system_loss_kvar),
+    grid_import_kw: L(a.grid_import_kw, b.grid_import_kw),
+    grid_import_kvar: L(a.grid_import_kvar, b.grid_import_kvar),
+    min_voltage_pu: minV,
+    max_transformer_load_ratio_percent: maxTr,
+    max_feeder_load_ratio_percent: L(a.max_feeder_load_ratio_percent, b.max_feeder_load_ratio_percent),
+    status: maxTr > 100 || minV < 0.95 ? "WARNING" : "OK",
+    transformer_loadings: a.transformer_loadings.map((x) => ({ ...x, load_ratio_percent: L(x.load_ratio_percent, bTr.get(x.transformer_id) ?? x.load_ratio_percent) })),
+    feeder_loadings: a.feeder_loadings.map((x) => ({ ...x, load_ratio_percent: L(x.load_ratio_percent, bFd.get(x.feeder_id) ?? x.load_ratio_percent) })),
+    building_voltages: a.building_voltages.map((x) => ({ ...x, voltage_pu: L(x.voltage_pu, bBv.get(x.building_id) ?? x.voltage_pu) })),
+  };
+}
 
 export default function MapExplorer() {
   const navigate = useNavigate();
@@ -27,6 +53,10 @@ export default function MapExplorer() {
   const [trafos, setTrafos] = useState<TransformerDetail[]>([]);
   const [graph, setGraph] = useState<TopologyGraph>();
   const [err, setErr] = useState<string>();
+  const [daySnapshots, setDaySnapshots] = useState<PowerFlowResult[]>();   // 歷史尖峰日 24h 實測快照
+  const [dayDate, setDayDate] = useState<string>();                        // 該日日期(歷史尖峰最高日)
+  const [dayPeakHour, setDayPeakHour] = useState<number>();                // 該日尖峰小時
+  const [selectedHour, setSelectedHour] = useState<number | null>(null);   // 日曲線拖曳到的時段(null=基準)
   const [showGuide, setShowGuide] = useState(() => !localStorage.getItem("bg_guide_seen"));   // 第一次使用提示
   const dismissGuide = () => { localStorage.setItem("bg_guide_seen", "1"); setShowGuide(false); };
 
@@ -34,7 +64,23 @@ export default function MapExplorer() {
     Promise.all([api.dashboard(), api.powerflow(), api.buildings(), api.transformers(), api.topology()])
       .then(([d, p, b, t, g]) => { setDash(d); setPf(p); setBuildings(b); setTrafos(t); setGraph(g); })
       .catch((e) => setErr(String(e.message ?? e)));
+    // base 已是尖峰日(4220),不必覆蓋;僅載入 24h 快照供拖曳看各時段
+    api.forecastDay().then((r) => { setDaySnapshots(r.snapshots); setDayDate(r.date); setDayPeakHour(r.peak_hour); })
+      .catch((e) => setErr(`日曲線載入失敗:${String(e.message ?? e)}`));
   }, []);
+
+  // 「還原基準」= 清除時段覆蓋,回到平台 base(=尖峰日 4220)
+  const clearHour = () => { setSelectedHour(null); setScenario(null); };
+
+  // 連續拖曳日曲線基準點(hour 可為小數)→ 相鄰兩小時快照內插 → 灌入情境覆蓋通道,全面板平滑即時連動
+  const scrubHour = (hour: number) => {
+    if (!daySnapshots) return;
+    const lo = Math.max(0, Math.min(23, Math.floor(hour)));
+    const hi = Math.min(23, lo + 1);
+    const t = hour - lo;
+    setSelectedHour(hour);
+    setScenario(t > 0.0001 && daySnapshots[hi] ? lerpSnap(daySnapshots[lo], daySnapshots[hi], t) : (daySnapshots[lo] ?? null), "time");
+  };
 
   const trafoByName = useMemo(() => new Map(trafos.map((t) => [t.name, t])), [trafos]);
 
@@ -124,7 +170,7 @@ export default function MapExplorer() {
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
       {/* 左:狀態 + KPI 面板 */}
       <div style={{ height: "100%", overflow: "hidden" }}>
-        <StatsPanel dash={effDash} pf={effPf} dark={dark} />
+        <StatsPanel dash={effDash} pf={effPf} dark={dark} daySnapshots={daySnapshots} curveDate={dayDate} peakHour={dayPeakHour} selectedHour={selectedHour} onScrubHour={scrubHour} />
       </div>
 
       {/* 中:地圖 / 單線圖 切換 */}
@@ -133,7 +179,11 @@ export default function MapExplorer() {
           <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{centerView === "map" ? "校園供電地圖" : "高壓配電單線圖"}{" "}
             <Tag color="geekblue" style={{ cursor: "pointer" }} title="點選聚焦 X棟受電站、高亮整個北側系統"
               onClick={() => setFocus({ kind: "source", id: SOURCE_KEY, label: "受電站(X棟)" })}>北電錶系統</Tag>
-            {scenario && <Tag color="orange">模擬情境 <a onClick={() => setScenario(null)}>還原現況</a></Tag>}</span>
+            {selectedHour != null
+              ? (dayPeakHour != null && Math.round(selectedHour) !== dayPeakHour
+                  ? <Tag color="cyan">🕒 {String(Math.round(selectedHour)).padStart(2, "0")}:00 · <a onClick={clearHour}>還原基準</a></Tag>
+                  : null)
+              : scenario && <Tag color="orange">模擬情境 <a onClick={() => setScenario(null)}>還原現況</a></Tag>}</span>
           <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {centerView === "map" && (
               <Segmented size="small" value={mode} onChange={(v) => setMode(v as "supply" | "impact")}
@@ -145,7 +195,7 @@ export default function MapExplorer() {
         </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center", padding: 8 }}>
           {centerView === "map"
-            ? <CampusMapStatic markers={markers} focusLetter={focusLetter} highlight={highlight} onSelect={onMapSelect} onClear={() => setFocus(null)} dark={dark} fitHeight />
+            ? <CampusMapStatic markers={markers} focusLetter={focusLetter} highlight={highlight} sourceLetter={focus && focus.kind !== "source" ? SOURCE_LETTER : null} onSelect={onMapSelect} onClear={() => setFocus(null)} dark={dark} fitHeight />
             : graph
               ? <SingleLineSvg graph={graph} pf={effPf} selectedId={focus?.id ?? null} onSelect={(n) => setFocus({ kind: n.kind as FocusKind, id: n.id, label: n.id })} />
               : <Spin />}

@@ -12,7 +12,7 @@ export default function Alarms() {
   const [pf, setPf] = useState<PowerFlowResult>();
   const [err, setErr] = useState<string>();
   const { setFocus } = useFocus();
-  const { scenario } = useActiveScenario();
+  const { scenario, scenarioKind } = useActiveScenario();
   const navigate = useNavigate();
 
   useEffect(() => { api.powerflow().then(setPf).catch((e) => setErr(String(e.message ?? e))); }, []);
@@ -38,8 +38,8 @@ export default function Alarms() {
   if (!result) return <Spin size="large" style={{ display: "block", marginTop: 120 }} />;
 
   return (
-    <Card title={<span>告警紀錄 {scenario && <Tag color="orange" style={{ marginInlineStart: 6 }}>模擬情境</Tag>}</span>} size="small" style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}
-      extra={<span style={{ color: "#999", fontSize: 12 }}>{scenario ? "模擬情境的越限項目" : "現況潮流快照的越限項目"}(非歷史事件流);點一筆可在地圖定位</span>}>
+    <Card title={<span>告警紀錄 {scenario && scenarioKind === "whatif" && <Tag color="orange" style={{ marginInlineStart: 6 }}>模擬情境</Tag>}</span>} size="small" style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}
+      extra={<span style={{ color: "#999", fontSize: 12 }}>{scenarioKind === "whatif" ? "模擬情境的越限項目" : scenarioKind === "time" ? "尖峰日的越限項目" : "現況潮流快照的越限項目"}(非歷史事件流);點一筆可在地圖定位</span>}>
       <Table<Alarm> rowKey={(r) => r.kind + r.id} size="small" dataSource={alarms} pagination={false}
         locale={{ emptyText: "目前無告警 — 所有設備負載率 < 80%、電壓正常" }}
         onRow={(r) => ({ onClick: () => { setFocus({ kind: r.kind, id: r.id, label: r.equipment }); navigate("/"); }, style: { cursor: "pointer" } })}

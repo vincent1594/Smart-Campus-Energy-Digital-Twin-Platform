@@ -20,7 +20,7 @@ function OverviewSummary({ buildings, trafos, dash, onPick }: {
   const ratioColor = (r: number) => (r > 100 ? "#cf1322" : r >= 80 ? "#fa8c16" : r >= 50 ? "#1677ff" : "#52c41a");
 
   // 套用作用中模擬情境的變壓器負載率(無情境則用 base)
-  const { scenario } = useActiveScenario();
+  const { scenario, scenarioKind } = useActiveScenario();
   const sMap = useMemo(() => new Map(scenario?.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]) ?? []), [scenario]);
   const effR = (t: TransformerDetail) => (scenario ? sMap.get(t.id) ?? t.load_ratio_percent ?? 0 : t.load_ratio_percent ?? 0);
 
@@ -29,15 +29,23 @@ function OverviewSummary({ buildings, trafos, dash, onPick }: {
       .sort((a, b) => effR(b) - effR(a)).slice(0, 5),
     [trafos, scenario],   // eslint-disable-line react-hooks/exhaustive-deps
   );
+  // 建築在情境下的用電:依其變壓器負載率變化等比例縮放(情境率/基準率),使「用電最高建築」隨拖曳連動
+  const trByName = useMemo(() => new Map(trafos.map((t) => [t.name, t])), [trafos]);
   const topZones = useMemo(() => {
     const m = new Map<string, { letter: string; name: string; load: number; repId: string }>();
     for (const b of buildings) {
       const L = buildingLetter(b.id);
+      const t = trByName.get(b.transformer_name);
+      let f = 1;
+      if (scenario && t) {
+        const baseR = t.load_ratio_percent ?? 0;
+        f = baseR > 0 ? (sMap.get(t.id) ?? baseR) / baseR : 1;
+      }
       const z = m.get(L) ?? { letter: L, name: b.name.replace(/\s*\(.*\)/, ""), load: 0, repId: b.id };
-      z.load += b.estimated_load_kw; m.set(L, z);
+      z.load += b.estimated_load_kw * f; m.set(L, z);
     }
     return [...m.values()].sort((a, b) => b.load - a.load).slice(0, 5);
-  }, [buildings]);
+  }, [buildings, trByName, scenario, sMap]);
   const watch = useMemo(() => trafos.filter((t) => effR(t) >= 80).length, [trafos, scenario]);   // eslint-disable-line react-hooks/exhaustive-deps
   const maxZone = topZones[0]?.load || 1;
   const Row = ({ left, right, bar, color, onClick }: { left: ReactNode; right: ReactNode; bar: number; color: string; onClick: () => void }) => (
@@ -52,7 +60,7 @@ function OverviewSummary({ buildings, trafos, dash, onPick }: {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 2 }}>
         <b style={{ fontSize: 15 }}>校園供電總覽</b>
-        {scenario ? <Tag color="orange" style={{ margin: 0, fontSize: 11 }}>模擬情境</Tag>
+        {scenario && scenarioKind === "whatif" ? <Tag color="orange" style={{ margin: 0, fontSize: 11 }}>模擬情境</Tag>
           : <span style={{ fontSize: 11, color: "#bbb" }}>點地圖 / 清單看細節</span>}
       </div>
       <div style={{ display: "flex", gap: 6, color: "#888", fontSize: 12, marginBottom: 10 }}>
