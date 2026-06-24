@@ -82,7 +82,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       W = r.width; H = r.height; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
       if (!embersRef.current.length) {
-        embersRef.current = Array.from({ length: 40 }, () => ({
+        embersRef.current = Array.from({ length: 56 }, () => ({
           x: Math.random(), y: Math.random(), r: 0.6 + Math.random() * 1.8, vy: 0.004 + Math.random() * 0.01,
           tw: 0.5 + Math.random() * 1.5, ph: Math.random() * 6.28, warm: Math.random() < 0.4,
         }));
@@ -108,8 +108,17 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       const TX = (x: number) => x * sX, TY = (y: number) => y * sY;
       const SXc = TX(sx), SYc = TY(sy);
 
-      // === 鏡頭:醞釀時держ特寫 X → 點火後才拉遠揭示 ===
+      // 抖動折線(閃電)
+      const bolt = (x1: number, y1: number, x2: number, y2: number, seg: number, jit: number) => {
+        ctx.beginPath(); ctx.moveTo(x1, y1);
+        for (let i = 1; i < seg; i++) { const t = i / seg; ctx.lineTo(x1 + (x2 - x1) * t + (Math.random() - 0.5) * jit, y1 + (y2 - y1) * t + (Math.random() - 0.5) * jit); }
+        ctx.lineTo(x2, y2); ctx.stroke();
+      };
+
+      // === 鏡頭:醞釀特寫 X → 點火後拉遠;點火/全亮瞬間鏡頭震動(衝擊感)===
       ctx.save();
+      const shake = (t0: number, amp: number, dur: number) => { const k = Math.max(0, 1 - Math.abs(e - t0) / dur); return k > 0 ? (Math.random() - 0.5) * amp * k * k : 0; };
+      ctx.translate(shake(SURGE, 14, 0.5) + shake(energT, 24, 0.55), shake(SURGE, 10, 0.5) + shake(energT, 18, 0.55));
       const cp = easeOut(Math.max(0, Math.min((e - SURGE) / CAM_DUR, 1)));
       const cz = CAM_START - (CAM_START - 1) * cp;
       ctx.translate(SXc, SYc); ctx.scale(cz, cz); ctx.translate(-SXc, -SYc);
@@ -137,13 +146,13 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         ctx.beginPath(); ctx.moveTo(SXc, SYc); ctx.lineTo(cx, cy); ctx.stroke();
         if (charged > 0) {
           const px = SXc + (cx - SXc) * charged, py = SYc + (cy - SYc) * charged;
-          ctx.strokeStyle = n.color; ctx.lineWidth = 1.8; ctx.globalAlpha = 0.82 + Math.random() * 0.18;
-          ctx.shadowBlur = 10; ctx.shadowColor = n.color;
-          ctx.beginPath(); ctx.moveTo(SXc, SYc); ctx.lineTo(px, py); ctx.stroke();
+          ctx.strokeStyle = n.color; ctx.lineWidth = 1.9; ctx.globalAlpha = 0.82 + Math.random() * 0.18;
+          ctx.shadowBlur = 12; ctx.shadowColor = n.color;
+          bolt(SXc, SYc, px, py, 7, 5 * charged + 1);
           ctx.shadowBlur = 0; ctx.globalAlpha = 1;
           if (charged < 1) {
-            ctx.shadowBlur = 18; ctx.shadowColor = "#ffffff"; ctx.fillStyle = "#ffffff";
-            ctx.beginPath(); ctx.arc(px, py, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+            ctx.shadowBlur = 22; ctx.shadowColor = "#ffffff"; ctx.fillStyle = "#ffffff";
+            ctx.beginPath(); ctx.arc(px, py, 3.6, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
           }
         }
         if (lit) {
@@ -172,13 +181,13 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         }
       }
 
-      // 能量波(雙環,橢圓配合非等比)
-      for (let w = 0; w < 2; w++) {
-        const wr = waveR - w * 60;
-        if (wr > 0 && wr < maxDist + 240) {
-          const a = Math.max(0, (0.55 - w * 0.25) * (1 - wr / (maxDist + 240)));
-          ctx.strokeStyle = `rgba(120,180,255,${a})`; ctx.lineWidth = 2 - w * 0.7;
-          ctx.shadowBlur = 24; ctx.shadowColor = "rgba(120,180,255,0.7)";
+      // 能量波(三環,更厚實的衝擊)
+      for (let w = 0; w < 3; w++) {
+        const wr = waveR - w * 55;
+        if (wr > 0 && wr < maxDist + 260) {
+          const a = Math.max(0, (0.6 - w * 0.2) * (1 - wr / (maxDist + 260)));
+          ctx.strokeStyle = `rgba(130,190,255,${a})`; ctx.lineWidth = 2.6 - w * 0.7;
+          ctx.shadowBlur = 26; ctx.shadowColor = "rgba(130,190,255,0.85)";
           ctx.beginPath(); ctx.ellipse(SXc, SYc, wr * sX, wr * sY, 0, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
         }
       }
@@ -195,8 +204,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       const b = burstRef.current;
       if (!b.done && e >= SURGE) {
         b.done = true;
-        for (let i = 0; i < 40; i++) { const ang = Math.random() * Math.PI * 2; const sp = 260 + Math.random() * 720;
-          b.parts.push({ x: sx, y: sy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 0.95, max: 0.95 }); }
+        for (let i = 0; i < 72; i++) { const ang = Math.random() * Math.PI * 2; const sp = 300 + Math.random() * 900;
+          b.parts.push({ x: sx, y: sy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 1.1, max: 1.1 }); }
       }
       for (const p of b.parts) {
         p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.95; p.vy *= 0.95; p.life -= dt;
@@ -217,15 +226,20 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         ctx.globalCompositeOperation = "source-over";
       }
 
-      // 受電站 X — 醞釀:多道收束預充環(能量被吸入,越接近點火越急)
+      // 受電站 X — 醞釀:加速收束預充環 + 隨機電弧(越接近點火越急、越多)
       const chg = Math.min(1, e / SURGE);
       if (e < SURGE) {
-        for (let k = 0; k < 4; k++) {
-          const ph = (e * (0.5 + chg * 1.8) + k * 0.25) % 1;     // 1→0 收束
-          const rr = 8 + (1 - ph) * (130 - chg * 70);
-          const a = 0.45 * (1 - ph) * (0.25 + chg * 0.75);
-          ctx.strokeStyle = `rgba(120,180,255,${a})`; ctx.lineWidth = 1.1 + chg;
+        for (let k = 0; k < 5; k++) {
+          const ph = (e * (0.5 + chg * 2.2) + k * 0.2) % 1;     // 1→0 收束,越近越急
+          const rr = 8 + (1 - ph) * (150 - chg * 80);
+          const a = 0.5 * (1 - ph) * (0.2 + chg * 0.8);
+          ctx.strokeStyle = `rgba(130,190,255,${a})`; ctx.lineWidth = 1.1 + chg * 1.4;
           ctx.beginPath(); ctx.arc(SXc, SYc, rr, 0, Math.PI * 2); ctx.stroke();
+        }
+        if (Math.random() < 0.25 + chg * 0.6) {
+          const ang = Math.random() * Math.PI * 2, len = 16 + chg * 46;
+          ctx.strokeStyle = `rgba(180,220,255,${0.4 + chg * 0.5})`; ctx.lineWidth = 1.2; ctx.shadowBlur = 10; ctx.shadowColor = "#9cc8ff";
+          bolt(SXc, SYc, SXc + Math.cos(ang) * len, SYc + Math.sin(ang) * len, 4, 9); ctx.shadowBlur = 0;
         }
       }
       const surge = Math.max(0, 1 - Math.abs(e - SURGE) / 0.45);
@@ -240,12 +254,17 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       ctx.restore();   // 結束鏡頭
 
       // === 螢幕層 ===
-      // 高潮:全螢幕白光爆閃 + 衝擊波
-      const fl = e >= energT ? Math.max(0, 1 - (e - energT) / 0.55) : 0;
-      if (fl > 0) { ctx.fillStyle = `rgba(255,255,255,${fl * 0.82})`; ctx.fillRect(0, 0, W, H); }
-      const sw = e - energT;
-      if (sw > 0 && sw < 0.85) { const a = 1 - sw / 0.85; ctx.strokeStyle = `rgba(255,255,255,${a})`; ctx.lineWidth = 3 * a + 1;
-        ctx.beginPath(); ctx.arc(W / 2, H / 2, sw * 1700, 0, Math.PI * 2); ctx.stroke(); }
+      // 高潮:點火白閃 + 全亮爆閃 + 多重衝擊波
+      const surgeFl = Math.max(0, 1 - Math.abs(e - SURGE) / 0.32) * 0.5;
+      const fullFl = e >= energT ? Math.max(0, 1 - (e - energT) / 0.6) : 0;
+      const fl = Math.max(surgeFl, fullFl * 0.88);
+      if (fl > 0) { ctx.fillStyle = `rgba(255,255,255,${fl})`; ctx.fillRect(0, 0, W, H); }
+      const shock = (t0: number, count: number, spd: number) => {
+        for (let i = 0; i < count; i++) { const sw2 = e - t0 - i * 0.13;
+          if (sw2 > 0 && sw2 < 0.9) { const a = 1 - sw2 / 0.9; ctx.strokeStyle = `rgba(200,230,255,${a * 0.8})`; ctx.lineWidth = 3 * a + 1;
+            ctx.beginPath(); ctx.arc(W / 2, H / 2, sw2 * spd, 0, Math.PI * 2); ctx.stroke(); } }
+      };
+      shock(SURGE, 2, 1500); shock(energT, 3, 2000);
 
       // 前景餘燼(景深)
       for (const em of embersRef.current) {
@@ -282,9 +301,10 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           ctx.fillText(`${(chgH * 11.4).toFixed(1)} kV`, W / 2, 98); ctx.shadowBlur = 0;
         } else {
           const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
-          ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`;
-          ctx.fillText(label, W / 2, 24);
-          const bw = 320, bx = W / 2 - bw / 2, by = 36;
+          const ly = H * 0.80;   // 移到底部「進入系統」按鈕上方
+          ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`; ctx.textAlign = "center";
+          ctx.fillText(label, W / 2, ly);
+          const bw = 320, bx = W / 2 - bw / 2, by = ly + 14;
           ctx.strokeStyle = "rgba(120,160,220,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 6);
           ctx.fillStyle = pct >= 1 ? "#3ad07a" : "#5fa8ff"; ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
           ctx.fillRect(bx, by, bw * pct, 6); ctx.shadowBlur = 0;
@@ -315,18 +335,20 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
     <div style={{ position: "absolute", inset: 0, background: "#010206" }}>
       <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       <style>{`
-        @keyframes wrIntroTitle { 0% { opacity: 0; transform: scale(1.22); letter-spacing: 22px } 60% { opacity: 1 } 100% { opacity: 1; transform: scale(1); letter-spacing: 8px } }
+        @keyframes wrIntroBrand { from { opacity: 0; transform: translateX(-12px) } to { opacity: 1; transform: none } }
         @keyframes wrIntroBtn { to { opacity: 1; transform: none } }
       `}</style>
       <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
 
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: "3.5%", pointerEvents: "none" }}>
-        <div style={{ opacity: 0, animation: "wrIntroTitle 0.9s cubic-bezier(.2,.8,.2,1) 5.4s forwards", textAlign: "center" }}>
-          <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: 8, textShadow: "0 0 40px #1677ffcc", color: "#eaf2ff" }}>GRID ENERGIZED</div>
-          <div style={{ fontSize: 18, letterSpacing: 6, color: "#9ccbff", marginTop: 6 }}>北電錶 · 全線帶電</div>
-        </div>
+      {/* 校徽 + 校名:全線帶電後從左上角淡入(不擋中間棟別) */}
+      <div style={{ position: "absolute", top: 20, left: 26, display: "flex", alignItems: "center", gap: 12, opacity: 0, animation: "wrIntroBrand 1s cubic-bezier(.2,.8,.2,1) 5.2s forwards", pointerEvents: "none" }}>
+        <img src="/stust-logo.png" alt="南臺科技大學" style={{ height: 42, filter: "drop-shadow(0 0 12px rgba(120,180,255,.6))" }} />
+        <span style={{ color: "#eaf2ff", fontSize: 19, fontWeight: 700, letterSpacing: 2, textShadow: "0 0 22px #1677ffaa" }}>南臺科技大學</span>
+      </div>
+      {/* 進入系統:獨立固定於底部、留足邊距,不被標題擠到貼邊 */}
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: "6%", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
         <button onClick={onEnter} style={{
-          marginTop: 28, opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 6.6s forwards", pointerEvents: "auto",
+          opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 6.6s forwards", pointerEvents: "auto",
           background: "rgba(95,168,255,0.10)", border: "1px solid rgba(120,180,255,0.5)", color: "#cfe2ff", fontFamily: MONO,
           fontSize: 15, letterSpacing: 3, padding: "11px 30px", cursor: "pointer", borderRadius: 2,
         }}>進入系統 ▸</button>

@@ -22,7 +22,7 @@ const REPORTS: ReportDef[] = [
   {
     key: "transformers",
     title: "變壓器清單",
-    desc: "編號、容量、型式、二次側額定與容許範圍、所屬 VCB/饋線、負載率、連接建築與負載。",
+    desc: "編號、容量、型式、二次側額定與容許範圍、所屬 VCB/饋線、負載率、連接負載點與負載。",
     filename: "變壓器清單",
     load: () => api.transformers(),
     cols: [
@@ -35,7 +35,7 @@ const REPORTS: ReportDef[] = [
       { label: "所屬VCB", value: (r) => r.vcb_name },
       { label: "所屬饋線", value: (r) => r.feeder_name ?? "" },
       { label: "負載率(%)", value: (r) => r.load_ratio_percent ?? "" },
-      { label: "連接建築數", value: (r) => r.connected_building_count },
+      { label: "連接負載點數", value: (r) => r.connected_building_count },
       { label: "連接負載(kW)", value: (r) => r.total_connected_load_kw },
     ],
   },
@@ -140,7 +140,7 @@ const REPORTS: ReportDef[] = [
       { label: "線徑(mm²)", value: (r) => r.cross_section_mm2 ?? "" },
       { label: "負載率(%)", value: (r) => r.load_ratio_percent ?? "" },
       { label: "變壓器數", value: (r) => r.transformer_count },
-      { label: "連接建築數", value: (r) => r.connected_building_count },
+      { label: "連接負載點數", value: (r) => r.connected_building_count },
       { label: "連接負載(kW)", value: (r) => r.total_connected_load_kw },
     ],
   },

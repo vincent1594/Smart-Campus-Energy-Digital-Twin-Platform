@@ -195,7 +195,7 @@ export default function MapExplorer() {
         </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center", padding: 8 }}>
           {centerView === "map"
-            ? <CampusMapStatic markers={markers} focusLetter={focusLetter} highlight={highlight} sourceLetter={focus && focus.kind !== "source" ? SOURCE_LETTER : null} onSelect={onMapSelect} onClear={() => setFocus(null)} dark={dark} fitHeight />
+            ? <CampusMapStatic markers={markers} focusLetter={focusLetter} highlight={highlight} sourceLetter={focus && focus.kind !== "source" ? SOURCE_LETTER : null} outage={focus?.kind === "vcb"} onSelect={onMapSelect} onClear={() => setFocus(null)} dark={dark} fitHeight />
             : graph
               ? <SingleLineSvg graph={graph} pf={effPf} selectedId={focus?.id ?? null} onSelect={(n) => setFocus({ kind: n.kind as FocusKind, id: n.id, label: n.id })} />
               : <Spin />}
