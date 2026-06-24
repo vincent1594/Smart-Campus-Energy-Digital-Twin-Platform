@@ -337,6 +337,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       <style>{`
         @keyframes wrIntroBrand { from { opacity: 0; transform: translateX(-12px) } to { opacity: 1; transform: none } }
         @keyframes wrIntroBtn { to { opacity: 1; transform: none } }
+        @keyframes wrStudioCard { 0%, 62% { opacity: 1 } 100% { opacity: 0 } }
+        @keyframes wrStudioIn { 0% { opacity: 0; transform: scale(.9) } 55% { opacity: 1 } 100% { opacity: 1; transform: none } }
       `}</style>
       <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
 
@@ -352,6 +354,15 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           background: "rgba(95,168,255,0.10)", border: "1px solid rgba(120,180,255,0.5)", color: "#cfe2ff", fontFamily: MONO,
           fontSize: 15, letterSpacing: 3, padding: "11px 30px", cursor: "pointer", borderRadius: 2,
         }}>進入系統 ▸</button>
+      </div>
+
+      {/* 開場片廠 logo 卡:純黑中央校徽 → 淡出後進入通電序列(置最上層,淡出後不擋操作) */}
+      <div style={{ position: "absolute", inset: 0, background: "#01030a", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", animation: "wrStudioCard 2s ease forwards" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, animation: "wrStudioIn 0.9s cubic-bezier(.2,.8,.2,1) forwards" }}>
+          <img src="/stust-logo.png" alt="南臺科技大學" style={{ height: 104, filter: "drop-shadow(0 0 28px rgba(120,180,255,.65))" }} />
+          <div style={{ fontSize: 33, fontWeight: 800, letterSpacing: 9, color: "#eaf2ff", textShadow: "0 0 36px #1677ffcc" }}>南臺科技大學</div>
+          <div style={{ fontSize: 11.5, letterSpacing: 5, color: "#7da8d8", fontFamily: MONO }}>SOUTHERN TAIWAN UNIVERSITY OF SCIENCE AND TECHNOLOGY</div>
+        </div>
       </div>
     </div>
   );
