@@ -95,3 +95,43 @@ def run_forecast(timestamp: str, pv_factor: float = 0.8) -> ScenarioComparison:
         net = _build_net_at(timestamp, pv_factor)
         _forecast_cache[ck] = solve_net(base.model, net, _build_index(net))
     return ScenarioComparison(base=base_result, scenario=_forecast_cache[ck])  # type: ignore[arg-type]
+
+
+def _peak_day_date() -> str:
+    """EMS 全期(各饋線實測)總負載最高的那一天 → 'YYYY-MM-DD'。"""
+    import pandas as _pd
+    import data.ems_loads as _e
+    t = _e.read_feeder_ems_all().copy()
+    fc = [f"VCB{i}" for i in range(1, 12)]            # 排除 VCB12 電容
+    t["__tot"] = t[fc].sum(axis=1)
+    return _pd.Timestamp(t.loc[t["__tot"].idxmax(), "dt"]).strftime("%Y-%m-%d")
+
+
+def _build_net_ems(timestamp: str, pv_factor: float = 0.0):
+    """暫時覆寫 builder 常數 → 以 EMS 該時刻實測建 net,再還原。pv_factor=0:直接用實測淨值。"""
+    saved = (_nb.SYSTEM_LOAD_METHOD, _nb.SYSTEM_LOAD_TIMESTAMP, _nb.SYSTEM_PV_FACTOR, _nb.SYSTEM_COINCIDENT_PEAK_KW)
+    try:
+        _nb.SYSTEM_LOAD_METHOD = "ems"
+        _nb.SYSTEM_LOAD_TIMESTAMP = timestamp
+        _nb.SYSTEM_PV_FACTOR = pv_factor
+        _nb.SYSTEM_COINCIDENT_PEAK_KW = None
+        return _nb.build_network_s1_baseline()
+    finally:
+        (_nb.SYSTEM_LOAD_METHOD, _nb.SYSTEM_LOAD_TIMESTAMP, _nb.SYSTEM_PV_FACTOR, _nb.SYSTEM_COINCIDENT_PEAK_KW) = saved
+
+
+def run_forecast_day(date: str | None = None, pv_factor: float | None = None) -> dict:
+    """校園總攬日曲線:預設取「歷史尖峰最高日」(EMS 全期總負載最高那天)的 24h 實測重算。
+    回傳 {date, peak_hour, snapshots};pv_factor 未指定時 = 0(用實測淨值)。"""
+    date = date or _peak_day_date()
+    pvf = 0.0 if pv_factor is None else pv_factor
+    base = state.get_base()
+    snaps = []
+    for h in range(24):
+        ck = f"emsday|{date}|{h}|{pvf}"
+        if ck not in _forecast_cache:
+            net = _build_net_ems(f"{date} {h:02d}:00", pvf)
+            _forecast_cache[ck] = solve_net(base.model, net, _build_index(net))
+        snaps.append(_forecast_cache[ck])
+    peak_hour = max(range(24), key=lambda h: getattr(snaps[h], "total_load_kw", 0.0))
+    return {"date": date, "peak_hour": peak_hour, "snapshots": snaps}

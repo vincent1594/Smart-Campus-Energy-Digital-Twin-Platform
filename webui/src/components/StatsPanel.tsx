@@ -4,28 +4,35 @@
 import { CloudOutlined, DashboardOutlined, DeploymentUnitOutlined, FireOutlined, PercentageOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { Tag } from "antd";
 import ReactECharts from "echarts-for-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DashboardSummary, PowerFlowResult } from "../api/types";
 
 // 示意日負載曲線(形狀),於基準時點縮放對齊真實總負載
 const TREND_SHAPE = [1900, 1500, 1300, 1400, 2600, 3800, 4200, 4300, 4100, 3600, 2800, 2100, 1700];
 
 // KPI 數字「從 0 跳數到真實值」—— 本次 session 只跳一次(進場時),之後值變動直接顯示。
+// 進場動畫只在 mount 跑一次、追最新值,不被 value 變動(點/拖曳曲線)打斷。
 let kpiCounted = false;
 function CountUp({ value, decimals = 0, format }: { value: number; decimals?: number; format?: (n: number) => string }) {
   const [disp, setDisp] = useState(kpiCounted ? value : 0);
+  const latest = useRef(value);
+  latest.current = value;
+  // 已跳過進場動畫 → value 變動直接顯示
+  useEffect(() => { if (kpiCounted) setDisp(value); }, [value]);
+  // 進場動畫:mount 只跑一次(空 deps),不會被 value 變動 cancel/重啟
   useEffect(() => {
-    if (kpiCounted) { setDisp(value); return; }
+    if (kpiCounted) return;
     let raf = 0, t0 = 0;
     const step = (ts: number) => {
       if (!t0) t0 = ts;
       const p = Math.min(1, (ts - t0) / 1000);
-      setDisp(value * (1 - Math.pow(1 - p, 3)));
-      if (p < 1) raf = requestAnimationFrame(step); else kpiCounted = true;
+      setDisp(latest.current * (1 - Math.pow(1 - p, 3)));   // 追最新值,跑滿 1 秒
+      if (p < 1) raf = requestAnimationFrame(step);
+      else { setDisp(latest.current); kpiCounted = true; }
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [value]);
+  }, []);
   return <>{format ? format(disp) : disp.toFixed(decimals)}</>;
 }
 
@@ -61,7 +68,14 @@ function useEnv(): EnvData {
   return env;
 }
 
-export default function StatsPanel({ dash, pf, dark = false }: { dash: DashboardSummary; pf: PowerFlowResult; dark?: boolean }) {
+export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curveDate, peakHour, selectedHour, onScrubHour }: {
+  dash: DashboardSummary; pf: PowerFlowResult; dark?: boolean;
+  daySnapshots?: PowerFlowResult[];            // 歷史尖峰日 24h 實測快照(供拖曳基準點)
+  curveDate?: string;                          // 曲線所屬日期(歷史尖峰最高日)
+  peakHour?: number | null;                    // 該日尖峰小時(marker 預設位置)
+  selectedHour?: number | null;
+  onScrubHour?: (hour: number) => void;
+}) {
   const C = dark
     ? { bg: "rgba(13,27,42,.55)", border: "#1b3a5b", text: "#cfe9ff", muted: "#5f86a8", accent: "#00e5ff" }
     : { bg: "#fff", border: "#eef1f5", text: "#2a2a2a", muted: "#8c8c8c", accent: "#1677ff" };
@@ -84,16 +98,72 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
     </div>
   );
 
-  // 日負載曲線:示意日曲線,於基準時點(由 load_basis 解析,如 14:00)標出基準情境的總負載
-  const { trendX, trendY, basisIdx } = useMemo(() => {
-    const x = TREND_SHAPE.map((_, i) => String(i * 2).padStart(2, "0"));
-    const hourM = dash.load_basis?.match(/(\d{1,2}):\d{2}/);
-    const hour = hourM ? Math.min(24, Math.max(0, Number(hourM[1]))) : 14;
-    const idx = Math.min(TREND_SHAPE.length - 1, Math.round(hour / 2));
-    const cur = pf.total_load_kw || TREND_SHAPE[idx];
-    const scale = cur / (TREND_SHAPE[idx] || 1);
-    return { trendX: x, trendY: TREND_SHAPE.map((v) => Math.round(v * scale)), basisIdx: idx };
-  }, [pf.total_load_kw, dash.load_basis]);
+  // 日負載曲線:有 daySnapshots(當日 24h 錨定快照)→ 真實逐時、可拖曳基準點;否則退回示意形狀。
+  const basisHour = Math.min(23, Math.max(0, Number(dash.load_basis?.match(/(\d{1,2}):\d{2}/)?.[1] ?? 14)));
+  const dayDate = curveDate ?? dash.load_basis?.match(/\d{4}[-/]\d{1,2}[-/]\d{1,2}/)?.[0]?.replace(/\//g, "-");   // 日曲線所屬日期
+  const { trendX, trendY, markIdx, real } = useMemo(() => {
+    if (daySnapshots && daySnapshots.length === 24) {
+      return {
+        trendX: daySnapshots.map((_, h) => String(h).padStart(2, "0")),
+        trendY: daySnapshots.map((s) => Math.round(s.total_load_kw)),
+        markIdx: selectedHour ?? peakHour ?? basisHour, real: true,
+      };
+    }
+    const idx = Math.min(TREND_SHAPE.length - 1, Math.round(basisHour / 2));
+    const scale = (pf.total_load_kw || TREND_SHAPE[idx]) / (TREND_SHAPE[idx] || 1);
+    return { trendX: TREND_SHAPE.map((_, i) => String(i * 2).padStart(2, "0")), trendY: TREND_SHAPE.map((v) => Math.round(v * scale)), markIdx: idx, real: false };
+  }, [daySnapshots, selectedHour, peakHour, basisHour, pf.total_load_kw]);
+
+  // 連續拖曳基準點:走 zrender 事件(確定會在 canvas 上觸發),座標用 zrender 自算的 zrX/zrY
+  // (offsetX 在此版為 undefined → 之前才卡在 0),convertFromPixel 轉成類目軸小數索引 → 連續。
+  const ecRef = useRef<React.ElementRef<typeof ReactECharts>>(null);
+  const dragging = useRef(false);
+  const lastHour = useRef<number | null>(null);
+  useEffect(() => {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const inst = ecRef.current?.getEchartsInstance() as any;
+    if (!inst || !real || !onScrubHour) return;
+    const zr = inst.getZr();
+    // 純幾何換算:不依賴 convertFromPixel(此版回 NaN)。grid 左右 = 36/10,x 軸 boundaryGap:false → 邊到邊線性。
+    const toHour = (ev: any): number | null => {
+      let px = ev.zrX; if (px == null) px = ev.offsetX; if (px == null) px = ev.event?.offsetX;
+      if (px == null) return null;
+      const plot = inst.getWidth() - 36 - 10;
+      if (plot <= 0) return null;
+      return Math.max(0, Math.min(23, ((px - 36) / plot) * 23));
+    };
+    const fire = (h: number | null) => { if (h != null && (lastHour.current == null || Math.abs(h - lastHour.current) >= 0.04)) { lastHour.current = h; onScrubHour(h); } };
+    const down = (ev: any) => { dragging.current = true; lastHour.current = null; fire(toHour(ev)); };
+    const move = (ev: any) => { if (dragging.current) fire(toHour(ev)); };
+    const up = () => { dragging.current = false; };
+    zr.on("mousedown", down); zr.on("mousemove", move); zr.on("mouseup", up); zr.on("globalout", up);
+    return () => { zr.off("mousedown", down); zr.off("mousemove", move); zr.off("mouseup", up); zr.off("globalout", up); };
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+  }, [real, onScrubHour]);
+
+  // 基準 pin 位置與標籤:markIdx 可為小數 → 線性內插出 y 值,標籤顯示 HH:MM
+  const mFloor = Math.floor(markIdx);
+  const markVal = trendY.length ? trendY[mFloor] + ((trendY[Math.min(trendY.length - 1, mFloor + 1)] ?? trendY[mFloor]) - trendY[mFloor]) * (markIdx - mFloor) : 0;
+  const pinLabel = real
+    ? (selectedHour != null
+        ? `${String(Math.round(selectedHour)).padStart(2, "0")}:00`
+        : (peakHour != null ? `尖峰 ${String(peakHour).padStart(2, "0")}:00` : "基準"))
+    : "基準";
+
+  // ECharts option 固定 identity:只在曲線資料/marker/主題變動時重算,
+  // 不被 KPI 進場動畫每幀重渲染 churn(否則 setOption 連發會打斷曲線進場動畫)。
+  const chartOption = useMemo(() => ({
+    animationDuration: 900,
+    grid: { left: 36, right: 10, top: 14, bottom: 18 },
+    tooltip: { trigger: "axis", valueFormatter: (v: number) => `${v} kW` },
+    xAxis: { type: "category", data: trendX, boundaryGap: false, axisLabel: { color: C.muted, fontSize: 9 }, axisLine: { lineStyle: { color: C.border } } },
+    yAxis: { type: "value", axisLabel: { color: C.muted, fontSize: 9 }, splitLine: { lineStyle: { color: dark ? "#12283f" : "#f0f0f0" } } },
+    series: [{
+      type: "line", smooth: true, data: trendY, showSymbol: false, cursor: "ew-resize",
+      lineStyle: { color: C.accent, width: 2 }, areaStyle: { color: dark ? "rgba(0,229,255,.18)" : "rgba(22,119,255,.12)" },
+      markPoint: { symbol: "pin", symbolSize: 30, data: [{ coord: [markIdx, markVal], value: Math.round(markVal) }], label: { show: true, fontSize: 9, color: "#fff", formatter: "基準" }, itemStyle: { color: C.accent } },
+    }],
+  }), [trendX, trendY, markIdx, markVal, dark, C.muted, C.border, C.accent]);
 
   // 負載率最高的變壓器(顯示在「最大變壓器」KPI 後)
   const maxTr = useMemo(() => pf.transformer_loadings.reduce<typeof pf.transformer_loadings[number] | null>(
@@ -142,11 +212,11 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
-        <Kpi label="總負載" value={<CountUp value={dash.total_load_kw} decimals={0} />} unit="kW" accent={C.accent} extra={`${dash.total_load_kvar} kVAR`} icon={<ThunderboltOutlined />} />
-        <Kpi label="系統損耗" value={<CountUp value={dash.system_loss_kw} decimals={1} />} unit="kW" accent="#fa8c16" extra={`${dash.system_loss_kvar} kVAR`} icon={<FireOutlined />} />
+        <Kpi label="總負載" value={<CountUp value={dash.total_load_kw} decimals={0} />} unit="kW" accent={C.accent} extra={`${Math.round(dash.total_load_kvar)} kVAR`} icon={<ThunderboltOutlined />} />
+        <Kpi label="系統損耗" value={<CountUp value={dash.system_loss_kw} decimals={1} />} unit="kW" accent="#fa8c16" extra={`${Math.round(dash.system_loss_kvar)} kVAR`} icon={<FireOutlined />} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <Kpi label="最低電壓" value={<CountUp value={dash.min_voltage_pu} decimals={4} />} unit="pu" accent={dash.min_voltage_pu < 0.95 ? "#ff4d4f" : "#52c41a"} icon={<DashboardOutlined />} />
+        <Kpi label="最低電壓" value={<CountUp value={dash.min_voltage_pu} decimals={4} />} unit="pu" accent={dash.min_voltage_pu < 0.95 ? "#ff4d4f" : "#52c41a"} extra={pf.min_voltage_building_name?.match(/\(([^)]+)\)/)?.[1] ?? pf.min_voltage_building_name ?? undefined} icon={<DashboardOutlined />} />
         <Kpi label="最大變壓器" value={<CountUp value={dash.max_transformer_load_ratio_percent} decimals={1} />} unit="%" accent="#faad14" extra={maxTr?.transformer_name} icon={<DeploymentUnitOutlined />} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
@@ -156,18 +226,18 @@ export default function StatsPanel({ dash, pf, dark = false }: { dash: Dashboard
 
       {/* 日負載曲線 */}
       <div style={{ ...panel, flex: 1, minHeight: 90, display: "flex", flexDirection: "column" }}>
-        <div style={{ marginBottom: 4 }}>
-          <div style={{ color: C.muted, fontSize: 12 }}>日負載曲線</div>
-          {dash.load_basis && <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>基準:{dash.load_basis}</div>}
+        <div style={{ marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <div style={{ color: C.muted, fontSize: 12 }}>日負載曲線{dayDate && <span style={{ marginInlineStart: 4, opacity: 0.85 }}>· {dayDate}</span>}</div>
+          {real
+            ? <div style={{ color: C.accent, fontSize: 10 }}>{pinLabel} · {Math.round(markVal)} kW · 拖曳切換</div>
+            : onScrubHour
+              ? <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>時段資料載入中…(約 10 秒,載好可拖曳)</div>
+              : dash.load_basis && <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>基準:{dash.load_basis}</div>}
         </div>
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <ReactECharts style={{ height: "100%", width: "100%" }} option={{
-            grid: { left: 36, right: 10, top: 14, bottom: 18 }, tooltip: { trigger: "axis", valueFormatter: (v: number) => `${v} kW` },
-            xAxis: { type: "category", data: trendX, axisLabel: { color: C.muted, fontSize: 9 }, axisLine: { lineStyle: { color: C.border } } },
-            yAxis: { type: "value", axisLabel: { color: C.muted, fontSize: 9 }, splitLine: { lineStyle: { color: dark ? "#12283f" : "#f0f0f0" } } },
-            series: [{ type: "line", smooth: true, data: trendY, showSymbol: false, lineStyle: { color: C.accent, width: 2 }, areaStyle: { color: dark ? "rgba(0,229,255,.18)" : "rgba(22,119,255,.12)" },
-              markPoint: { symbol: "pin", symbolSize: 30, data: [{ coord: [basisIdx, trendY[basisIdx]], value: trendY[basisIdx] }], label: { show: true, fontSize: 9, color: "#fff", formatter: "基準" }, itemStyle: { color: C.accent } } }],
-          }} />
+        <div style={{ flex: 1, minHeight: 0, cursor: real ? "ew-resize" : "default" }}>
+          {real
+            ? <ReactECharts ref={ecRef} style={{ height: "100%", width: "100%" }} option={chartOption} />
+            : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11 }}>載入中…</div>}
         </div>
       </div>
 

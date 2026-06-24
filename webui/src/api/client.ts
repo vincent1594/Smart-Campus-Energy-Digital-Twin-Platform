@@ -89,6 +89,7 @@ export const api = {
   powerflow: () => get<PowerFlowResult>("/api/powerflow"),
   runScenario: (req: ScenarioRequest) => post<ScenarioComparison>("/api/scenario/run", req),
   runForecast: (req: ForecastRequest) => post<ScenarioComparison>("/api/scenario/forecast", req),
+  forecastDay: () => get<{ date: string; peak_hour: number; snapshots: PowerFlowResult[] }>("/api/scenario/forecast-day"),
   demand: (contractKw?: number, rate?: number) => {
     const q = new URLSearchParams();
     if (contractKw != null) q.set("contract_kw", String(contractKw));
