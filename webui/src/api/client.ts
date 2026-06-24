@@ -89,7 +89,15 @@ export const api = {
   powerflow: () => get<PowerFlowResult>("/api/powerflow"),
   runScenario: (req: ScenarioRequest) => post<ScenarioComparison>("/api/scenario/run", req),
   runForecast: (req: ForecastRequest) => post<ScenarioComparison>("/api/scenario/forecast", req),
-  forecastDay: () => get<{ date: string; peak_hour: number; snapshots: PowerFlowResult[] }>("/api/scenario/forecast-day"),
+  // 日曲線尖峰日 24h 快照:資料固定 → 優先讀預先算好的靜態檔(瞬間、不經後端/不受冷啟動影響),失敗才退回 API
+  forecastDay: async (): Promise<{ date: string; peak_hour: number; snapshots: PowerFlowResult[] }> => {
+    type FD = { date: string; peak_hour: number; snapshots: PowerFlowResult[] };
+    try {
+      const r = await fetch("/forecast-day.json");
+      if (r.ok) return (await r.json()) as FD;
+    } catch { /* 靜態檔讀取失敗 → 退回 API */ }
+    return get<FD>("/api/scenario/forecast-day");
+  },
   demand: (contractKw?: number, rate?: number) => {
     const q = new URLSearchParams();
     if (contractKw != null) q.set("contract_kw", String(contractKw));
