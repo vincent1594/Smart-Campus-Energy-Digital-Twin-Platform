@@ -114,32 +114,33 @@ export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curve
     return { trendX: TREND_SHAPE.map((_, i) => String(i * 2).padStart(2, "0")), trendY: TREND_SHAPE.map((v) => Math.round(v * scale)), markIdx: idx, real: false };
   }, [daySnapshots, selectedHour, peakHour, basisHour, pf.total_load_kw]);
 
-  // 連續拖曳基準點:走 zrender 事件(確定會在 canvas 上觸發),座標用 zrender 自算的 zrX/zrY
-  // (offsetX 在此版為 undefined → 之前才卡在 0),convertFromPixel 轉成類目軸小數索引 → 連續。
-  const ecRef = useRef<React.ElementRef<typeof ReactECharts>>(null);
+  // 連續拖曳基準點:改在「容器 div」上用 DOM 滑鼠事件處理,完全不碰 echarts 實例。
+  // 之前綁 zrender 會踩 echarts-for-react v3 的雷:開場動畫('finished')播完後它會 dispose 暫時實例、
+  // 重建最終實例(換掉 zrender),綁在舊 zr 上的 listener 全失效 → 「動畫跑完拖不動」。
+  // div 自身生命週期穩定;座標用 getBoundingClientRect + clientX 換算(grid 左右 = 36/10,
+  // x 軸 boundaryGap:false → 邊到邊線性),clientX 必有值,不會像 zrX/offsetX 偶爾 undefined。
+  const chartBoxRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const lastHour = useRef<number | null>(null);
-  useEffect(() => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    const inst = ecRef.current?.getEchartsInstance() as any;
-    if (!inst || !real || !onScrubHour) return;
-    const zr = inst.getZr();
-    // 純幾何換算:不依賴 convertFromPixel(此版回 NaN)。grid 左右 = 36/10,x 軸 boundaryGap:false → 邊到邊線性。
-    const toHour = (ev: any): number | null => {
-      let px = ev.zrX; if (px == null) px = ev.offsetX; if (px == null) px = ev.event?.offsetX;
-      if (px == null) return null;
-      const plot = inst.getWidth() - 36 - 10;
-      if (plot <= 0) return null;
-      return Math.max(0, Math.min(23, ((px - 36) / plot) * 23));
-    };
-    const fire = (h: number | null) => { if (h != null && (lastHour.current == null || Math.abs(h - lastHour.current) >= 0.04)) { lastHour.current = h; onScrubHour(h); } };
-    const down = (ev: any) => { dragging.current = true; lastHour.current = null; fire(toHour(ev)); };
-    const move = (ev: any) => { if (dragging.current) fire(toHour(ev)); };
-    const up = () => { dragging.current = false; };
-    zr.on("mousedown", down); zr.on("mousemove", move); zr.on("mouseup", up); zr.on("globalout", up);
-    return () => { zr.off("mousedown", down); zr.off("mousemove", move); zr.off("mouseup", up); zr.off("globalout", up); };
-    /* eslint-enable @typescript-eslint/no-explicit-any */
-  }, [real, onScrubHour]);
+  const scrubRef = useRef(onScrubHour);
+  scrubRef.current = onScrubHour;
+  const fireFromClientX = (clientX: number) => {
+    const el = chartBoxRef.current, cb = scrubRef.current;
+    if (!el || !cb) return;
+    const rect = el.getBoundingClientRect();
+    const plot = rect.width - 36 - 10;
+    if (plot <= 0) return;
+    const h = Math.max(0, Math.min(23, ((clientX - rect.left - 36) / plot) * 23));
+    if (lastHour.current == null || Math.abs(h - lastHour.current) >= 0.04) { lastHour.current = h; cb(h); }
+  };
+  const onChartMouseDown = (e: React.MouseEvent) => {
+    if (!real || !scrubRef.current) return;
+    dragging.current = true; lastHour.current = null;
+    fireFromClientX(e.clientX);
+    const move = (ev: MouseEvent) => { if (dragging.current) fireFromClientX(ev.clientX); };
+    const up = () => { dragging.current = false; window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+    window.addEventListener("mousemove", move); window.addEventListener("mouseup", up);
+  };
 
   // 基準 pin 位置與標籤:markIdx 可為小數 → 線性內插出 y 值,標籤顯示 HH:MM
   const mFloor = Math.floor(markIdx);
@@ -234,9 +235,9 @@ export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curve
               ? <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>時段資料載入中…(約 10 秒,載好可拖曳)</div>
               : dash.load_basis && <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>基準:{dash.load_basis}</div>}
         </div>
-        <div data-focus-keep style={{ flex: 1, minHeight: 0, cursor: real ? "ew-resize" : "default" }}>
+        <div ref={chartBoxRef} data-focus-keep onMouseDown={onChartMouseDown} style={{ flex: 1, minHeight: 0, cursor: real ? "ew-resize" : "default" }}>
           {real
-            ? <ReactECharts ref={ecRef} style={{ height: "100%", width: "100%" }} option={chartOption} />
+            ? <ReactECharts style={{ height: "100%", width: "100%" }} option={chartOption} />
             : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11 }}>載入中…</div>}
         </div>
       </div>
