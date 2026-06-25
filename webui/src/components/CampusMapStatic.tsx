@@ -19,7 +19,7 @@ function distSeg(p: Pt, a: Pt, b: Pt): number {
 
 export default function CampusMapStatic({
   markers, focusLetter, highlight, sourceLetter, onSelect, onClear, dark = false,
-  editable = false, polys, onPolyChange, fitHeight = false, outage = false,
+  editable = false, polys, onPolyChange, fitHeight = false, outage = false, hideLegend = false,
 }: {
   markers: MapMarker[];
   focusLetter?: string | null;
@@ -33,6 +33,7 @@ export default function CampusMapStatic({
   onPolyChange?: (letter: string, pts: Pt[]) => void;
   fitHeight?: boolean; // 依高度縮放(置中、不溢出)
   outage?: boolean;    // 停電影響模式:highlight 棟別改用紅色亮起(聚焦 VCB 時)
+  hideLegend?: boolean; // 隱藏右下角圖例(負載率色階 / 停電影響)
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ letter: string; idx: number } | null>(null);
@@ -76,7 +77,7 @@ export default function CampusMapStatic({
       <img src={MAP_IMAGE} alt="校園地圖" draggable={false} style={{ display: "block", borderRadius: 8, filter: dark ? "brightness(.5) contrast(1.15) saturate(.35) grayscale(.5)" : "saturate(.16) brightness(1.08)", ...(fitHeight ? { width: "100%", height: "100%", objectFit: "contain" } : { width: "100%" }) }} />
 
       {/* 圖例:停電影響模式顯示紅色「受影響棟」,否則顯示負載率色階 */}
-      {!editable && (
+      {!editable && !hideLegend && (
         <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 20, display: "flex", alignItems: "center", gap: 10,
           background: dark ? "rgba(0,0,0,.5)" : "rgba(255,255,255,.86)", color: dark ? "#cfe9ff" : "#666",
           borderRadius: 6, padding: "3px 9px", fontSize: 11, lineHeight: 1.6, boxShadow: "0 1px 4px rgba(0,0,0,.12)" }}>
