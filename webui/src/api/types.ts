@@ -204,6 +204,8 @@ export interface PowerFlowResult {
   total_load_kvar: number;
   system_loss_kw: number;
   system_loss_kvar: number;
+  iron_loss_kw: number;     // 鐵損(變壓器空載損,與負載無關)
+  copper_loss_kw: number;   // 銅損(線損+變壓器負載損,隨負載變化)
   grid_import_kw: number;
   grid_import_kvar: number;
   min_voltage_pu: number;

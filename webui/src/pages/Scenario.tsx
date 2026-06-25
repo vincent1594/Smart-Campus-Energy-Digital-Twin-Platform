@@ -131,8 +131,8 @@ export default function Scenario() {
 
         <Divider style={{ margin: "8px 0" }} orientation="left" plain>手動 what-if</Divider>
         <div style={{ color: "#888", fontSize: 12, marginBottom: 2 }}>總負載</div>
-        <InputNumber size="small" style={{ width: "100%" }} addonAfter="kW" min={0} value={Math.round(total)} onChange={(v) => setTotal(v ?? 0)} />
-        <Slider min={0.5} max={3} step={0.05} value={base.total_load_kw ? total / base.total_load_kw : 1} style={{ margin: "2px 4px 20px" }}
+        <InputNumber size="small" style={{ width: "100%" }} addonAfter="kW" value={Math.round(total)} onChange={(v) => setTotal(v ?? 0)} />
+        <Slider min={base.total_load_kw ? 500 / base.total_load_kw : 0.1} max={3} step={0.05} value={base.total_load_kw ? total / base.total_load_kw : 1} style={{ margin: "2px 4px 20px" }}
           onChange={(f) => setTotal(Math.round(base.total_load_kw * f))} marks={{ 1: "現況", 2: "×2", 3: "×3" }} tooltip={{ formatter: (f) => `×${f?.toFixed(2)}` }} />
 
         <Divider style={{ margin: "6px 0" }} orientation="left" plain>單區負載</Divider>
@@ -178,6 +178,8 @@ export default function Scenario() {
           <>
             <CompareRow label="總負載" before={cmp.base.total_load_kw} after={cmp.scenario.total_load_kw} unit="kW" />
             <CompareRow label="系統損耗" before={cmp.base.system_loss_kw} after={cmp.scenario.system_loss_kw} unit="kW" />
+            <CompareRow label="　鐵損(空載)" before={cmp.base.iron_loss_kw} after={cmp.scenario.iron_loss_kw} unit="kW" />
+            <CompareRow label="　銅損(負載)" before={cmp.base.copper_loss_kw} after={cmp.scenario.copper_loss_kw} unit="kW" />
             <CompareRow label="最低電壓" before={cmp.base.min_voltage_pu} after={cmp.scenario.min_voltage_pu} unit="pu" worseWhenUp={false} />
             <CompareRow label="最大變壓器" before={cmp.base.max_transformer_load_ratio_percent} after={cmp.scenario.max_transformer_load_ratio_percent} unit="%" />
             <CompareRow label="最大饋線" before={cmp.base.max_feeder_load_ratio_percent} after={cmp.scenario.max_feeder_load_ratio_percent} unit="%" />
