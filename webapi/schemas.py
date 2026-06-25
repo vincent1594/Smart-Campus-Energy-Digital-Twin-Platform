@@ -39,6 +39,8 @@ class PowerFlowResult(BaseModel):
     total_load_kvar: float = 0.0
     system_loss_kw: float
     system_loss_kvar: float = 0.0
+    iron_loss_kw: float = 0.0     # 鐵損(變壓器空載/核損,與負載無關,只要通電就存在)
+    copper_loss_kw: float = 0.0   # 銅損(線損 + 變壓器負載損,隨負載電流平方變化)
     grid_import_kw: float = 0.0   # 市電(台電)進線實功率
     grid_import_kvar: float = 0.0 # 市電進線無功(進線端,含電容器補償後)
     min_voltage_pu: float

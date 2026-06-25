@@ -65,6 +65,10 @@ def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> P
     system_loss_kvar = round(
         float(stats.get("total_loss_q_kvar", 0.0)) + float(stats.get("trafo_loss_q_kvar", 0.0)), 1
     )
+    # 鐵損/銅損拆分:鐵損=在役變壓器空載損(pfe)加總,與負載無關;銅損=系統總損扣掉鐵損(線損+變壓器負載損)。
+    # 兩者相加恆等於 system_loss_kw;銅損夾在 0 以上避免極低載時的微小負值。
+    iron_loss_kw = round(float(net.trafo.pfe_kw[net.trafo.in_service].sum()), 1)
+    copper_loss_kw = round(max(0.0, system_loss_kw - iron_loss_kw), 1)
     grid_import_kw = round(float(stats.get("ext_grid_p_kw", 0.0)), 1)
     grid_import_kvar = round(float(stats.get("ext_grid_q_kvar", 0.0)), 1)
     worst = min(building_voltages, key=lambda x: x.voltage_pu) if building_voltages else None
@@ -80,6 +84,8 @@ def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> P
         total_load_kvar=total_load_kvar,
         system_loss_kw=system_loss_kw,
         system_loss_kvar=system_loss_kvar,
+        iron_loss_kw=iron_loss_kw,
+        copper_loss_kw=copper_loss_kw,
         grid_import_kw=grid_import_kw,
         grid_import_kvar=grid_import_kvar,
         min_voltage_pu=round(worst.voltage_pu, 4) if worst else 0.0,
