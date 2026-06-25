@@ -168,7 +168,7 @@ export default function Scenario() {
           </span>
         }>
         <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center" }}>
-          {shown && <CampusMapStatic markers={markers} fitHeight />}
+          {shown && <CampusMapStatic markers={markers} fitHeight hideLegend />}
         </div>
       </Card>
 
