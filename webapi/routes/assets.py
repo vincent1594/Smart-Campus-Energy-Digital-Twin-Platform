@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from webapi.deps import use_network
 from webapi.schemas import (
     FeederDetail,
     ReplacementEconomicsReport,
@@ -10,7 +11,8 @@ from webapi.schemas import (
 )
 from webapi.services import asset_service, replacement_service
 
-router = APIRouter(prefix="/api/assets", tags=["assets"])
+router = APIRouter(prefix="/api/{network_id}/assets", tags=["assets"],
+                   dependencies=[Depends(use_network)])
 
 
 # ---------- Transformer ----------

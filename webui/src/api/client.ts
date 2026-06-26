@@ -31,6 +31,22 @@ import type {
 // 開發時用相對路徑 → 由 Vite proxy 轉到本機後端 (127.0.0.1:8126);正式版打 Render
 const API_BASE_URL = import.meta.env.DEV ? "" : "https://smart-campus-energy-digital-twin.onrender.com";
 
+// ── 多電網:當前選定的電網 (北/南),持久化於 localStorage ──
+// 網路相關端點路徑為 /api/{network}/...;全域端點 (visit/feedback/settings/health/networks) 不帶網路。
+let currentNetwork = (typeof localStorage !== "undefined" && localStorage.getItem("network")) || "north";
+
+export function getNetwork(): string {
+  return currentNetwork;
+}
+
+export function setNetwork(id: string): void {
+  currentNetwork = id;
+  if (typeof localStorage !== "undefined") localStorage.setItem("network", id);
+}
+
+// 網路範圍端點前綴:在呼叫當下取用 currentNetwork
+const napi = (path: string) => `/api/${currentNetwork}${path}`;
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`);
   if (!res.ok) {
@@ -67,49 +83,57 @@ async function put<T>(path: string, payload: unknown): Promise<T> {
 }
 
 export const api = {
-  dashboard: () => get<DashboardSummary>("/api/dashboard"),
+  // 可切換的電網清單 (全域;供南/北切換器)
+  networks: () => get<{ id: string; name: string }[]>("/api/networks"),
+  // ── 以下為「網路範圍」端點:路徑帶 /api/{network}/... ──
+  dashboard: () => get<DashboardSummary>(napi("/dashboard")),
   buildings: (query?: string) =>
-    get<BuildingSummary[]>(`/api/buildings${query ? `?query=${encodeURIComponent(query)}` : ""}`),
-  building: (id: string) => get<BuildingDetail>(`/api/buildings/${encodeURIComponent(id)}`),
-  transformers: () => get<TransformerDetail[]>("/api/assets/transformers"),
-  transformer: (id: string) => get<TransformerDetail>(`/api/assets/transformers/${encodeURIComponent(id)}`),
-  transformerSpecs: () => get<TransformerSpec[]>("/api/assets/transformer-specs"),
-  replacementPriority: () => get<TransformerRisk[]>("/api/assets/replacement-priority"),
+    get<BuildingSummary[]>(napi(`/buildings${query ? `?query=${encodeURIComponent(query)}` : ""}`)),
+  // 指定電網版 (不依當前 currentNetwork):供「全校園」總覽同時抓南北兩網
+  buildingsOf: (net: string) => get<BuildingSummary[]>(`/api/${net}/buildings`),
+  powerflowOf: (net: string) => get<PowerFlowResult>(`/api/${net}/powerflow`),
+  building: (id: string) => get<BuildingDetail>(napi(`/buildings/${encodeURIComponent(id)}`)),
+  transformers: () => get<TransformerDetail[]>(napi("/assets/transformers")),
+  transformer: (id: string) => get<TransformerDetail>(napi(`/assets/transformers/${encodeURIComponent(id)}`)),
+  transformerSpecs: () => get<TransformerSpec[]>(napi("/assets/transformer-specs")),
+  replacementPriority: () => get<TransformerRisk[]>(napi("/assets/replacement-priority")),
   replacementEconomics: (unitPrice?: number, energyPrice?: number) => {
     const q = new URLSearchParams();
     if (unitPrice != null) q.set("unit_price", String(unitPrice));
     if (energyPrice != null) q.set("energy_price", String(energyPrice));
     const s = q.toString();
-    return get<ReplacementEconomicsReport>(`/api/assets/replacement-economics${s ? `?${s}` : ""}`);
+    return get<ReplacementEconomicsReport>(napi(`/assets/replacement-economics${s ? `?${s}` : ""}`));
   },
-  vcbs: () => get<VcbDetail[]>("/api/assets/vcbs"),
-  feeders: () => get<FeederDetail[]>("/api/assets/feeders"),
-  feeder: (id: string) => get<FeederDetail>(`/api/assets/feeders/${encodeURIComponent(id)}`),
-  topology: () => get<TopologyGraph>("/api/topology"),
-  powerflow: () => get<PowerFlowResult>("/api/powerflow"),
-  runScenario: (req: ScenarioRequest) => post<ScenarioComparison>("/api/scenario/run", req),
-  runForecast: (req: ForecastRequest) => post<ScenarioComparison>("/api/scenario/forecast", req),
-  // 日曲線尖峰日 24h 快照:資料固定 → 優先讀預先算好的靜態檔(瞬間、不經後端/不受冷啟動影響),失敗才退回 API
+  vcbs: () => get<VcbDetail[]>(napi("/assets/vcbs")),
+  feeders: () => get<FeederDetail[]>(napi("/assets/feeders")),
+  feeder: (id: string) => get<FeederDetail>(napi(`/assets/feeders/${encodeURIComponent(id)}`)),
+  topology: () => get<TopologyGraph>(napi("/topology")),
+  powerflow: () => get<PowerFlowResult>(napi("/powerflow")),
+  runScenario: (req: ScenarioRequest) => post<ScenarioComparison>(napi("/scenario/run"), req),
+  runForecast: (req: ForecastRequest) => post<ScenarioComparison>(napi("/scenario/forecast"), req),
+  // 日曲線尖峰日 24h 快照:北網有預算好的靜態檔 (瞬間);其餘網走 API (未備則後端回 404)
   forecastDay: async (): Promise<{ date: string; peak_hour: number; snapshots: PowerFlowResult[] }> => {
     type FD = { date: string; peak_hour: number; snapshots: PowerFlowResult[] };
-    try {
-      const r = await fetch("/forecast-day.json");
-      if (r.ok) return (await r.json()) as FD;
-    } catch { /* 靜態檔讀取失敗 → 退回 API */ }
-    return get<FD>("/api/scenario/forecast-day");
+    if (currentNetwork === "north") {
+      try {
+        const r = await fetch("/forecast-day.json");
+        if (r.ok) return (await r.json()) as FD;
+      } catch { /* 靜態檔讀取失敗 → 退回 API */ }
+    }
+    return get<FD>(napi("/scenario/forecast-day"));
   },
   demand: (contractKw?: number, rate?: number) => {
     const q = new URLSearchParams();
     if (contractKw != null) q.set("contract_kw", String(contractKw));
     if (rate != null) q.set("rate", String(rate));
     const s = q.toString();
-    return get<DemandStatus>(`/api/demand/${s ? `?${s}` : ""}`);
+    return get<DemandStatus>(napi(`/demand/${s ? `?${s}` : ""}`));
   },
   demandForecast: (date: string, contractKw?: number, rate?: number) => {
     const q = new URLSearchParams({ date });
     if (contractKw != null) q.set("contract_kw", String(contractKw));
     if (rate != null) q.set("rate", String(rate));
-    return get<DemandForecast>(`/api/demand/forecast?${q.toString()}`);
+    return get<DemandForecast>(napi(`/demand/forecast?${q.toString()}`));
   },
   contractOptimize: (contractKw?: number, rate?: number, highMonths?: number, offseasonRatio?: number) => {
     const q = new URLSearchParams();
@@ -118,12 +142,13 @@ export const api = {
     if (highMonths != null) q.set("high_months", String(highMonths));
     if (offseasonRatio != null) q.set("offseason_ratio", String(offseasonRatio));
     const s = q.toString();
-    return get<ContractOptimization>(`/api/demand/optimize${s ? `?${s}` : ""}`);
+    return get<ContractOptimization>(napi(`/demand/optimize${s ? `?${s}` : ""}`));
   },
-  eui: (year?: number) => get<EUIReport>(`/api/eui${year ? `?year=${year}` : ""}`),
-  history: () => get<HistoryReport>("/api/history"),
-  tariff: () => get<TariffInfo>("/api/demand/tariff"),
-  bill: (req: BillRequest) => post<MonthlyBill>("/api/demand/bill", req),
+  eui: (year?: number) => get<EUIReport>(napi(`/eui${year ? `?year=${year}` : ""}`)),
+  history: () => get<HistoryReport>(napi("/history")),
+  tariff: () => get<TariffInfo>(napi("/demand/tariff")),
+  bill: (req: BillRequest) => post<MonthlyBill>(napi("/demand/bill"), req),
+  // ── 以下為全域端點 (不帶網路) ──
   recordVisit: (visitorId: string) => post<VisitStats>("/api/visit", { visitor_id: visitorId }),
   visitStats: () => get<VisitStats>("/api/visit/stats"),
   recentVisits: (limit = 30) => get<RecentVisit[]>(`/api/visit/recent?limit=${limit}`),

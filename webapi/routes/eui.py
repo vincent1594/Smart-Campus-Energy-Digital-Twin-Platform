@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from webapi.deps import require_capability
 from webapi.schemas import EUIReport
 from webapi.services import eui_service
 
-router = APIRouter(prefix="/api/eui", tags=["eui"])
+router = APIRouter(prefix="/api/{network_id}/eui", tags=["eui"],
+                   dependencies=[Depends(require_capability("eui"))])
 
 
 @router.get("", response_model=EUIReport)

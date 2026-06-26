@@ -1,6 +1,6 @@
-import { Button, Card, Descriptions, Drawer, Input, InputNumber, List, Progress, Statistic, Table, Tabs, Tag, message } from "antd";
+import { Button, Card, Descriptions, Drawer, Input, InputNumber, List, Progress, Segmented, Statistic, Table, Tabs, Tag, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../api/client";
+import { api, getNetwork, setNetwork } from "../api/client";
 import type { FeederDetail, ReplacementEconomics, ReplacementEconomicsReport, TransformerDetail, TransformerRisk, TransformerSpec, VcbDetail } from "../api/types";
 import LoadRatioTag from "../components/LoadRatioTag";
 import { useFocus } from "../focus/FocusContext";
@@ -380,19 +380,26 @@ function Economics() {
 }
 
 export default function AssetExplorer() {
+  // 南北電錶切換:與地圖共用同一 currentNetwork;切換後各分頁以新電網 key 重新掛載 → 重抓資料。
+  const [net, setNet] = useState(getNetwork());
+  const switchNet = (id: string) => { if (id !== net) { setNetwork(id); setNet(id); } };
   return (
     <Card style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto", padding: "8px 12px" } }}>
       <Tabs
         size="small"
         tabBarStyle={{ marginBottom: 8 }}
+        tabBarExtraContent={
+          <Segmented size="small" value={net} onChange={(v) => switchNet(v as string)}
+            options={[{ label: "北電錶", value: "north" }, { label: "南電錶", value: "south" }]} />
+        }
         items={[
-          { key: "bld", label: "建築", children: <BuildingsPanel /> },
-          { key: "tr", label: "變壓器", children: <Transformers /> },
-          { key: "spec", label: "規格明細", children: <Specs /> },
-          { key: "vcb", label: "VCB", children: <Vcbs /> },
-          { key: "fd", label: "饋線", children: <Feeders /> },
-          { key: "replace", label: "汰換優先序", children: <Replacement /> },
-          { key: "econ", label: "汰換投資回收", children: <Economics /> },
+          { key: "bld", label: "建築", children: <BuildingsPanel key={net} /> },
+          { key: "tr", label: "變壓器", children: <Transformers key={net} /> },
+          { key: "spec", label: "規格明細", children: <Specs key={net} /> },
+          { key: "vcb", label: "VCB", children: <Vcbs key={net} /> },
+          { key: "fd", label: "饋線", children: <Feeders key={net} /> },
+          { key: "replace", label: "汰換優先序", children: <Replacement key={net} /> },
+          { key: "econ", label: "汰換投資回收", children: <Economics key={net} /> },
         ]}
       />
     </Card>

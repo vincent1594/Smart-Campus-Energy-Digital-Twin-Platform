@@ -58,6 +58,13 @@ app.include_router(settings.router)
 app.include_router(feedback.router)
 
 
+@app.get("/api/networks", tags=["networks"])
+def list_networks():
+    """可切換的電網清單 (供前端南/北切換器)。"""
+    from networks.registry import list_networks as _list
+    return _list()
+
+
 @app.get("/api/health", tags=["health"])
 def health():
     from webapi.db import is_postgres

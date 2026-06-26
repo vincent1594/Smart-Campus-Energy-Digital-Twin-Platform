@@ -9,10 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# 來自 repo 根目錄的既有真實模型 (從 repo 根啟動即原生可 import)
-from analysis.power_flow import run_s1_baseline_powerflow  # type: ignore
-from data.network_structure import FEEDERS  # type: ignore
-from models.network_builder import build_network_s1_baseline  # type: ignore
+# 多電網來源:各網 provider 露出 FEEDERS / build_net() / run_power_flow();
+# 透過 registry 以 network_id 取得,單一後端可同時服務南、北兩套獨立電網。
+from networks.registry import DEFAULT_NETWORK_ID, get_provider
 
 from webapi.building_names import building_name
 from webapi.config import SOURCE_NAME
@@ -35,6 +34,8 @@ class BaseModel:
     results: dict
     model: CampusModel
     index: NetIndex
+    network_id: str = DEFAULT_NETWORK_ID
+    provider: object = None
 
 
 def _build_index(net) -> NetIndex:
@@ -50,8 +51,8 @@ def _build_index(net) -> NetIndex:
     return idx
 
 
-def _parse_campus_model(net, index: NetIndex) -> CampusModel:
-    """從 FEEDERS 拓樸解析業務實體;負載 kW/pf 由建好的 net 反推 (與計算一致)。"""
+def _parse_campus_model(net, index: NetIndex, feeder_defs: dict) -> CampusModel:
+    """從 feeder_defs 拓樸解析業務實體;負載 kW/pf 由建好的 net 反推 (與計算一致)。"""
     vcbs: list[VCB] = []
     feeders: list[Feeder] = []
     transformers: list[Transformer] = []
@@ -75,7 +76,7 @@ def _parse_campus_model(net, index: NetIndex) -> CampusModel:
                                   resistance_ohm=r_ohm, reactance_ohm=x_ohm))
             seen_feeders.add(feeder_id)
 
-    for vcb_key, vcb_def in FEEDERS.items():
+    for vcb_key, vcb_def in feeder_defs.items():
         vcbs.append(VCB(id=vcb_key, name=str(vcb_def.get("name", vcb_key))))
 
         # 純電容補償饋線 (如 VCB12):只有電纜+電容,無變壓器/建築
@@ -85,10 +86,13 @@ def _parse_campus_model(net, index: NetIndex) -> CampusModel:
             add_feeder(fid, vcb_key, sf.get("cable", {}), line_name=fid)
             continue
 
-        # 中間電纜 (cable_to_bus):net.line 名為 vcb_key,但 feeder id 須獨立避免撞名
+        # 中間電纜 (cable_to_bus):feeder id 須獨立避免撞名。
+        # 北網 net.line 命名為 vcb_key;南網命名為 f"{vcb_key}_FEEDER"。
+        # 取「實際存在於 net」的線名,兩種命名都能對到 → 饋線負載率正常顯示。
         intermediate_id = f"{vcb_key}_IN" if "cable_to_bus" in vcb_def else None
         if intermediate_id:
-            add_feeder(intermediate_id, vcb_key, vcb_def.get("cable_to_bus", {}), line_name=vcb_key)
+            cable_line = next((c for c in (vcb_key, f"{vcb_key}_FEEDER") if c in index.line_by_name), vcb_key)
+            add_feeder(intermediate_id, vcb_key, vcb_def.get("cable_to_bus", {}), line_name=cable_line)
 
         for sub in vcb_def.get("substations", []):
             bus = sub.get("bus")
@@ -126,15 +130,23 @@ def _parse_campus_model(net, index: NetIndex) -> CampusModel:
                        buildings=buildings, source_name=SOURCE_NAME)
 
 
-def run_power_flow(net) -> dict:
-    """在既有 net 上重跑潮流,回傳既有 power_flow 的 results dict。"""
-    _, results = run_s1_baseline_powerflow(net=net, verbose=False)
-    return results
+def run_power_flow(net, network_id: str | None = None) -> dict:
+    """在既有 net 上重跑潮流,回傳 power_flow 的 results dict。
+
+    未指定 network_id 時解析為當前請求情境 (ContextVar,預設北)。Newton-Raphson 求解
+    本身與網路身分無關 (純粹在傳入的 net 上跑),但仍依情境取對應 provider 以保持一致。
+    """
+    if network_id is None:
+        from webapi.context import current_network
+        network_id = current_network.get()
+    return get_provider(network_id).run_power_flow(net)
 
 
-def build_base() -> BaseModel:
-    net = build_network_s1_baseline()
-    _, results = run_s1_baseline_powerflow(net=net, verbose=False)
+def build_base(provider) -> BaseModel:
+    """以指定 provider 建構該網的 base 狀態 (net + 潮流 + domain + index)。"""
+    net = provider.build_net()
+    results = provider.run_power_flow(net)
     index = _build_index(net)
-    model = _parse_campus_model(net, index)
-    return BaseModel(net=net, results=results, model=model, index=index)
+    model = _parse_campus_model(net, index, provider.FEEDERS)
+    return BaseModel(net=net, results=results, model=model, index=index,
+                     network_id=provider.NETWORK_ID, provider=provider)

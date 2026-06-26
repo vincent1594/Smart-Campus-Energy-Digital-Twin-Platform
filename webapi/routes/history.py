@@ -1,12 +1,14 @@
 """歷史趨勢 API(EMS 實測時序聚合)。"""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from webapi.deps import require_capability
 from webapi.schemas import HistoryReport
 from webapi.services import history_service
 
-router = APIRouter(prefix="/api/history", tags=["history"])
+router = APIRouter(prefix="/api/{network_id}/history", tags=["history"],
+                   dependencies=[Depends(require_capability("history"))])
 
 
 @router.get("", response_model=HistoryReport)

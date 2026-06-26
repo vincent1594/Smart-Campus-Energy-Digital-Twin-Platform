@@ -2,10 +2,10 @@ import { Button, Descriptions, Divider, Empty, List, Space, Tag } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api/client";
+import { api, getNetwork } from "../api/client";
 import type { BuildingDetail, BuildingSummary, DashboardSummary, FeederDetail, SupplyPathNode, TransformerDetail, VcbDetail } from "../api/types";
 import { type Focus, useFocus } from "../focus/FocusContext";
-import { buildingLetter } from "../lib/campusPositions";
+import { SOURCE_LETTER_BY_NET, buildingLetter } from "../lib/campusPositions";
 import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
 import { useActiveScenario } from "../scenario/ActiveScenarioContext";
 import LoadRatioTag from "./LoadRatioTag";
@@ -141,20 +141,23 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
 
   if (!focus) return <OverviewSummary buildings={buildings} trafos={trafos} dash={dash} onPick={setFocus} />;
 
-  // ---- 受電站 ----
-  if (focus.kind === "source")
+  // ---- 受電站(依當前系統:北 X / 南 H1)----
+  if (focus.kind === "source") {
+    const sl = SOURCE_LETTER_BY_NET[getNetwork()] ?? "X";
+    const side = getNetwork() === "south" ? "南側" : "北側";
     return (
-      <Descriptions title="台電受電站(X棟)" bordered column={1} size="small">
+      <Descriptions title={`台電受電站(${sl}棟)`} bordered column={1} size="small">
         <Descriptions.Item label="進線">台電 11.4kV</Descriptions.Item>
-        <Descriptions.Item label="VCB">{dash?.vcb_count ?? "—"} 路(皆於 X棟匯集)</Descriptions.Item>
+        <Descriptions.Item label="VCB">{dash?.vcb_count ?? "—"} 路(皆於 {sl}棟匯集)</Descriptions.Item>
         <Descriptions.Item label="供電建築">
           {dash?.substation_count != null ? dash.substation_count + 1 : "—"} 棟
-          <span style={{ color: "#999", fontSize: 12, marginInlineStart: 4 }}>(含受電站 X棟)</span>
+          <span style={{ color: "#999", fontSize: 12, marginInlineStart: 4 }}>(含受電站 {sl}棟)</span>
         </Descriptions.Item>
-        <Descriptions.Item label="北側總負載">{dash?.total_load_kw ?? "—"} kW</Descriptions.Item>
-        <Descriptions.Item label="停電影響">此處停電 → 整個北側系統停電</Descriptions.Item>
+        <Descriptions.Item label={`${side}總負載`}>{dash?.total_load_kw ?? "—"} kW</Descriptions.Item>
+        <Descriptions.Item label="停電影響">此處停電 → 整個{side}系統停電</Descriptions.Item>
       </Descriptions>
     );
+  }
 
   // ---- 建築(棟層級總覽 + 變壓器清單切換)----
   if (focus.kind === "building") {
@@ -165,8 +168,22 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
     const totalLoad = zoneBuildings.reduce((s, b) => s + b.estimated_load_kw, 0);
     const maxRatio = Math.max(0, ...zoneTrafos.map((t) => trRatio(t.id, t.load_ratio_percent) ?? 0));
     const vcbName = zoneTrafos[0]?.vcb_name ?? "—";
+    // 此棟是否即為該系統受電站(南 H1 兼宿舍 / 北 X)→ 卡片同時標明受電站身分與資訊
+    const isSource = letter === (SOURCE_LETTER_BY_NET[getNetwork()] ?? "");
+    const side = getNetwork() === "south" ? "南側" : "北側";
     return (
       <>
+        {isSource && (
+          <>
+            <Space><Tag color="purple">受電站</Tag><b style={{ fontSize: 16 }}>{letter}棟</b></Space>
+            <Descriptions column={1} size="small" style={{ marginTop: 8 }}>
+              <Descriptions.Item label="進線">台電 11.4kV(本棟為{side}受電站)</Descriptions.Item>
+              <Descriptions.Item label="VCB">{dash?.vcb_count ?? "—"} 路匯集於本棟</Descriptions.Item>
+              <Descriptions.Item label="停電影響">此處停電 → 整個{side}系統停電</Descriptions.Item>
+            </Descriptions>
+            <Divider style={{ margin: "10px 0" }} />
+          </>
+        )}
         <Space><Tag color="blue">建築</Tag><b style={{ fontSize: 16 }}>{letter}棟</b></Space>
         <Descriptions column={1} size="small" style={{ marginTop: 8 }}>
           <Descriptions.Item label="區域總負載">{totalLoad.toFixed(1)} kW</Descriptions.Item>
