@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from webapi.deps import require_capability, use_network
 from webapi.powerflow import PowerFlowError
 from webapi.schemas import ForecastRequest, PowerFlowResult, ScenarioComparison, ScenarioRequest
 from webapi.services import scenario_service
 
-router = APIRouter(prefix="/api/scenario", tags=["scenario"])
+router = APIRouter(prefix="/api/{network_id}/scenario", tags=["scenario"],
+                   dependencies=[Depends(use_network)])
+
+# 預測類端點需 forecast 功能 (依賴 EMS/XGB);南網未備 → 回 404 友善訊息
+_forecast_dep = [Depends(require_capability("forecast"))]
 
 
 @router.post("/run", response_model=ScenarioComparison)
@@ -17,7 +22,7 @@ def run_scenario(req: ScenarioRequest) -> ScenarioComparison:
 
 
 # 模擬時間點:XGBoost 預測該時刻負載 → 與現況前後比較
-@router.post("/forecast", response_model=ScenarioComparison)
+@router.post("/forecast", response_model=ScenarioComparison, dependencies=_forecast_dep)
 def run_forecast(req: ForecastRequest) -> ScenarioComparison:
     try:
         return scenario_service.run_forecast(req.timestamp, req.pv_factor)
@@ -28,7 +33,7 @@ def run_forecast(req: ForecastRequest) -> ScenarioComparison:
 
 
 # 校園總攬日曲線:歷史尖峰最高日 24h 實測快照,回傳 {date, peak_hour, snapshots},前端拖曳即時切換面板
-@router.get("/forecast-day")
+@router.get("/forecast-day", dependencies=_forecast_dep)
 def forecast_day(date: str | None = None, pv_factor: float | None = None) -> dict:
     try:
         return scenario_service.run_forecast_day(date, pv_factor)

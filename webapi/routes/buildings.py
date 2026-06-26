@@ -1,11 +1,13 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from webapi.deps import use_network
 from webapi.schemas import BuildingDetail, BuildingSummary
 from webapi.services import building_service
 
-router = APIRouter(prefix="/api/buildings", tags=["buildings"])
+router = APIRouter(prefix="/api/{network_id}/buildings", tags=["buildings"],
+                   dependencies=[Depends(use_network)])
 
 
 @router.get("", response_model=list[BuildingSummary])

@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from webapi.deps import require_capability
 from webapi.demand_config import CONTRACT_CAPACITY_KW, DEMAND_CHARGE_NT_PER_KW, WINDOW_NOTE
 from webapi.schemas import (
     BillRequest,
@@ -22,7 +23,8 @@ from webapi.schemas import (
 )
 from webapi.services import bill_service, contract_service, demand_service
 
-router = APIRouter(prefix="/api/demand", tags=["demand"])
+router = APIRouter(prefix="/api/{network_id}/demand", tags=["demand"],
+                   dependencies=[Depends(require_capability("demand"))])
 
 
 def _default_contract() -> float:
