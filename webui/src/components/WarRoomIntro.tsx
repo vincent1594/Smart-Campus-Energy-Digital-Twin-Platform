@@ -346,10 +346,11 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           ctx.fillText(`${(chgH * 11.4).toFixed(1)} kV`, W / 2, 98); ctx.shadowBlur = 0;
         }
 
-        // 全線帶電狀態 + 遙測讀數靠左、置於「左下與進入系統按鈕之間」(整塊視覺中心約 0.78H,左對齊),
-        // 中央留給通電動畫、下方留給進入系統按鈕,互不遮擋。
+        // 全線帶電狀態 + 遙測讀數靠左,整塊垂直對齊底部置中「進入系統」按鈕的同一水平(左對齊):
+        // 按鈕 bottom:6% + 高約 40px → 中心約 0.94H-20;HUD 整塊中心(狀態列下方約 50px)對齊之。
         const lx = 30;                            // 左邊界
-        const blockY = Math.round(H * 0.78 - 50); // 左側 HUD 垂直錨點(狀態列起點;整塊中心≈0.78H)
+        const btnCenterY = H * 0.94 - 20;         // 進入系統按鈕垂直中心
+        const blockY = Math.round(btnCenterY - 50); // 左側 HUD 起點:使整塊中心對齊按鈕
         if (e >= SURGE) {
           const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
           const ly = blockY;
