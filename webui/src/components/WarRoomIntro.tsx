@@ -352,7 +352,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         const lx = Math.round(W * 0.07);          // 讀條左起點(自邊界右移)
         const barCX = lx + bw / 2;                // 讀條水平中心(上下數值置中基準)
         const btnCenterY = H * 0.94 - 20;         // 進入系統按鈕垂直中心
-        const blockY = Math.round(btnCenterY - 50); // 左側 HUD 起點:使整塊中心對齊按鈕
+        const blockY = Math.round(btnCenterY - 85); // 左側 HUD 起點(整塊略上移,讓出按鈕空間)
         if (e >= SURGE) {
           const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
           const ly = blockY, bx = lx, by = ly + 14;
