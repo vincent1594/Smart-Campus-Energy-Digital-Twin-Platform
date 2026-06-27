@@ -346,17 +346,18 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           ctx.fillText(`${(chgH * 11.4).toFixed(1)} kV`, W / 2, 98); ctx.shadowBlur = 0;
         }
 
-        // 全線帶電狀態 + 遙測讀數靠左,整塊垂直對齊底部置中「進入系統」按鈕的同一水平(左對齊):
-        // 按鈕 bottom:6% + 高約 40px → 中心約 0.94H-20;HUD 整塊中心(狀態列下方約 50px)對齊之。
-        const lx = Math.round(W * 0.16);          // 左起點(自邊界右移,不貼邊)
+        // 全線帶電狀態 + 遙測讀數:以「讀條」為基準,上方狀態列、下方讀數一律對齊讀條水平中心(置中)。
+        // 整塊垂直對齊底部置中「進入系統」按鈕同一水平(按鈕 bottom:6%+高約40px → 中心約 0.94H-20)。
+        const bw = 300;                           // 讀條寬
+        const lx = Math.round(W * 0.16);          // 讀條左起點(自邊界右移)
+        const barCX = lx + bw / 2;                // 讀條水平中心(上下數值置中基準)
         const btnCenterY = H * 0.94 - 20;         // 進入系統按鈕垂直中心
         const blockY = Math.round(btnCenterY - 50); // 左側 HUD 起點:使整塊中心對齊按鈕
         if (e >= SURGE) {
           const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
-          const ly = blockY;
-          ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`; ctx.textAlign = "left";
-          ctx.fillText(label, lx, ly);
-          const bw = 300, bx = lx, by = ly + 14;
+          const ly = blockY, bx = lx, by = ly + 14;
+          ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`; ctx.textAlign = "center";
+          ctx.fillText(label, barCX, ly);
           ctx.strokeStyle = "rgba(120,160,220,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 6);
           ctx.fillStyle = pct >= 1 ? "#3ad07a" : "#5fa8ff"; ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
           ctx.fillRect(bx, by, bw * pct, 6); ctx.shadowBlur = 0;
@@ -364,15 +365,15 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           ctx.fillText(`${Math.round(pct * 100)}%`, bx + bw + 12, by + 6);
         }
 
-        // 左側:遙測讀數(左對齊,接在狀態條下方)
+        // 讀數:置於讀條下方,整組(label↔value)以讀條中心對稱排列(寬 200,中心=barCX)。
         const ty = blockY + 46;
         ctx.font = `12px ${MONO}`;
         ([["總負載 LOAD", `${loadNow.toLocaleString()} kW`], ["頻率 FREQ", `${freq.toFixed(1)} Hz`],
           ["VCB 上線", `${vcbOnline} / ${vcbCount}`], ["電壓 BUS", `${volt.toFixed(2)} pu`]] as [string, string][])
           .forEach((r, i) => {
             const yy = ty + i * 22;
-            ctx.textAlign = "left"; ctx.fillStyle = "#5f86a8"; ctx.fillText(r[0], lx, yy);
-            ctx.textAlign = "right"; ctx.fillStyle = "#cfe2ff"; ctx.fillText(r[1], lx + 200, yy);
+            ctx.textAlign = "left"; ctx.fillStyle = "#5f86a8"; ctx.fillText(r[0], barCX - 100, yy);
+            ctx.textAlign = "right"; ctx.fillStyle = "#cfe2ff"; ctx.fillText(r[1], barCX + 100, yy);
           });
         ctx.globalAlpha = 1;
       }
