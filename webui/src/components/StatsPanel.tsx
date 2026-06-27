@@ -230,7 +230,7 @@ export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curve
       <div style={{ ...panel, flex: 1, minHeight: 90, display: "flex", flexDirection: "column" }}>
         <div style={{ marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <div style={{ color: C.muted, fontSize: 12 }}>日負載曲線
-            {dayDev && !real && <Tag color="orange" style={{ marginInlineStart: 4, fontSize: 10 }}>開發中</Tag>}
+            {dayDev && !real && <Tag color="orange" style={{ marginInlineStart: 4, fontSize: 10, fontWeight: 700 }}>開發中</Tag>}
             {dayDate && !(dayDev && !real) && <span style={{ marginInlineStart: 4, opacity: 0.85 }}>· {dayDate}</span>}
           </div>
           {real
@@ -245,7 +245,7 @@ export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curve
           {real
             ? <ReactECharts style={{ height: "100%", width: "100%" }} option={chartOption} />
             : dayDev
-              ? <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11, textAlign: "center", lineHeight: 1.6 }}>此電網日負載曲線<br />開發中</div>
+              ? <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11, textAlign: "center", lineHeight: 1.6 }}>此電網日負載曲線<br /><b>開發中</b></div>
               : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11 }}>載入中…</div>}
         </div>
       </div>

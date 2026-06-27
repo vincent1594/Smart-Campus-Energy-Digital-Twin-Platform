@@ -310,7 +310,7 @@ export default function MapExplorer() {
           <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{centerView === "map" ? "校園供電地圖" : "高壓配電單線圖"}{" "}
             {(networks.length ? networks : [{ id: currentNet, name: currentNet === "south" ? "南電錶" : "北電錶" }]).map((n) => (
               <Tag key={n.id} color={n.id === currentNet ? "geekblue" : "default"}
-                style={{ cursor: "pointer", opacity: n.id === currentNet ? 1 : 0.7 }}
+                style={{ cursor: "pointer", opacity: n.id === currentNet ? 1 : 0.7, fontWeight: 700 }}
                 title={DEV_NETS.has(n.id) ? `${n.name}系統開發中,數據為初步建模、尚未校正` : (n.id === currentNet ? "點選聚焦受電站、高亮整個系統" : `切換到${n.name}系統(也可直接點該系統建物)`)}
                 onClick={() => {
                   if (n.id !== currentNet) { setNetwork(n.id); setCurrentNet(n.id); setEditing(false); }   // 切換:更新 state 觸發重抓重繪,不刷頁
@@ -321,7 +321,7 @@ export default function MapExplorer() {
                   if (rep) setFocus({ kind: "building", id: rep, label: `${sl}棟` });
                   else setFocus({ kind: "source", id: SOURCE_KEY, label: `受電站(${sl}棟)` });
                 }}>
-                {n.name}系統{DEV_NETS.has(n.id) && <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 400, opacity: 0.85 }}>· 開發中</span>}
+                {n.name}系統{DEV_NETS.has(n.id) && <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, opacity: 0.85 }}>· 開發中</span>}
               </Tag>
             ))}
             {selectedHour != null
