@@ -43,6 +43,9 @@ function lerpSnap(a: PowerFlowResult, b: PowerFlowResult, t: number): PowerFlowR
 // 地圖範圍編輯工具(編輯範圍/匯出座標):座標已排定,平時隱藏;需重新調整時改回 true。
 const SHOW_EDIT_TOOLS = false;
 
+// 尚在開發中的電網:標「開發中」並提示資料為初步建模(南電錶模型尚未完成校正)。
+const DEV_NETS = new Set(["south"]);
+
 export default function MapExplorer() {
   const navigate = useNavigate();
   const { focus, setFocus } = useFocus();
@@ -311,7 +314,7 @@ export default function MapExplorer() {
             {(networks.length ? networks : [{ id: currentNet, name: currentNet === "south" ? "南電錶" : "北電錶" }]).map((n) => (
               <Tag key={n.id} color={n.id === currentNet ? "geekblue" : "default"}
                 style={{ cursor: "pointer", opacity: n.id === currentNet ? 1 : 0.7 }}
-                title={n.id === currentNet ? "點選聚焦受電站、高亮整個系統" : `切換到${n.name}系統(也可直接點該系統建物)`}
+                title={DEV_NETS.has(n.id) ? `${n.name}系統開發中,數據為初步建模、尚未校正` : (n.id === currentNet ? "點選聚焦受電站、高亮整個系統" : `切換到${n.name}系統(也可直接點該系統建物)`)}
                 onClick={() => {
                   if (n.id !== currentNet) { setNetwork(n.id); setCurrentNet(n.id); setEditing(false); }   // 切換:更新 state 觸發重抓重繪,不刷頁
                   // 一鍵聚焦該系統受電站(免點兩次),且與該受電站建物綁定:
@@ -321,7 +324,7 @@ export default function MapExplorer() {
                   if (rep) setFocus({ kind: "building", id: rep, label: `${sl}棟` });
                   else setFocus({ kind: "source", id: SOURCE_KEY, label: `受電站(${sl}棟)` });
                 }}>
-                {n.name}系統
+                {n.name}系統{DEV_NETS.has(n.id) && <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 400, opacity: 0.85 }}>· 開發中</span>}
               </Tag>
             ))}
             {selectedHour != null
@@ -347,6 +350,13 @@ export default function MapExplorer() {
             )}
           </span>
         </div>
+        {/* 開發中電網提示:南電錶模型尚未完成校正,數值僅供初步參考 */}
+        {DEV_NETS.has(currentNet) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", background: "#fff7e6", borderBottom: "1px solid #ffe7ba", color: "#ad6800", fontSize: 12, lineHeight: 1.5 }}>
+            <span style={{ fontWeight: 600, background: "#fa8c16", color: "#fff", borderRadius: 3, padding: "0 6px", fontSize: 11 }}>開發中</span>
+            <span>南電錶系統建模中,負載/負載率為初步估算、尚未校正,僅供參考。</span>
+          </div>
+        )}
         <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center", padding: 8 }}>
           {centerView === "map"
             ? <CampusMapStatic markers={editing ? markers : allMarkers} focusLetter={focusLetter} highlight={highlight} emphasize={emphasize}
