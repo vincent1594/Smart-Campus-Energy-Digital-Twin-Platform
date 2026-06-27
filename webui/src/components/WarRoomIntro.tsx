@@ -348,7 +348,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
 
         // === HUD:融入場景的柔光遙測(無硬框,只用羽化光襯底讓文字浮起)=================
         // 整塊垂直對齊底部置中「進入系統」按鈕同一水平(按鈕 bottom:6%+高約40px → 中心約 0.94H-20)。
-        const hudA = Math.min(1, e / 0.6);        // 全 HUD 淡入係數
+        // 全 HUD:淡入 × 細微閃爍/呼吸 → 讀數像「即時投影的光」,不是貼上去的靜態 UI
+        const hudA = Math.min(1, e / 0.6) * (0.92 + 0.05 * Math.sin(e * 2.7) + 0.03 * Math.sin(e * 23));
         const acc = pct >= 1 ? "#4be08a" : "#7fd0ff";   // 主強調色(滿載轉綠)
         const bw = 320;                           // 能量條寬
         const lx = Math.round(W * 0.07);          // 能量條左起點
@@ -360,16 +361,9 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         const rows: [string, string][] = [["總負載 LOAD", `${loadNow.toLocaleString()} kW`], ["頻率 FREQ", `${freq.toFixed(1)} Hz`],
           ["VCB 上線", `${vcbOnline} / ${vcbCount}`], ["電壓 BUS", `${volt.toFixed(2)} pu`]];
 
-        // ① 羽化柔光襯底(無邊界、橢圓徑向漸層 → 文字可讀又融進暗場景,不像獨立 UI 面板)
-        const cyg = (blockY - 6 + ty + (rows.length - 1) * 23) / 2;   // 內容垂直中心
-        ctx.save();
-        ctx.translate(barCX, cyg); ctx.scale(1, 0.62);   // 壓扁成橫向橢圓
-        const scrim = ctx.createRadialGradient(0, 0, 12, 0, 0, 300);
-        scrim.addColorStop(0, "rgba(5,10,20,0.52)"); scrim.addColorStop(0.6, "rgba(5,10,20,0.30)"); scrim.addColorStop(1, "rgba(5,10,20,0)");
-        ctx.fillStyle = scrim; ctx.fillRect(-320, -200, 640, 400);
-        ctx.restore();
+        // 不畫任何襯底/底框 → 純靠文字自身光暈浮現,與場景的電弧/光環同為「發光體」,不像疊在上面的 UI。
 
-        // ② 狀態列 + 能量條
+        // ① 狀態列 + 能量條
         if (e >= SURGE) {
           const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
           ctx.fillStyle = pct >= 1 ? "#5ef0a0" : e < SURGE + 0.5 ? "#ffd27a" : "#9bd2ff"; ctx.font = `bold 15px ${MONO}`; ctx.textAlign = "center";
@@ -410,16 +404,20 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           if (rowIn <= 0) return;
           ctx.globalAlpha = hudA * rowIn;
           const slide = (1 - rowIn) * 7;
-          ctx.fillStyle = pct >= 1 ? "rgba(74,224,138,0.85)" : "rgba(127,208,255,0.75)";
-          ctx.fillRect(barL - 11, yy - 8 + slide, 2, 9);   // 左 accent tick
-          ctx.textAlign = "left"; ctx.fillStyle = "rgba(143,179,214,0.92)"; ctx.fillText(r[0], barL, yy + slide);
+          // 左 accent tick(發光)
+          ctx.fillStyle = acc; ctx.shadowBlur = 9; ctx.shadowColor = acc;
+          ctx.fillRect(barL - 11, yy - 8 + slide, 2, 9); ctx.shadowBlur = 0;
+          // label(發光浮現)
+          ctx.textAlign = "left"; ctx.fillStyle = "rgba(176,206,236,0.95)"; ctx.shadowBlur = 6; ctx.shadowColor = "rgba(110,165,230,0.55)";
+          ctx.fillText(r[0], barL, yy + slide);
           const lw = ctx.measureText(r[0]).width;
-          ctx.textAlign = "right"; ctx.shadowBlur = 6; ctx.shadowColor = "rgba(160,200,255,0.5)"; ctx.fillStyle = "#eaf3ff";
+          // value(更亮、光暈更強 → 像發光讀數)
+          ctx.textAlign = "right"; ctx.shadowBlur = 10; ctx.shadowColor = "rgba(170,210,255,0.65)"; ctx.fillStyle = "#f0f7ff";
           ctx.fillText(r[1], barR, yy + slide); ctx.shadowBlur = 0;
           const vw = ctx.measureText(r[1]).width;
           const dx0 = barL + lw + 9, dx1 = barR - vw - 9;
           if (dx1 > dx0) {
-            ctx.fillStyle = "rgba(120,150,190,0.3)";
+            ctx.fillStyle = "rgba(135,170,215,0.34)";
             for (let x = dx1; x > dx0; x -= 6) { ctx.beginPath(); ctx.arc(x, yy - 4 + slide, 0.9, 0, Math.PI * 2); ctx.fill(); }
           }
         });
