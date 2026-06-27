@@ -349,7 +349,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         // 全線帶電狀態 + 遙測讀數:以「讀條」為基準,上方狀態列、下方讀數一律對齊讀條水平中心(置中)。
         // 整塊垂直對齊底部置中「進入系統」按鈕同一水平(按鈕 bottom:6%+高約40px → 中心約 0.94H-20)。
         const bw = 300;                           // 讀條寬
-        const lx = Math.round(W * 0.16);          // 讀條左起點(自邊界右移)
+        const lx = Math.round(W * 0.13);          // 讀條左起點(自邊界右移)
         const barCX = lx + bw / 2;                // 讀條水平中心(上下數值置中基準)
         const btnCenterY = H * 0.94 - 20;         // 進入系統按鈕垂直中心
         const blockY = Math.round(btnCenterY - 50); // 左側 HUD 起點:使整塊中心對齊按鈕
