@@ -29,7 +29,7 @@ function flowColor(ratio: number | null): string {
 
 interface Spark { x: number; y: number; vx: number; vy: number; life: number; max: number }
 interface Ember { x: number; y: number; r: number; vy: number; tw: number; ph: number; warm: boolean }
-interface NetData { pf?: PowerFlowResult; buildings: BuildingSummary[]; trafos: TransformerDetail[] }
+interface NetData { pf?: PowerFlowResult; buildings: BuildingSummary[]; trafos: TransformerDetail[]; vcbCount: number }
 interface SourceV { net: string; letter: string; sx: number; sy: number; surgeT: number; maxDist: number; totalKw: number }
 interface NodeV { L: string; cx: number; cy: number; igniteDist: number; color: string; poly: Pt[]; hash: number; srcIdx: number }
 
@@ -45,8 +45,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
   useEffect(() => {
     INTRO_NETS.forEach(async (net) => {
       try {
-        const [pf, buildings, trafos] = await Promise.all([api.powerflowOf(net), api.buildingsOf(net), api.transformersOf(net)]);
-        setData((d) => ({ ...d, [net]: { pf, buildings, trafos } }));
+        const [pf, buildings, trafos, vcbs] = await Promise.all([api.powerflowOf(net), api.buildingsOf(net), api.transformersOf(net), api.vcbsOf(net)]);
+        setData((d) => ({ ...d, [net]: { pf, buildings, trafos, vcbCount: vcbs.length } }));
       } catch { /* 該網資料不可用 → 略過,不入鏡 */ }
     });
   }, []);
@@ -85,7 +85,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       const grp = new Map<string, { sum: number; n: number }>();
       netNodes.forEach((n) => { const e = grp.get(n.vcb) ?? { sum: 0, n: 0 }; e.sum += n.dist; e.n++; grp.set(n.vcb, e); });
       netNodes.forEach((n) => { const e = grp.get(n.vcb)!; n.igniteDist = e.sum / e.n; });
-      vcbCount += grp.size;
+      vcbCount += d.vcbCount;   // 真正 VCB 總數(含電容器專用 VCB,非僅有掛建物者)
       const maxDist = Math.max(...netNodes.map((n) => n.dist), 1);
       sources.push({ net, letter, sx, sy, surgeT: SURGE + si * STAGGER, maxDist, totalKw: d.pf ? d.pf.total_load_kw : 0 });
       netNodes.forEach((n) => nodes.push({ L: n.L, cx: n.cx, cy: n.cy, igniteDist: n.igniteDist, color: n.color, poly: n.poly, hash: n.hash, srcIdx: n.srcIdx }));

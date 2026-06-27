@@ -93,6 +93,7 @@ export const api = {
   buildingsOf: (net: string) => get<BuildingSummary[]>(`/api/${net}/buildings`),
   powerflowOf: (net: string) => get<PowerFlowResult>(`/api/${net}/powerflow`),
   transformersOf: (net: string) => get<TransformerDetail[]>(`/api/${net}/assets/transformers`),
+  vcbsOf: (net: string) => get<VcbDetail[]>(`/api/${net}/assets/vcbs`),
   building: (id: string) => get<BuildingDetail>(napi(`/buildings/${encodeURIComponent(id)}`)),
   transformers: () => get<TransformerDetail[]>(napi("/assets/transformers")),
   transformer: (id: string) => get<TransformerDetail>(napi(`/assets/transformers/${encodeURIComponent(id)}`)),
