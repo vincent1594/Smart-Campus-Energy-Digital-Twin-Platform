@@ -92,6 +92,7 @@ export const api = {
   // 指定電網版 (不依當前 currentNetwork):供「全校園」總覽同時抓南北兩網
   buildingsOf: (net: string) => get<BuildingSummary[]>(`/api/${net}/buildings`),
   powerflowOf: (net: string) => get<PowerFlowResult>(`/api/${net}/powerflow`),
+  transformersOf: (net: string) => get<TransformerDetail[]>(`/api/${net}/assets/transformers`),
   building: (id: string) => get<BuildingDetail>(napi(`/buildings/${encodeURIComponent(id)}`)),
   transformers: () => get<TransformerDetail[]>(napi("/assets/transformers")),
   transformer: (id: string) => get<TransformerDetail>(napi(`/assets/transformers/${encodeURIComponent(id)}`)),
