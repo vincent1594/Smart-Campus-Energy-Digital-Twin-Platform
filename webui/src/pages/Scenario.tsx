@@ -179,10 +179,10 @@ export default function Scenario() {
             {cmp ? "模擬後負載分布" : "現況負載分布"}
             {/* 電網切換 (南/北),與地圖頁一致;南電錶模型開發中就近標示 */}
             {netList.map((n) => (
-              <Tag key={n.id} color={n.id === currentNet ? "geekblue" : "default"} style={{ cursor: "pointer", opacity: n.id === currentNet ? 1 : 0.7, fontWeight: 400 }}
+              <Tag key={n.id} color={n.id === currentNet ? "geekblue" : "default"} style={{ cursor: "pointer", opacity: n.id === currentNet ? 1 : 0.7, fontWeight: 700 }}
                 title={DEV_NETS.has(n.id) ? `${n.name}系統開發中,數據為初步建模、尚未校正` : (n.id === currentNet ? "目前檢視的電網" : `切換到${n.name}系統`)}
                 onClick={() => switchNet(n.id)}>
-                {n.name}{DEV_NETS.has(n.id) && <span style={{ marginLeft: 4, fontSize: 11, opacity: 0.85 }}>· 開發中</span>}
+                {n.name}{DEV_NETS.has(n.id) && <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, opacity: 0.85 }}>· 開發中</span>}
               </Tag>
             ))}
           </span>
