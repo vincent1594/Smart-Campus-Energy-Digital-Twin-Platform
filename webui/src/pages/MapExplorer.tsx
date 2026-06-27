@@ -1,5 +1,5 @@
 import { Alert, Button, Card, Segmented, Spin, Tag, message } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getNetwork, setNetwork } from "../api/client";
 import type { BuildingSummary, DashboardSummary, PowerFlowResult, TopologyGraph, TransformerDetail } from "../api/types";
@@ -83,17 +83,36 @@ export default function MapExplorer() {
   const [polys, setPolys] = useState<Record<string, Pt[]> | null>(null);  // 編輯中的多邊形(含南網新建物)
   const dismissGuide = () => { localStorage.setItem("bg_guide_seen", "1"); setShowGuide(false); };
 
-  // 切換電網 (currentNet 變動) → 重抓該網資料並重繪;不刷頁。切換時先清掉上一網的時段/情境/錯誤殘留。
+  // 各電網主資料快取(dash/pf/buildings/trafos/graph)→ 切回已看過的電網即時套用,免重抓、連動高亮無延遲。
+  const netCache = useRef<Record<string, { dash: DashboardSummary; pf: PowerFlowResult; buildings: BuildingSummary[]; trafos: TransformerDetail[]; graph: TopologyGraph }>>({});
+  const dayCache = useRef<Record<string, { snapshots: PowerFlowResult[]; date: string; peakHour: number }>>({});
+
+  // 切換電網 (currentNet 變動) → 有快取先即時套用(切換無感),背景仍重新抓取驗證;不刷頁。切換時清掉上一網的時段/情境/錯誤殘留。
   useEffect(() => {
+    const net = currentNet;
     setErr(undefined); setSelectedHour(null); setScenario(null);
-    setDaySnapshots(undefined); setDayDate(undefined); setDayPeakHour(undefined);
+    const cached = netCache.current[net];
+    if (cached) { setDash(cached.dash); setPf(cached.pf); setBuildings(cached.buildings); setTrafos(cached.trafos); setGraph(cached.graph); setLoadedNet(net); }
+    const dcached = dayCache.current[net];
+    if (dcached) { setDaySnapshots(dcached.snapshots); setDayDate(dcached.date); setDayPeakHour(dcached.peakHour); }
+    else { setDaySnapshots(undefined); setDayDate(undefined); setDayPeakHour(undefined); }
+
     Promise.all([api.dashboard(), api.powerflow(), api.buildings(), api.transformers(), api.topology()])
-      .then(([d, p, b, t, g]) => { setDash(d); setPf(p); setBuildings(b); setTrafos(t); setGraph(g); setLoadedNet(currentNet); })
-      .catch((e) => setErr(String(e.message ?? e)));
+      .then(([d, p, b, t, g]) => {
+        netCache.current[net] = { dash: d, pf: p, buildings: b, trafos: t, graph: g };
+        if (getNetwork() !== net) return;   // 抓取期間又切走 → 不覆蓋當前畫面
+        setDash(d); setPf(p); setBuildings(b); setTrafos(t); setGraph(g); setLoadedNet(net);
+      })
+      .catch((e) => { if (getNetwork() === net) setErr(String(e.message ?? e)); });
     // base 已是尖峰日(4220),不必覆蓋;僅載入 24h 快照供拖曳看各時段。
-    // 日曲線為加值功能(依賴 forecast):某些電網未備(如南電錶)時靜默略過,不讓整頁報錯。
-    api.forecastDay().then((r) => { setDaySnapshots(r.snapshots); setDayDate(r.date); setDayPeakHour(r.peak_hour); })
-      .catch(() => { /* 日曲線不可用 → 不顯示拖曳時段,基準潮流照常 */ });
+    // 日曲線為加值功能(依賴 forecast):某些電網未備(如南電錶)時靜默略過,不讓整頁報錯。已快取則免抓。
+    if (!dcached) {
+      api.forecastDay().then((r) => {
+        dayCache.current[net] = { snapshots: r.snapshots, date: r.date, peakHour: r.peak_hour };
+        if (getNetwork() !== net) return;
+        setDaySnapshots(r.snapshots); setDayDate(r.date); setDayPeakHour(r.peak_hour);
+      }).catch(() => { /* 日曲線不可用 → 不顯示拖曳時段,基準潮流照常 */ });
+    }
   }, [currentNet]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // 「還原基準」= 清除時段覆蓋,回到平台 base(=尖峰日 4220)
