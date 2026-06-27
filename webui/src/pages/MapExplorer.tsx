@@ -9,7 +9,7 @@ import FocusPanel from "../components/FocusPanel";
 import SingleLineSvg from "../components/SingleLineSvg";
 import StatsPanel from "../components/StatsPanel";
 import { useFocus, type FocusKind } from "../focus/FocusContext";
-import { BUILDING_POS, SOURCE_KEY, SOURCE_LETTER_BY_NET, buildingLetter, netOfLetter, type Pt } from "../lib/campusPositions";
+import { BUILDING_POS, DEV_NETS, SOURCE_KEY, SOURCE_LETTER_BY_NET, buildingLetter, netOfLetter, type Pt } from "../lib/campusPositions";
 import { useActiveScenario } from "../scenario/ActiveScenarioContext";
 import { useTheme } from "../theme/ThemeContext";
 
@@ -42,9 +42,6 @@ function lerpSnap(a: PowerFlowResult, b: PowerFlowResult, t: number): PowerFlowR
 
 // 地圖範圍編輯工具(編輯範圍/匯出座標):座標已排定,平時隱藏;需重新調整時改回 true。
 const SHOW_EDIT_TOOLS = false;
-
-// 尚在開發中的電網:標「開發中」並提示資料為初步建模(南電錶模型尚未完成校正)。
-const DEV_NETS = new Set(["south"]);
 
 export default function MapExplorer() {
   const navigate = useNavigate();

@@ -1,14 +1,14 @@
 // 規劃模擬:讀焦點帶入 → 改負載/容量/線長 → Run(/api/scenario/run)→ 前後對比 + 地圖過載標紅。
 import { Button, Card, DatePicker, Divider, Empty, InputNumber, Select, Slider, Spin, Tag, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../api/client";
+import { api, getNetwork, setNetwork } from "../api/client";
 import type { BuildingSummary, DashboardSummary, FeederDetail, PowerFlowResult, ScenarioComparison, ScenarioRequest, TransformerDetail } from "../api/types";
 import CampusMapStatic, { type MapMarker } from "../components/CampusMapStatic";
 import { useFocus } from "../focus/FocusContext";
 import { useActiveScenario } from "../scenario/ActiveScenarioContext";
-import { buildingLetter } from "../lib/campusPositions";
+import { buildingLetter, DEV_NETS, SOURCE_LETTER_BY_NET } from "../lib/campusPositions";
 
-function markersFrom(result: PowerFlowResult, buildings: BuildingSummary[]): MapMarker[] {
+function markersFrom(result: PowerFlowResult, buildings: BuildingSummary[], net: string): MapMarker[] {
   const tr = new Map(result.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]));
   const zones = new Map<string, { name: string; ratio: number | null }>();
   for (const b of buildings) {
@@ -17,7 +17,11 @@ function markersFrom(result: PowerFlowResult, buildings: BuildingSummary[]): Map
     const r = tr.get(b.transformer_name);
     if (r != null) { const z = zones.get(L)!; z.ratio = Math.max(z.ratio ?? 0, r); }
   }
-  return [{ letter: "X", name: "受電站(X棟)", ratio: null }, ...[...zones.entries()].map(([letter, z]) => ({ letter, name: z.name, ratio: z.ratio }))];
+  const zoneList = [...zones.entries()].map(([letter, z]) => ({ letter, name: z.name, ratio: z.ratio }));
+  // 受電站:北 X 非建物需另加;南 H1 本身即建物(已在清單)。
+  const srcLetter = SOURCE_LETTER_BY_NET[net];
+  const needSrc = srcLetter && !zoneList.some((m) => m.letter === srcLetter);
+  return [...(needSrc ? [{ letter: srcLetter, name: `受電站(${srcLetter}棟)`, ratio: null }] : []), ...zoneList];
 }
 
 function CompareRow({ label, before, after, unit, worseWhenUp = true }: { label: string; before: number; after: number; unit?: string; worseWhenUp?: boolean }) {
@@ -55,11 +59,18 @@ export default function Scenario() {
   const [ts, setTs] = useState<string>();          // 模擬時間點 "YYYY-MM-DD HH:mm"
   const [pvf, setPvf] = useState<number>(0.8);     // 太陽能出力係數
 
+  const [networks, setNetworks] = useState<{ id: string; name: string }[]>([]);   // 可切換電網 (南/北)
+  const [currentNet, setCurrentNet] = useState(getNetwork());                       // 當前電網 (state → 切換重抓重繪,不刷頁)
+  useEffect(() => { api.networks().then(setNetworks).catch(() => undefined); }, []);
+
+  // 切換電網 (含首載) → 重抓該網 base 資料;先清掉上一網的模擬結果/情境/手動 what-if 選擇,避免殘留。
   useEffect(() => {
+    setCmp(null); setScenario(null); setTs(undefined);
+    setZone(undefined); setZoneKw(null); setTr(undefined); setTrKva(null); setFd(undefined); setFdM(null);
     Promise.all([api.dashboard(), api.powerflow(), api.buildings(), api.transformers(), api.feeders()])
       .then(([d, p, b, t, f]) => { setBase(d); setBasePf(p); setBuildings(b); setTrafos(t); setFeeders(f); setTotal(d.total_load_kw); })
       .catch((e) => message.error(String(e.message ?? e)));
-  }, []);
+  }, [currentNet]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const runForecast = () => {
     if (!ts) { message.warning("請先選擇模擬時間點"); return; }
@@ -104,7 +115,9 @@ export default function Scenario() {
   const reset = () => { setTotal(base?.total_load_kw ?? 0); setZone(undefined); setZoneKw(null); setTr(undefined); setTrKva(null); setFd(undefined); setFdM(null); setCmp(null); setScenario(null); setTs(undefined); };
 
   const shown = cmp ? cmp.scenario : basePf;
-  const markers = useMemo(() => (shown ? markersFrom(shown, buildings) : []), [shown, buildings]);
+  const markers = useMemo(() => (shown ? markersFrom(shown, buildings, currentNet) : []), [shown, buildings, currentNet]);
+  const switchNet = (id: string) => { if (id !== currentNet) { setNetwork(id); setCurrentNet(id); } };
+  const netList = networks.length ? networks : [{ id: "north", name: "北電錶" }, { id: "south", name: "南電錶" }];
   const newOverload = useMemo(() => {
     if (!cmp) return [];
     const baseR = new Map(cmp.base.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]));
@@ -160,7 +173,20 @@ export default function Scenario() {
       </Card>
 
       {/* 中:地圖(過載標紅) */}
-      <Card size="small" title={cmp ? "模擬後負載分布" : "現況負載分布"} style={{ height: "100%" }}
+      <Card size="small" style={{ height: "100%" }}
+        title={
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {cmp ? "模擬後負載分布" : "現況負載分布"}
+            {/* 電網切換 (南/北),與地圖頁一致;南電錶模型開發中就近標示 */}
+            {netList.map((n) => (
+              <Tag key={n.id} color={n.id === currentNet ? "geekblue" : "default"} style={{ cursor: "pointer", opacity: n.id === currentNet ? 1 : 0.7, fontWeight: 400 }}
+                title={DEV_NETS.has(n.id) ? `${n.name}系統開發中,數據為初步建模、尚未校正` : (n.id === currentNet ? "目前檢視的電網" : `切換到${n.name}系統`)}
+                onClick={() => switchNet(n.id)}>
+                {n.name}{DEV_NETS.has(n.id) && <span style={{ marginLeft: 4, fontSize: 11, opacity: 0.85 }}>· 開發中</span>}
+              </Tag>
+            ))}
+          </span>
+        }
         styles={{ body: { padding: 8, height: "calc(100% - 39px)", display: "flex", flexDirection: "column" } }}
         extra={
           <span style={{ fontSize: 12, color: "#999" }}>
