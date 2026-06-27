@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { BuildingSummary, PowerFlowResult, TransformerDetail } from "../api/types";
-import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, buildingLetter, centroid, type Pt } from "../lib/campusPositions";
+import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, buildingLetter, centroid, netOfLetter, type Pt } from "../lib/campusPositions";
 
 const SURGE = 3.0;        // 併網送電時刻(秒)— 延後以醞釀「受電爬升」過程
 const WAVE_SPEED = 470;   // 能量波速(校園座標單位 / 秒)
@@ -36,7 +36,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
   const embersRef = useRef<Ember[]>([]);
 
   useEffect(() => { const im = new Image(); im.src = MAP_IMAGE; imgRef.current = im; }, []);
-  useEffect(() => { Promise.all([api.powerflow(), api.buildings(), api.transformers()]).then(([p, b, t]) => { setPf(p); setBuildings(b); setTrafos(t); }).catch(() => {}); }, []);
+  // 開場固定取北電網資料(劇本=台電 11.4kV 受電 X);即使使用者上次切到南電網重整,著色仍正確。
+  useEffect(() => { Promise.all([api.powerflowOf("north"), api.buildingsOf("north"), api.transformers()]).then(([p, b, t]) => { setPf(p); setBuildings(b); setTrafos(t); }).catch(() => {}); }, []);
 
   const scene = useMemo(() => {
     const [sx, sy] = centroid(BUILDING_POS.X ?? [[220, 263]]);
@@ -57,7 +58,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       if (!vcbOfLetter.has(L)) { const v = trVcb.get(b.transformer_name); if (v) vcbOfLetter.set(L, v); }
     });
 
-    const nodes = Object.keys(BUILDING_POS).filter((L) => L !== "X").map((L, i) => {
+    // 開場為北電網「台電 11.4kV 受電(X)」劇本 → 只取北電網建物;否則南電網建物(含受電站 H1)也會被畫成第二個發光中心。
+    const nodes = Object.keys(BUILDING_POS).filter((L) => L !== "X" && netOfLetter(L) === "north").map((L, i) => {
       const [cx, cy] = centroid(BUILDING_POS[L]);
       return { L, cx, cy, dist: Math.hypot(cx - sx, cy - sy), vcb: vcbOfLetter.get(L) ?? L,
         color: flowColor(ratioOf.get(L) ?? null), poly: BUILDING_POS[L] as Pt[], hash: (i * 0.173) % 1, igniteDist: 0 };
