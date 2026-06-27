@@ -350,13 +350,6 @@ export default function MapExplorer() {
             )}
           </span>
         </div>
-        {/* 開發中電網提示:南電錶模型尚未完成校正,數值僅供初步參考 */}
-        {DEV_NETS.has(currentNet) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", background: "#fff7e6", borderBottom: "1px solid #ffe7ba", color: "#ad6800", fontSize: 12, lineHeight: 1.5 }}>
-            <span style={{ fontWeight: 600, background: "#fa8c16", color: "#fff", borderRadius: 3, padding: "0 6px", fontSize: 11 }}>開發中</span>
-            <span>南電錶系統建模中,負載/負載率為初步估算、尚未校正,僅供參考。</span>
-          </div>
-        )}
         <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center", padding: 8 }}>
           {centerView === "map"
             ? <CampusMapStatic markers={editing ? markers : allMarkers} focusLetter={focusLetter} highlight={highlight} emphasize={emphasize}
