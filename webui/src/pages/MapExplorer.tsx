@@ -304,7 +304,7 @@ export default function MapExplorer() {
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
       {/* 左:狀態 + KPI 面板 */}
       <div style={{ height: "100%", overflow: "hidden" }}>
-        <StatsPanel dash={effDash} pf={effPf} dark={dark} daySnapshots={daySnapshots} curveDate={dayDate} peakHour={dayPeakHour} selectedHour={selectedHour} onScrubHour={scrubHour} />
+        <StatsPanel dash={effDash} pf={effPf} dark={dark} daySnapshots={daySnapshots} curveDate={dayDate} peakHour={dayPeakHour} selectedHour={selectedHour} onScrubHour={scrubHour} dayDev={DEV_NETS.has(currentNet)} />
       </div>
 
       {/* 中:地圖 / 單線圖 切換 */}
