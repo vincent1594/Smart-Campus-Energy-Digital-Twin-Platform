@@ -346,62 +346,108 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           ctx.fillText(`${(chgH * 11.4).toFixed(1)} kV`, W / 2, 98); ctx.shadowBlur = 0;
         }
 
-        // 全線帶電狀態 + 遙測讀數:以「讀條」為基準,上方狀態列、下方讀數一律對齊讀條水平中心(置中)。
+        // === 史詩級指揮面板:襯底 + 框角 + 能量條 + 逐列遙測 ===========================
         // 整塊垂直對齊底部置中「進入系統」按鈕同一水平(按鈕 bottom:6%+高約40px → 中心約 0.94H-20)。
-        const bw = 300;                           // 讀條寬
-        const lx = Math.round(W * 0.07);          // 讀條左起點(自邊界右移)
-        const barCX = lx + bw / 2;                // 讀條水平中心(上下數值置中基準)
+        const hudA = Math.min(1, e / 0.6);        // 全 HUD 淡入係數
+        const acc = pct >= 1 ? "#4be08a" : "#7fd0ff";   // 主強調色(滿載轉綠)
+        const bw = 320;                           // 能量條寬
+        const lx = Math.round(W * 0.07);          // 能量條左起點
+        const barL = lx, barR = lx + bw, barCX = lx + bw / 2;
         const btnCenterY = H * 0.94 - 20;         // 進入系統按鈕垂直中心
-        const blockY = Math.round(btnCenterY - 85); // 左側 HUD 起點(整塊略上移,讓出按鈕空間)
-        const barL = lx, barR = lx + bw;
+        const blockY = Math.round(btnCenterY - 92); // 左側 HUD 起點(狀態列基線)
+        const bh = 9, by = blockY + 18, rr = bh / 2;    // 能量條
+        const ty = blockY + 58;                         // 讀數首列基線
+        const rows: [string, string][] = [["總負載 LOAD", `${loadNow.toLocaleString()} kW`], ["頻率 FREQ", `${freq.toFixed(1)} Hz`],
+          ["VCB 上線", `${vcbOnline} / ${vcbCount}`], ["電壓 BUS", `${volt.toFixed(2)} pu`]];
+
+        // 襯底面板幾何
+        const px = barL - 26, pTop = blockY - 30, pRight = barR + 58;
+        const pBottom = ty + rows.length * 23 + 4, pw = pRight - px, ph = pBottom - pTop;
+
+        // ① 深色羽化襯底(讓 HUD 浮在動畫之上、分層)
+        const pg = ctx.createLinearGradient(0, pTop, 0, pBottom);
+        pg.addColorStop(0, "rgba(8,16,30,0.58)"); pg.addColorStop(1, "rgba(6,12,24,0.28)");
+        ctx.beginPath(); ctx.roundRect(px, pTop, pw, ph, 13);
+        ctx.shadowBlur = 28; ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.fillStyle = pg; ctx.fill(); ctx.shadowBlur = 0;
+        ctx.lineWidth = 1; ctx.strokeStyle = "rgba(120,160,220,0.13)"; ctx.stroke();
+
+        // ② 頂部 accent 發光線(隨送電由淡轉亮)
+        const litTop = e < SURGE ? 0.35 + chgH * 0.3 : 0.6 + Math.min(1, (e - SURGE) / 1.2) * 0.4;
+        ctx.save(); ctx.beginPath(); ctx.roundRect(px + 16, pTop + 0.5, pw - 32, 2, 1); ctx.clip();
+        const lg = ctx.createLinearGradient(px, 0, px + pw, 0);
+        lg.addColorStop(0, "rgba(127,208,255,0)"); lg.addColorStop(0.5, acc); lg.addColorStop(1, "rgba(127,208,255,0)");
+        ctx.globalAlpha = hudA * litTop; ctx.shadowBlur = 10; ctx.shadowColor = acc; ctx.fillStyle = lg;
+        ctx.fillRect(px + 16, pTop + 0.5, pw - 32, 2); ctx.restore(); ctx.shadowBlur = 0; ctx.globalAlpha = hudA;
+
+        // ③ 四角 L 型框角(科幻 HUD 邊框)
+        const br = 15;
+        const bracket = (cx: number, cy: number, sx2: number, sy2: number) => {
+          ctx.beginPath(); ctx.moveTo(cx + sx2 * br, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy2 * br); ctx.stroke();
+        };
+        ctx.lineWidth = 1.6; ctx.strokeStyle = pct >= 1 ? "rgba(74,224,138,0.72)" : "rgba(127,208,255,0.6)";
+        ctx.shadowBlur = 8; ctx.shadowColor = ctx.strokeStyle;
+        bracket(px, pTop, 1, 1); bracket(px + pw, pTop, -1, 1); bracket(px, pTop + ph, 1, -1); bracket(px + pw, pTop + ph, -1, -1);
+        ctx.shadowBlur = 0;
+
+        // ④ 狀態列 + 能量條
         if (e >= SURGE) {
           const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
-          const ly = blockY, bh = 7, by = ly + 16, rr = bh / 2;
-          const accent = pct >= 1 ? "#4be08a" : "#7fd0ff";
-          // 狀態列(柔光)
-          ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`; ctx.textAlign = "center";
-          ctx.shadowBlur = 12; ctx.shadowColor = pct >= 1 ? "rgba(74,224,138,.5)" : "rgba(127,208,255,.4)";
-          ctx.fillText(label, barCX, ly); ctx.shadowBlur = 0;
-          // 軌道:圓角、半透明,無硬框
-          ctx.beginPath(); ctx.roundRect(barL, by, bw, bh, rr); ctx.fillStyle = "rgba(125,165,225,0.16)"; ctx.fill();
-          // 進度:圓角 + 漸層 + 柔光;滿載時呼吸光暈
+          ctx.fillStyle = pct >= 1 ? "#5ef0a0" : e < SURGE + 0.5 ? "#ffd27a" : "#9bd2ff"; ctx.font = `bold 15px ${MONO}`; ctx.textAlign = "center";
+          ctx.shadowBlur = 13; ctx.shadowColor = pct >= 1 ? "rgba(74,224,138,.55)" : "rgba(127,208,255,.45)";
+          ctx.fillText(label, barCX, blockY); ctx.shadowBlur = 0;
+
+          // 軌道(圓角半透明,無硬框)
+          ctx.beginPath(); ctx.roundRect(barL, by, bw, bh, rr); ctx.fillStyle = "rgba(125,165,225,0.15)"; ctx.fill();
           const fw = Math.max(bh, bw * pct);
           const breath = pct >= 1 ? 0.5 + 0.5 * Math.sin(e * 2.2) : 1;
+          // 漸層填色 + 柔光
           const grad = ctx.createLinearGradient(barL, 0, barR, 0);
-          grad.addColorStop(0, pct >= 1 ? "#2f9e6a" : "#3f7dff"); grad.addColorStop(1, accent);
-          ctx.save();
-          ctx.beginPath(); ctx.roundRect(barL, by, fw, bh, rr); ctx.clip();
-          ctx.shadowBlur = 9 + breath * 13; ctx.shadowColor = accent;
-          ctx.fillStyle = grad; ctx.fillRect(barL, by, fw, bh);
+          grad.addColorStop(0, pct >= 1 ? "#2f9e6a" : "#3f7dff"); grad.addColorStop(1, acc);
+          ctx.save(); ctx.beginPath(); ctx.roundRect(barL, by, fw, bh, rr); ctx.clip();
+          ctx.shadowBlur = 9 + breath * 13; ctx.shadowColor = acc; ctx.fillStyle = grad; ctx.fillRect(barL, by, fw, bh);
+          // 流光:一道高光沿填色帶緩緩掃過
+          const period = fw + 90, sweepX = barL - 45 + ((e * 190) % period);
+          const sg = ctx.createLinearGradient(sweepX - 38, 0, sweepX + 38, 0);
+          sg.addColorStop(0, "rgba(255,255,255,0)"); sg.addColorStop(0.5, "rgba(255,255,255,0.5)"); sg.addColorStop(1, "rgba(255,255,255,0)");
+          ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = sg; ctx.fillRect(barL, by, fw, bh); ctx.globalCompositeOperation = "source-over";
           ctx.restore(); ctx.shadowBlur = 0;
-          // 前緣柔光點(未滿時的彗星頭)
+          // 能量分節刻度(切在軌道上,讀作能量格)
+          ctx.save(); ctx.beginPath(); ctx.roundRect(barL, by, bw, bh, rr); ctx.clip();
+          ctx.strokeStyle = "rgba(8,16,30,0.5)"; ctx.lineWidth = 1;
+          for (let s = 1; s < 10; s++) { const x = barL + (bw / 10) * s; ctx.beginPath(); ctx.moveTo(x, by); ctx.lineTo(x, by + bh); ctx.stroke(); }
+          ctx.restore();
+          // 前緣彗星頭(未滿時)
           if (pct < 1) {
             const hx = barL + fw;
             ctx.shadowBlur = 16; ctx.shadowColor = "#dbefff"; ctx.fillStyle = "#f0f8ff";
-            ctx.beginPath(); ctx.arc(hx, by + bh / 2, bh * 0.85, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+            ctx.beginPath(); ctx.arc(hx, by + bh / 2, bh * 0.8, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
           }
-          // % 柔和置於讀條右端外側
-          ctx.fillStyle = "rgba(207,226,255,0.82)"; ctx.font = `12px ${MONO}`; ctx.textAlign = "left";
+          // %(柔和,讀條右端外側)
+          ctx.fillStyle = "rgba(214,232,255,0.85)"; ctx.font = `bold 12px ${MONO}`; ctx.textAlign = "left";
           ctx.fillText(`${Math.round(pct * 100)}%`, barR + 12, by + bh - 0.5);
         }
 
-        // 讀數:對齊讀條左右(成一條「資料帶」),label↔value 間以虛線導引點銜接,化解剛性間距。
-        const ty = blockY + 52;
+        // ⑤ 遙測讀數:逐列「開機」浮現(由下微滑入)+ 左側 accent tick + 虛線導引 + value 微光
         ctx.font = `12px ${MONO}`;
-        ([["總負載 LOAD", `${loadNow.toLocaleString()} kW`], ["頻率 FREQ", `${freq.toFixed(1)} Hz`],
-          ["VCB 上線", `${vcbOnline} / ${vcbCount}`], ["電壓 BUS", `${volt.toFixed(2)} pu`]] as [string, string][])
-          .forEach((r, i) => {
-            const yy = ty + i * 23;
-            ctx.textAlign = "left"; ctx.fillStyle = "rgba(140,176,212,0.92)"; ctx.fillText(r[0], barL, yy);
-            const lw = ctx.measureText(r[0]).width;
-            ctx.textAlign = "right"; ctx.fillStyle = "#dbe8fb"; ctx.fillText(r[1], barR, yy);
-            const vw = ctx.measureText(r[1]).width;
-            const dx0 = barL + lw + 9, dx1 = barR - vw - 9;
-            if (dx1 > dx0) {
-              ctx.fillStyle = "rgba(120,150,190,0.32)";
-              for (let x = dx1; x > dx0; x -= 6) { ctx.beginPath(); ctx.arc(x, yy - 4, 0.9, 0, Math.PI * 2); ctx.fill(); }
-            }
-          });
+        rows.forEach((r, i) => {
+          const yy = ty + i * 23;
+          const rowIn = Math.max(0, Math.min(1, (e - (0.55 + i * 0.16)) / 0.45));
+          if (rowIn <= 0) return;
+          ctx.globalAlpha = hudA * rowIn;
+          const slide = (1 - rowIn) * 7;
+          ctx.fillStyle = pct >= 1 ? "rgba(74,224,138,0.85)" : "rgba(127,208,255,0.75)";
+          ctx.fillRect(barL - 11, yy - 8 + slide, 2, 9);   // 左 accent tick
+          ctx.textAlign = "left"; ctx.fillStyle = "rgba(143,179,214,0.92)"; ctx.fillText(r[0], barL, yy + slide);
+          const lw = ctx.measureText(r[0]).width;
+          ctx.textAlign = "right"; ctx.shadowBlur = 6; ctx.shadowColor = "rgba(160,200,255,0.5)"; ctx.fillStyle = "#eaf3ff";
+          ctx.fillText(r[1], barR, yy + slide); ctx.shadowBlur = 0;
+          const vw = ctx.measureText(r[1]).width;
+          const dx0 = barL + lw + 9, dx1 = barR - vw - 9;
+          if (dx1 > dx0) {
+            ctx.fillStyle = "rgba(120,150,190,0.3)";
+            for (let x = dx1; x > dx0; x -= 6) { ctx.beginPath(); ctx.arc(x, yy - 4 + slide, 0.9, 0, Math.PI * 2); ctx.fill(); }
+          }
+        });
         ctx.globalAlpha = 1;
       }
 
