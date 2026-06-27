@@ -344,28 +344,32 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           ctx.fillStyle = "#7db8ff"; ctx.font = `bold ${46 + beat * 6}px ${MONO}`;
           ctx.shadowBlur = 14 + beat * 14; ctx.shadowColor = "#5fa8ff"; ctx.globalAlpha = Math.min(1, e / 0.6);
           ctx.fillText(`${(chgH * 11.4).toFixed(1)} kV`, W / 2, 98); ctx.shadowBlur = 0;
-        } else {
+        }
+
+        // 全線帶電狀態 + 遙測讀數一律靠右下角(右對齊),讓出中央給通電動畫,不擋畫面。
+        const rx = W - 30;   // 右邊界
+        if (e >= SURGE) {
           const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
-          const ly = H * 0.80;   // 移到底部「進入系統」按鈕上方
-          ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`; ctx.textAlign = "center";
-          ctx.fillText(label, W / 2, ly);
-          const bw = 320, bx = W / 2 - bw / 2, by = ly + 14;
+          const ly = H - 150;
+          ctx.fillStyle = pct >= 1 ? "#3ad07a" : e < SURGE + 0.5 ? "#ffd27a" : "#7db8ff"; ctx.font = `bold 15px ${MONO}`; ctx.textAlign = "right";
+          ctx.fillText(label, rx, ly);
+          const bw = 300, bx = rx - bw, by = ly + 14;
           ctx.strokeStyle = "rgba(120,160,220,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 6);
           ctx.fillStyle = pct >= 1 ? "#3ad07a" : "#5fa8ff"; ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
           ctx.fillRect(bx, by, bw * pct, 6); ctx.shadowBlur = 0;
-          ctx.fillStyle = "#cfe2ff"; ctx.font = `13px ${MONO}`; ctx.textAlign = "left";
-          ctx.fillText(`${Math.round(pct * 100)}%`, bx + bw + 12, by + 6);
+          ctx.fillStyle = "#cfe2ff"; ctx.font = `13px ${MONO}`; ctx.textAlign = "right";
+          ctx.fillText(`${Math.round(pct * 100)}%`, bx - 10, by + 6);
         }
 
-        // 左下:遙測讀數
-        const tx = 30, ty = H - 116;
+        // 右下:遙測讀數(右對齊,接在狀態條下方)
+        const ty = H - 96;
         ctx.font = `12px ${MONO}`;
         ([["總負載 LOAD", `${loadNow.toLocaleString()} kW`], ["頻率 FREQ", `${freq.toFixed(1)} Hz`],
           ["VCB 上線", `${vcbOnline} / ${vcbCount}`], ["電壓 BUS", `${volt.toFixed(2)} pu`]] as [string, string][])
           .forEach((r, i) => {
             const yy = ty + i * 22;
-            ctx.textAlign = "left"; ctx.fillStyle = "#5f86a8"; ctx.fillText(r[0], tx, yy);
-            ctx.textAlign = "right"; ctx.fillStyle = "#cfe2ff"; ctx.fillText(r[1], tx + 178, yy);
+            ctx.textAlign = "left"; ctx.fillStyle = "#5f86a8"; ctx.fillText(r[0], rx - 200, yy);
+            ctx.textAlign = "right"; ctx.fillStyle = "#cfe2ff"; ctx.fillText(r[1], rx, yy);
           });
         ctx.globalAlpha = 1;
       }
