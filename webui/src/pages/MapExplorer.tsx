@@ -63,6 +63,7 @@ export default function MapExplorer() {
   const [showGuide, setShowGuide] = useState(() => !localStorage.getItem("bg_guide_seen"));   // 第一次使用提示
   const [networks, setNetworks] = useState<{ id: string; name: string }[]>([]);   // 可切換電網 (南/北)
   const [currentNet, setCurrentNet] = useState(getNetwork());   // 當前電網 (state → 切換不刷頁,觸發重抓資料重繪)
+  const [loadedNet, setLoadedNet] = useState(getNetwork());     // 作用中系統「已完成載入」的電網 (pf/buildings 對應誰);切換瞬間 ≠ currentNet → 暫不採用即時著色,避免沿用上一網殘留閃動
   const srcLetter = SOURCE_LETTER_BY_NET[currentNet] ?? null;   // 當前網受電站字母 (北 X / 南 H1)
   // 地圖恆顯示南北所有建物;點他系統建物即自動切到該系統。ovData = 各系統 base 潮流(供「非作用中」系統著色)。
   const [ovData, setOvData] = useState<Record<string, { buildings: BuildingSummary[]; pf: PowerFlowResult }>>({});
@@ -87,7 +88,7 @@ export default function MapExplorer() {
     setErr(undefined); setSelectedHour(null); setScenario(null);
     setDaySnapshots(undefined); setDayDate(undefined); setDayPeakHour(undefined);
     Promise.all([api.dashboard(), api.powerflow(), api.buildings(), api.transformers(), api.topology()])
-      .then(([d, p, b, t, g]) => { setDash(d); setPf(p); setBuildings(b); setTrafos(t); setGraph(g); })
+      .then(([d, p, b, t, g]) => { setDash(d); setPf(p); setBuildings(b); setTrafos(t); setGraph(g); setLoadedNet(currentNet); })
       .catch((e) => setErr(String(e.message ?? e)));
     // base 已是尖峰日(4220),不必覆蓋;僅載入 24h 快照供拖曳看各時段。
     // 日曲線為加值功能(依賴 forecast):某些電網未備(如南電錶)時靜默略過,不讓整頁報錯。
@@ -141,31 +142,36 @@ export default function MapExplorer() {
     return [...(needSrc ? [{ letter: srcLetter as string, name: `受電站(${srcLetter}棟)`, ratio: null }] : []), ...zs];
   }, [zones, srcLetter]);
 
-  // 地圖標記 = 作用中系統(用即時 scenario 著色,含其受電站) + 其他系統(用各自 base 潮流著色)。
-  // 各標記帶 net 以畫系統識別外框;同字母以作用中系統優先(不重複)。
-  const { allMarkers, repByLetterAll } = useMemo(() => {
-    const out: MapMarker[] = markers.map((m) => ({ ...m, net: currentNet }));
-    const present = new Set(out.map((m) => m.letter));
+  // 地圖標記恆由 ovData(各系統 base,已含全部南北建物)驅動 → 切換系統時建物集合穩定,不因作用中系統
+  // 資料重抓而閃動。作用中系統:其資料已完成載入(loadedNet 相符)時改用即時 scenario/pf 著色(支援日曲線
+  // 拖曳即時連動);切換瞬間(loadedNet≠currentNet,pf 仍屬上一網)則退用該系統 base 潮流著色,避免殘留閃動。
+  // 各字母在南北兩網互斥(SOUTH_LETTERS),故以 ovData 逐網填入即不重複;純受電站(北 X 非建物)另加。
+  const { allMarkers, repByLetterAll, activeLetters } = useMemo(() => {
+    const out: MapMarker[] = [];
     const rep = new Map<string, string>();
-    for (const b of buildings) if (!rep.has(buildingLetter(b.id))) rep.set(buildingLetter(b.id), b.id);
-    for (const [net, d] of Object.entries(ovData)) {
-      if (net === currentNet) continue;   // 作用中系統已用上面 scenario-aware 的 markers
-      const ratioById = new Map(d.pf?.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]) ?? []);
-      const seen = new Map<string, MapMarker>();
+    const seen = new Map<string, MapMarker>();
+    const active = new Set<string>();
+    const live = loadedNet === currentNet ? (scenario ?? pf) : undefined;   // 作用中系統即時著色來源(尚未載入則不採用)
+    const ids = networks.length ? networks.map((n) => n.id) : Object.keys(ovData);
+    for (const net of ids) {
+      const d = ovData[net];
+      if (!d) continue;
+      const result = net === currentNet && live ? live : d.pf;
+      const ratioById = new Map(result?.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]) ?? []);
       for (const b of d.buildings) {
         const L = buildingLetter(b.id);
         if (!rep.has(L)) rep.set(L, b.id);
-        if (present.has(L)) continue;
+        if (net === currentNet) active.add(L);
         let mk = seen.get(L);
         if (!mk) { mk = { letter: L, name: b.name.replace(/\s*\(.*\)/, ""), ratio: null, net }; seen.set(L, mk); out.push(mk); }
         const r = ratioById.get(b.transformer_name);
         if (r != null) mk.ratio = Math.max(mk.ratio ?? 0, r);
       }
-      const src = SOURCE_LETTER_BY_NET[net];   // 他系統受電站(北 X 非建物需另加;南 H1 本身即建物)
-      if (src && !present.has(src) && !seen.has(src)) out.push({ letter: src, name: `受電站(${src}棟)`, ratio: null, net });
+      const src = SOURCE_LETTER_BY_NET[net];   // 受電站:北 X 非建物需另加;南 H1 本身即建物(已在清單)
+      if (src) { if (net === currentNet) active.add(src); if (!seen.has(src)) { const mk = { letter: src, name: `受電站(${src}棟)`, ratio: null, net }; seen.set(src, mk); out.push(mk); } }
     }
-    return { allMarkers: out, repByLetterAll: rep };
-  }, [markers, buildings, ovData, currentNet]);
+    return { allMarkers: out, repByLetterAll: rep, activeLetters: active };
+  }, [ovData, networks, currentNet, loadedNet, scenario, pf]);
 
   // 點建物 → 依字母判斷所屬系統。他系統:自動切過去並聚焦該建物;同系統:沿用原本 supply/impact 行為。
   const onMapSelectAny = (letter: string) => {
@@ -213,19 +219,20 @@ export default function MapExplorer() {
   const { focusLetter, highlight, emphasize } = useMemo(() => {
     const empty = new Set<string>();
     if (!focus) return { focusLetter: null as string | null, highlight: empty, emphasize: empty };
-    // 受電站聚焦:標出當前系統的受電站 (北 X / 南 H1) 並高亮全系統建物
-    if (focus.kind === "source") return { focusLetter: srcLetter, highlight: new Set(zones.keys()), emphasize: empty };
+    // 受電站聚焦:標出當前系統的受電站 (北 X / 南 H1) 並高亮全系統建物。
+    // 全系統建物集合用 activeLetters(由 ovData 導出,切換系統時穩定),不用 zones.keys()(隨 buildings 重抓而延遲 → 聚光燈閃動)。
+    if (focus.kind === "source") return { focusLetter: srcLetter, highlight: activeLetters, emphasize: empty };
     if (focus.kind === "building") {
       const L = buildingLetter(focus.id, currentNet);
       const vcbGroup = lettersByVcb.get(vcbOfLetter.get(L) ?? "") ?? empty;
       // 受電站建物(南 H1 / 北 X):全系統淡亮(受電站角色)+ 同 VCB 群(H1/H2)再強調;其餘建物只亮同 VCB 群
-      if (L === srcLetter) return { focusLetter: L, highlight: new Set(zones.keys()), emphasize: vcbGroup };
+      if (L === srcLetter) return { focusLetter: L, highlight: activeLetters, emphasize: vcbGroup };
       return { focusLetter: L, highlight: vcbGroup, emphasize: empty };
     }
     if (focus.kind === "transformer") return { focusLetter: null, highlight: lettersByTrafo.get(focus.id) ?? empty, emphasize: empty };
     if (focus.kind === "feeder") return { focusLetter: null, highlight: lettersByFeeder.get(focus.id) ?? empty, emphasize: empty };
     return { focusLetter: null, highlight: lettersByVcb.get(focus.id) ?? empty, emphasize: empty };
-  }, [focus, zones, lettersByVcb, lettersByTrafo, lettersByFeeder, vcbOfLetter, srcLetter, currentNet]);
+  }, [focus, activeLetters, lettersByVcb, lettersByTrafo, lettersByFeeder, vcbOfLetter, srcLetter, currentNet]);
 
   const onMapSelect = (letter: string) => {
     const rep = repLoadByLetter.get(letter);
