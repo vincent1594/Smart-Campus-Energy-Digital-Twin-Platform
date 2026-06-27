@@ -346,7 +346,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           ctx.fillText(`${(chgH * 11.4).toFixed(1)} kV`, W / 2, 98); ctx.shadowBlur = 0;
         }
 
-        // === 史詩級指揮面板:襯底 + 框角 + 能量條 + 逐列遙測 ===========================
+        // === HUD:融入場景的柔光遙測(無硬框,只用羽化光襯底讓文字浮起)=================
         // 整塊垂直對齊底部置中「進入系統」按鈕同一水平(按鈕 bottom:6%+高約40px → 中心約 0.94H-20)。
         const hudA = Math.min(1, e / 0.6);        // 全 HUD 淡入係數
         const acc = pct >= 1 ? "#4be08a" : "#7fd0ff";   // 主強調色(滿載轉綠)
@@ -360,36 +360,16 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         const rows: [string, string][] = [["總負載 LOAD", `${loadNow.toLocaleString()} kW`], ["頻率 FREQ", `${freq.toFixed(1)} Hz`],
           ["VCB 上線", `${vcbOnline} / ${vcbCount}`], ["電壓 BUS", `${volt.toFixed(2)} pu`]];
 
-        // 襯底面板幾何
-        const px = barL - 26, pTop = blockY - 30, pRight = barR + 58;
-        const pBottom = ty + rows.length * 23 + 4, pw = pRight - px, ph = pBottom - pTop;
+        // ① 羽化柔光襯底(無邊界、橢圓徑向漸層 → 文字可讀又融進暗場景,不像獨立 UI 面板)
+        const cyg = (blockY - 6 + ty + (rows.length - 1) * 23) / 2;   // 內容垂直中心
+        ctx.save();
+        ctx.translate(barCX, cyg); ctx.scale(1, 0.62);   // 壓扁成橫向橢圓
+        const scrim = ctx.createRadialGradient(0, 0, 12, 0, 0, 300);
+        scrim.addColorStop(0, "rgba(5,10,20,0.52)"); scrim.addColorStop(0.6, "rgba(5,10,20,0.30)"); scrim.addColorStop(1, "rgba(5,10,20,0)");
+        ctx.fillStyle = scrim; ctx.fillRect(-320, -200, 640, 400);
+        ctx.restore();
 
-        // ① 深色羽化襯底(讓 HUD 浮在動畫之上、分層)
-        const pg = ctx.createLinearGradient(0, pTop, 0, pBottom);
-        pg.addColorStop(0, "rgba(8,16,30,0.58)"); pg.addColorStop(1, "rgba(6,12,24,0.28)");
-        ctx.beginPath(); ctx.roundRect(px, pTop, pw, ph, 13);
-        ctx.shadowBlur = 28; ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.fillStyle = pg; ctx.fill(); ctx.shadowBlur = 0;
-        ctx.lineWidth = 1; ctx.strokeStyle = "rgba(120,160,220,0.13)"; ctx.stroke();
-
-        // ② 頂部 accent 發光線(隨送電由淡轉亮)
-        const litTop = e < SURGE ? 0.35 + chgH * 0.3 : 0.6 + Math.min(1, (e - SURGE) / 1.2) * 0.4;
-        ctx.save(); ctx.beginPath(); ctx.roundRect(px + 16, pTop + 0.5, pw - 32, 2, 1); ctx.clip();
-        const lg = ctx.createLinearGradient(px, 0, px + pw, 0);
-        lg.addColorStop(0, "rgba(127,208,255,0)"); lg.addColorStop(0.5, acc); lg.addColorStop(1, "rgba(127,208,255,0)");
-        ctx.globalAlpha = hudA * litTop; ctx.shadowBlur = 10; ctx.shadowColor = acc; ctx.fillStyle = lg;
-        ctx.fillRect(px + 16, pTop + 0.5, pw - 32, 2); ctx.restore(); ctx.shadowBlur = 0; ctx.globalAlpha = hudA;
-
-        // ③ 四角 L 型框角(科幻 HUD 邊框)
-        const br = 15;
-        const bracket = (cx: number, cy: number, sx2: number, sy2: number) => {
-          ctx.beginPath(); ctx.moveTo(cx + sx2 * br, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy2 * br); ctx.stroke();
-        };
-        ctx.lineWidth = 1.6; ctx.strokeStyle = pct >= 1 ? "rgba(74,224,138,0.72)" : "rgba(127,208,255,0.6)";
-        ctx.shadowBlur = 8; ctx.shadowColor = ctx.strokeStyle;
-        bracket(px, pTop, 1, 1); bracket(px + pw, pTop, -1, 1); bracket(px, pTop + ph, 1, -1); bracket(px + pw, pTop + ph, -1, -1);
-        ctx.shadowBlur = 0;
-
-        // ④ 狀態列 + 能量條
+        // ② 狀態列 + 能量條
         if (e >= SURGE) {
           const label = e < SURGE + 0.5 ? "◆ 併網送電 · GRID ONLINE" : pct >= 1 ? "● ALL SYSTEMS NOMINAL · 全線帶電" : "SYSTEM ENERGIZING · 送電中";
           ctx.fillStyle = pct >= 1 ? "#5ef0a0" : e < SURGE + 0.5 ? "#ffd27a" : "#9bd2ff"; ctx.font = `bold 15px ${MONO}`; ctx.textAlign = "center";
@@ -411,11 +391,6 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           sg.addColorStop(0, "rgba(255,255,255,0)"); sg.addColorStop(0.5, "rgba(255,255,255,0.5)"); sg.addColorStop(1, "rgba(255,255,255,0)");
           ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = sg; ctx.fillRect(barL, by, fw, bh); ctx.globalCompositeOperation = "source-over";
           ctx.restore(); ctx.shadowBlur = 0;
-          // 能量分節刻度(切在軌道上,讀作能量格)
-          ctx.save(); ctx.beginPath(); ctx.roundRect(barL, by, bw, bh, rr); ctx.clip();
-          ctx.strokeStyle = "rgba(8,16,30,0.5)"; ctx.lineWidth = 1;
-          for (let s = 1; s < 10; s++) { const x = barL + (bw / 10) * s; ctx.beginPath(); ctx.moveTo(x, by); ctx.lineTo(x, by + bh); ctx.stroke(); }
-          ctx.restore();
           // 前緣彗星頭(未滿時)
           if (pct < 1) {
             const hx = barL + fw;
