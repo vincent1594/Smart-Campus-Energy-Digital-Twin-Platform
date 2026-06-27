@@ -1,19 +1,23 @@
-// 開場英雄動畫「電網傳輸序列」(送電版,非發射)— 電影級編排:
-// ① 特寫受電站 X:台電 11.4kV 進線受電、電壓爬升(收束電流匯入)→
-// ② 併網送電:能量波自 X 沿真實饋線往外傳輸 + 放射火花 + 鏡頭光斑 →
-// ③ 鏡頭隨送電波「拉遠揭示」整座校園(各棟在電流到達時依 VCB 群帶電、衝擊環)→
+// 開場英雄動畫「電網傳輸序列」(送電版,非發射)— 電影級編排,雙受電站:
+// ① 特寫北電網受電站 X:台電 11.4kV 進線受電、電壓爬升(收束電流匯入)→
+// ② 北電網併網送電:能量波自 X 沿真實饋線往外傳輸 + 放射火花 + 鏡頭光斑 →
+// ③ 鏡頭隨送電波「拉遠揭示」整座校園 → 南電網受電站 H1 接力點火、送電南半校區 →
 // ④ 100% 全線帶電:全螢幕白光 + 衝擊波 + 標題 → ⑤ 全網同步心跳脈動 + 前景餘燼。
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { BuildingSummary, PowerFlowResult, TransformerDetail } from "../api/types";
-import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, buildingLetter, centroid, netOfLetter, type Pt } from "../lib/campusPositions";
+import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, NET_NAME, SOURCE_LETTER_BY_NET, buildingLetter, centroid, type Pt } from "../lib/campusPositions";
 
-const SURGE = 3.0;        // 併網送電時刻(秒)— 延後以醞釀「受電爬升」過程
+const SURGE = 3.0;        // 首站(北 X)併網送電時刻(秒)— 延後以醞釀「受電爬升」過程
+const STAGGER = 1.5;      // 第二站(南 H1)接力延遲(秒)— 待鏡頭拉遠揭示南半校區再點火
 const WAVE_SPEED = 470;   // 能量波速(校園座標單位 / 秒)
-const CAM_DUR = 3.1;      // 鏡頭拉遠時長(秒)
+const CAM_DUR = 3.4;      // 鏡頭拉遠時長(秒)
 const CAM_START = 2.5;    // 開場特寫倍率
 const MONO = "'Roboto Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace";
 const easeOut = (x: number) => 1 - Math.pow(1 - x, 3);
+
+// 開場登場的電網(依序點火):北電網(台電主受電)→ 南電網接力。
+const INTRO_NETS = ["north", "south"] as const;
 
 function flowColor(ratio: number | null): string {
   if (ratio == null) return "#3ad07a";
@@ -25,52 +29,71 @@ function flowColor(ratio: number | null): string {
 
 interface Spark { x: number; y: number; vx: number; vy: number; life: number; max: number }
 interface Ember { x: number; y: number; r: number; vy: number; tw: number; ph: number; warm: boolean }
+interface NetData { pf?: PowerFlowResult; buildings: BuildingSummary[]; trafos: TransformerDetail[] }
+interface SourceV { net: string; letter: string; sx: number; sy: number; surgeT: number; maxDist: number; totalKw: number }
+interface NodeV { L: string; cx: number; cy: number; igniteDist: number; color: string; poly: Pt[]; hash: number; srcIdx: number }
 
 export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
-  const [pf, setPf] = useState<PowerFlowResult>();
-  const [buildings, setBuildings] = useState<BuildingSummary[]>([]);
-  const [trafos, setTrafos] = useState<TransformerDetail[]>([]);
+  const [data, setData] = useState<Record<string, NetData>>({});
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const burstRef = useRef<{ done: boolean; parts: Spark[] }>({ done: false, parts: [] });
+  const burstRef = useRef<{ done: Set<number>; parts: Spark[] }>({ done: new Set(), parts: [] });
   const embersRef = useRef<Ember[]>([]);
 
   useEffect(() => { const im = new Image(); im.src = MAP_IMAGE; imgRef.current = im; }, []);
-  // 開場固定取北電網資料(劇本=台電 11.4kV 受電 X);即使使用者上次切到南電網重整,著色仍正確。
-  useEffect(() => { Promise.all([api.powerflowOf("north"), api.buildingsOf("north"), api.transformers()]).then(([p, b, t]) => { setPf(p); setBuildings(b); setTrafos(t); }).catch(() => {}); }, []);
+  // 兩網資料各自獨立抓取、互不阻塞:某網不可用(如南電網開發中)時該受電站不入鏡,其餘照常。
+  useEffect(() => {
+    INTRO_NETS.forEach(async (net) => {
+      try {
+        const [pf, buildings, trafos] = await Promise.all([api.powerflowOf(net), api.buildingsOf(net), api.transformersOf(net)]);
+        setData((d) => ({ ...d, [net]: { pf, buildings, trafos } }));
+      } catch { /* 該網資料不可用 → 略過,不入鏡 */ }
+    });
+  }, []);
 
   const scene = useMemo(() => {
-    const [sx, sy] = centroid(BUILDING_POS.X ?? [[220, 263]]);
-    const ratioOf = new Map<string, number | null>();
-    const vcbOfLetter = new Map<string, string>();   // 棟 → 所屬 VCB(真實電路分組)
-    if (pf) {
-      const tr = new Map(pf.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]));
-      buildings.forEach((b) => {
+    const sources: SourceV[] = [];
+    const nodes: NodeV[] = [];
+    let vcbCount = 0;
+    INTRO_NETS.forEach((net) => {
+      const d = data[net];
+      const letter = SOURCE_LETTER_BY_NET[net];
+      const srcPoly = letter ? BUILDING_POS[letter] : undefined;
+      if (!d || !d.buildings.length || !srcPoly) return;
+      const si = sources.length;
+      const [sx, sy] = centroid(srcPoly);
+      // 各棟負載率 + 所屬 VCB(真實電路分組,決定整條饋線一起帶電的點火順序)
+      const ratioOf = new Map<string, number | null>();
+      const vcbOfLetter = new Map<string, string>();
+      const tr = new Map((d.pf?.transformer_loadings ?? []).map((t) => [t.transformer_id, t.load_ratio_percent]));
+      const trVcb = new Map(d.trafos.map((t) => [t.name, t.vcb_id]));
+      d.buildings.forEach((b) => {
         const L = buildingLetter(b.id);
         if (!ratioOf.has(L)) ratioOf.set(L, null);
         const r = tr.get(b.transformer_name);
         if (r != null) ratioOf.set(L, Math.max(ratioOf.get(L) ?? 0, r));
+        if (!vcbOfLetter.has(L)) { const v = trVcb.get(b.transformer_name); if (v) vcbOfLetter.set(L, v); }
       });
-    }
-    const trVcb = new Map(trafos.map((t) => [t.name, t.vcb_id]));
-    buildings.forEach((b) => {
-      const L = buildingLetter(b.id);
-      if (!vcbOfLetter.has(L)) { const v = trVcb.get(b.transformer_name); if (v) vcbOfLetter.set(L, v); }
+      // 節點 = 該網建物(有座標、排除受電站本身字母,避免與核心重疊)
+      const letters = [...new Set(d.buildings.map((b) => buildingLetter(b.id)))].filter((L) => L !== letter && BUILDING_POS[L]);
+      const netNodes = letters.map((L, i) => {
+        const [cx, cy] = centroid(BUILDING_POS[L]);
+        return { L, cx, cy, dist: Math.hypot(cx - sx, cy - sy), vcb: vcbOfLetter.get(L) ?? L,
+          color: flowColor(ratioOf.get(L) ?? null), poly: BUILDING_POS[L] as Pt[], hash: (i * 0.173) % 1, igniteDist: 0, srcIdx: si };
+      });
+      // 同一 VCB 用「該 VCB 平均距離」當點火距離 → 整條饋線一起帶電、各路 VCB 由近到遠串聯
+      const grp = new Map<string, { sum: number; n: number }>();
+      netNodes.forEach((n) => { const e = grp.get(n.vcb) ?? { sum: 0, n: 0 }; e.sum += n.dist; e.n++; grp.set(n.vcb, e); });
+      netNodes.forEach((n) => { const e = grp.get(n.vcb)!; n.igniteDist = e.sum / e.n; });
+      vcbCount += grp.size;
+      const maxDist = Math.max(...netNodes.map((n) => n.dist), 1);
+      sources.push({ net, letter, sx, sy, surgeT: SURGE + si * STAGGER, maxDist, totalKw: d.pf ? d.pf.total_load_kw : 0 });
+      netNodes.forEach((n) => nodes.push({ L: n.L, cx: n.cx, cy: n.cy, igniteDist: n.igniteDist, color: n.color, poly: n.poly, hash: n.hash, srcIdx: n.srcIdx }));
     });
-
-    // 開場為北電網「台電 11.4kV 受電(X)」劇本 → 只取北電網建物;否則南電網建物(含受電站 H1)也會被畫成第二個發光中心。
-    const nodes = Object.keys(BUILDING_POS).filter((L) => L !== "X" && netOfLetter(L) === "north").map((L, i) => {
-      const [cx, cy] = centroid(BUILDING_POS[L]);
-      return { L, cx, cy, dist: Math.hypot(cx - sx, cy - sy), vcb: vcbOfLetter.get(L) ?? L,
-        color: flowColor(ratioOf.get(L) ?? null), poly: BUILDING_POS[L] as Pt[], hash: (i * 0.173) % 1, igniteDist: 0 };
-    });
-    // 同一 VCB 的棟用「該 VCB 平均距離」當點火距離 → 整條饋線一起帶電、12 路 VCB 由近到遠串聯
-    const grp = new Map<string, { sum: number; n: number }>();
-    nodes.forEach((n) => { const e = grp.get(n.vcb) ?? { sum: 0, n: 0 }; e.sum += n.dist; e.n++; grp.set(n.vcb, e); });
-    nodes.forEach((n) => { const e = grp.get(n.vcb)!; n.igniteDist = e.sum / e.n; });
-    // 高潮/閃光時序仍用最遠棟真實距離(維持原電影節奏);igniteDist 只決定分組點火順序
-    return { sx, sy, nodes, maxDist: Math.max(...nodes.map((n) => n.dist), 1), totalKw: pf ? pf.total_load_kw : 0 };
-  }, [pf, buildings, trafos]);
+    const energT = sources.length ? Math.max(...sources.map((s) => s.surgeT + s.maxDist / WAVE_SPEED)) : SURGE + 3;
+    const totalKw = sources.reduce((a, s) => a + s.totalKw, 0);
+    return { sources, nodes, energT, totalKw, vcbCount: vcbCount || 12 };
+  }, [data]);
 
   const sceneRef = useRef(scene);
   useEffect(() => { sceneRef.current = scene; }, [scene]);
@@ -98,8 +121,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       if (!start) start = ts;
       const e = (ts - start) / 1000;
       const dt = 0.016;
-      const { sx, sy, nodes, maxDist, totalKw } = sceneRef.current;
-      const energT = SURGE + maxDist / WAVE_SPEED;   // 全亮時刻
+      const { sources, nodes, energT, totalKw, vcbCount } = sceneRef.current;
+      const s0 = sources[0];
 
       ctx.save(); ctx.scale(dpr, dpr);
       const bg = ctx.createRadialGradient(W / 2, H * 0.46, 0, W / 2, H * 0.5, Math.max(W, H) * 0.8);
@@ -108,7 +131,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
 
       const sX = W / MAP_W, sY = H / MAP_H;           // 填滿整個畫面
       const TX = (x: number) => x * sX, TY = (y: number) => y * sY;
-      const SXc = TX(sx), SYc = TY(sy);
+      const SXc0 = s0 ? TX(s0.sx) : W / 2, SYc0 = s0 ? TY(s0.sy) : H / 2;   // 鏡頭錨點=首站(北 X)
 
       // 抖動折線(閃電)
       const bolt = (x1: number, y1: number, x2: number, y2: number, seg: number, jit: number) => {
@@ -117,13 +140,13 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         ctx.lineTo(x2, y2); ctx.stroke();
       };
 
-      // === 鏡頭:醞釀特寫 X → 點火後拉遠;點火/全亮瞬間鏡頭震動(衝擊感)===
+      // === 鏡頭:醞釀特寫北 X → 點火後拉遠揭示全校園;點火/全亮瞬間鏡頭震動(衝擊感)===
       ctx.save();
       const shake = (t0: number, amp: number, dur: number) => { const k = Math.max(0, 1 - Math.abs(e - t0) / dur); return k > 0 ? (Math.random() - 0.5) * amp * k * k : 0; };
       ctx.translate(shake(SURGE, 14, 0.5) + shake(energT, 24, 0.55), shake(SURGE, 10, 0.5) + shake(energT, 18, 0.55));
       const cp = easeOut(Math.max(0, Math.min((e - SURGE) / CAM_DUR, 1)));
       const cz = CAM_START - (CAM_START - 1) * cp;
-      ctx.translate(SXc, SYc); ctx.scale(cz, cz); ctx.translate(-SXc, -SYc);
+      ctx.translate(SXc0, SYc0); ctx.scale(cz, cz); ctx.translate(-SXc0, -SYc0);
 
       const img = imgRef.current;
       if (img && img.complete && img.naturalWidth) {
@@ -133,13 +156,15 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         ctx.filter = "none"; ctx.globalAlpha = 1;
       }
 
-      const waveR = Math.max(0, e - SURGE) * WAVE_SPEED;
+      // === 各棟:沿所屬受電站送電、依電流到達點火 ===
       let litCount = 0;
-
       for (const n of nodes) {
+        const s = sources[n.srcIdx]; if (!s) continue;
+        const SXc = TX(s.sx), SYc = TY(s.sy);
         const cx = TX(n.cx), cy = TY(n.cy);
+        const waveR = Math.max(0, e - s.surgeT) * WAVE_SPEED;
         const charged = Math.max(0, Math.min(1, waveR / n.igniteDist));
-        const igniteT = SURGE + n.igniteDist / WAVE_SPEED;
+        const igniteT = s.surgeT + n.igniteDist / WAVE_SPEED;
         const lit = e >= igniteT;
         if (lit) litCount++;
         const flash = lit ? Math.max(0, 1 - (e - igniteT) / 0.55) : 0;
@@ -170,8 +195,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           ctx.globalAlpha = 1; ctx.strokeStyle = n.color; ctx.lineWidth = 1.4 + flash * 1.8;
           ctx.shadowBlur = 6 + flash * 26; ctx.shadowColor = n.color; ctx.stroke(); ctx.shadowBlur = 0;
           if (charged >= 1) {
-            for (let s = 0; s < 2; s++) {
-              const ph = (e * 0.32 + s * 0.5 + n.hash) % 1;
+            for (let st = 0; st < 2; st++) {
+              const ph = (e * 0.32 + st * 0.5 + n.hash) % 1;
               const fx = SXc + (cx - SXc) * ph, fy = SYc + (cy - SYc) * ph;
               ctx.shadowBlur = 12; ctx.shadowColor = n.color; ctx.fillStyle = n.color;
               ctx.beginPath(); ctx.arc(fx, fy, 1.8, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
@@ -183,31 +208,38 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         }
       }
 
-      // 能量波(三環,更厚實的衝擊)
-      for (let w = 0; w < 3; w++) {
-        const wr = waveR - w * 55;
-        if (wr > 0 && wr < maxDist + 260) {
-          const a = Math.max(0, (0.6 - w * 0.2) * (1 - wr / (maxDist + 260)));
-          ctx.strokeStyle = `rgba(130,190,255,${a})`; ctx.lineWidth = 2.6 - w * 0.7;
-          ctx.shadowBlur = 26; ctx.shadowColor = "rgba(130,190,255,0.85)";
-          ctx.beginPath(); ctx.ellipse(SXc, SYc, wr * sX, wr * sY, 0, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
+      // === 各受電站:能量波(三環)+ 全亮後同步心跳 ===
+      for (const s of sources) {
+        const SXc = TX(s.sx), SYc = TY(s.sy);
+        const waveR = Math.max(0, e - s.surgeT) * WAVE_SPEED;
+        for (let w = 0; w < 3; w++) {
+          const wr = waveR - w * 55;
+          if (wr > 0 && wr < s.maxDist + 260) {
+            const a = Math.max(0, (0.6 - w * 0.2) * (1 - wr / (s.maxDist + 260)));
+            ctx.strokeStyle = `rgba(130,190,255,${a})`; ctx.lineWidth = 2.6 - w * 0.7;
+            ctx.shadowBlur = 26; ctx.shadowColor = "rgba(130,190,255,0.85)";
+            ctx.beginPath(); ctx.ellipse(SXc, SYc, wr * sX, wr * sY, 0, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
+          }
+        }
+        if (e > energT + 0.5) {
+          const hb = (e - energT - 0.5) % 2.6;
+          if (hb < 1.5) {
+            const hr = hb * 950, a = 0.42 * (1 - hb / 1.5);
+            ctx.strokeStyle = `rgba(120,200,255,${a})`; ctx.lineWidth = 2.4; ctx.shadowBlur = 18; ctx.shadowColor = "rgba(120,200,255,0.6)";
+            ctx.beginPath(); ctx.ellipse(SXc, SYc, hr * sX, hr * sY, 0, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
+          }
         }
       }
 
-      // 全網同步心跳(全亮後)
-      if (e > energT + 0.5) {
-        const hb = (e - energT - 0.5) % 2.6;
-        if (hb < 1.5) { const hr = hb * 950, a = 0.42 * (1 - hb / 1.5);
-          ctx.strokeStyle = `rgba(120,200,255,${a})`; ctx.lineWidth = 2.4; ctx.shadowBlur = 18; ctx.shadowColor = "rgba(120,200,255,0.6)";
-          ctx.beginPath(); ctx.ellipse(SXc, SYc, hr * sX, hr * sY, 0, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0; }
-      }
-
-      // 點火放射火花
+      // 點火放射火花(各受電站於各自送電時刻爆發一次)
       const b = burstRef.current;
-      if (!b.done && e >= SURGE) {
-        b.done = true;
-        for (let i = 0; i < 72; i++) { const ang = Math.random() * Math.PI * 2; const sp = 300 + Math.random() * 900;
-          b.parts.push({ x: sx, y: sy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 1.1, max: 1.1 }); }
+      for (let si = 0; si < sources.length; si++) {
+        const s = sources[si];
+        if (!b.done.has(si) && e >= s.surgeT) {
+          b.done.add(si);
+          for (let i = 0; i < 72; i++) { const ang = Math.random() * Math.PI * 2; const sp = 300 + Math.random() * 900;
+            b.parts.push({ x: s.sx, y: s.sy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 1.1, max: 1.1 }); }
+        }
       }
       for (const p of b.parts) {
         p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.95; p.vy *= 0.95; p.life -= dt;
@@ -218,46 +250,56 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       }
       b.parts = b.parts.filter((p) => p.life > 0);
 
-      // 水平鏡頭光斑(點火瞬間,加成)
-      const flare = Math.max(0, 1 - Math.abs(e - SURGE) / 0.5);
-      if (flare > 0) {
-        ctx.globalCompositeOperation = "lighter";
-        const fg = ctx.createLinearGradient(SXc - W, SYc, SXc + W, SYc);
-        fg.addColorStop(0, "rgba(120,180,255,0)"); fg.addColorStop(0.5, `rgba(180,215,255,${0.5 * flare})`); fg.addColorStop(1, "rgba(120,180,255,0)");
-        ctx.fillStyle = fg; ctx.fillRect(SXc - W, SYc - 2.5 - flare * 3, W * 2, 5 + flare * 6);
-        ctx.globalCompositeOperation = "source-over";
-      }
+      // === 各受電站核心:醞釀預充環/電弧 → 送電脈衝 → 標籤 + 水平鏡頭光斑 ===
+      for (const s of sources) {
+        const SXc = TX(s.sx), SYc = TY(s.sy);
+        const st = s.surgeT;
+        const chg = Math.min(1, e / st);
 
-      // 受電站 X — 醞釀:加速收束預充環 + 隨機電弧(越接近點火越急、越多)
-      const chg = Math.min(1, e / SURGE);
-      if (e < SURGE) {
-        for (let k = 0; k < 5; k++) {
-          const ph = (e * (0.5 + chg * 2.2) + k * 0.2) % 1;     // 1→0 收束,越近越急
-          const rr = 8 + (1 - ph) * (150 - chg * 80);
-          const a = 0.5 * (1 - ph) * (0.2 + chg * 0.8);
-          ctx.strokeStyle = `rgba(130,190,255,${a})`; ctx.lineWidth = 1.1 + chg * 1.4;
-          ctx.beginPath(); ctx.arc(SXc, SYc, rr, 0, Math.PI * 2); ctx.stroke();
+        const flare = Math.max(0, 1 - Math.abs(e - st) / 0.5);
+        if (flare > 0) {
+          ctx.globalCompositeOperation = "lighter";
+          const fg = ctx.createLinearGradient(SXc - W, SYc, SXc + W, SYc);
+          fg.addColorStop(0, "rgba(120,180,255,0)"); fg.addColorStop(0.5, `rgba(180,215,255,${0.5 * flare})`); fg.addColorStop(1, "rgba(120,180,255,0)");
+          ctx.fillStyle = fg; ctx.fillRect(SXc - W, SYc - 2.5 - flare * 3, W * 2, 5 + flare * 6);
+          ctx.globalCompositeOperation = "source-over";
         }
-        if (Math.random() < 0.25 + chg * 0.6) {
-          const ang = Math.random() * Math.PI * 2, len = 16 + chg * 46;
-          ctx.strokeStyle = `rgba(180,220,255,${0.4 + chg * 0.5})`; ctx.lineWidth = 1.2; ctx.shadowBlur = 10; ctx.shadowColor = "#9cc8ff";
-          bolt(SXc, SYc, SXc + Math.cos(ang) * len, SYc + Math.sin(ang) * len, 4, 9); ctx.shadowBlur = 0;
+
+        // 受電爬升:加速收束預充環 + 隨機電弧(越接近送電越急、越多)
+        if (e < st) {
+          for (let k = 0; k < 5; k++) {
+            const ph = (e * (0.5 + chg * 2.2) + k * 0.2) % 1;
+            const rr = 8 + (1 - ph) * (150 - chg * 80);
+            const a = 0.5 * (1 - ph) * (0.2 + chg * 0.8);
+            ctx.strokeStyle = `rgba(130,190,255,${a})`; ctx.lineWidth = 1.1 + chg * 1.4;
+            ctx.beginPath(); ctx.arc(SXc, SYc, rr, 0, Math.PI * 2); ctx.stroke();
+          }
+          if (Math.random() < 0.25 + chg * 0.6) {
+            const ang = Math.random() * Math.PI * 2, len = 16 + chg * 46;
+            ctx.strokeStyle = `rgba(180,220,255,${0.4 + chg * 0.5})`; ctx.lineWidth = 1.2; ctx.shadowBlur = 10; ctx.shadowColor = "#9cc8ff";
+            bolt(SXc, SYc, SXc + Math.cos(ang) * len, SYc + Math.sin(ang) * len, 4, 9); ctx.shadowBlur = 0;
+          }
+        }
+        const surge = Math.max(0, 1 - Math.abs(e - st) / 0.45);
+        const coreR = 5 + chg * 8 + surge * 20 + Math.sin(e * (4 + chg * 9)) * (1.2 + chg);
+        ctx.shadowBlur = 22 + chg * 28 + surge * 50; ctx.shadowColor = "#9cc8ff"; ctx.fillStyle = "#5fa8ff";
+        ctx.beginPath(); ctx.arc(SXc, SYc, coreR, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0; ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(SXc, SYc, 2.5 + surge * 3, 0, Math.PI * 2); ctx.fill();
+        if (e > st - 2.6) {
+          ctx.globalAlpha = Math.min(1, (e - (st - 2.6)) / 0.5);
+          ctx.fillStyle = "#9ccbff"; ctx.font = `14px ${MONO}`; ctx.textAlign = "center";
+          ctx.fillText(`${s.letter} · ${NET_NAME[s.net] ?? ""}受電站 · 台電 11.4kV`, SXc, SYc - 24);
+          ctx.globalAlpha = 1;
         }
       }
-      const surge = Math.max(0, 1 - Math.abs(e - SURGE) / 0.45);
-      const coreR = 5 + chg * 8 + surge * 20 + Math.sin(e * (4 + chg * 9)) * (1.2 + chg);
-      ctx.shadowBlur = 22 + chg * 28 + surge * 50; ctx.shadowColor = "#9cc8ff"; ctx.fillStyle = "#5fa8ff";
-      ctx.beginPath(); ctx.arc(SXc, SYc, coreR, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0; ctx.fillStyle = "#ffffff";
-      ctx.beginPath(); ctx.arc(SXc, SYc, 2.5 + surge * 3, 0, Math.PI * 2); ctx.fill();
-      if (e > 0.4) { ctx.globalAlpha = Math.min(1, (e - 0.4) / 0.5); ctx.fillStyle = "#9ccbff"; ctx.font = `14px ${MONO}`; ctx.textAlign = "center";
-        ctx.fillText("X · 受電站 · 台電 11.4kV", SXc, SYc - 24); ctx.globalAlpha = 1; }
 
       ctx.restore();   // 結束鏡頭
 
       // === 螢幕層 ===
-      // 高潮:點火白閃 + 全亮爆閃 + 多重衝擊波
-      const surgeFl = Math.max(0, 1 - Math.abs(e - SURGE) / 0.32) * 0.5;
+      // 高潮:各站送電白閃 + 全亮爆閃 + 多重衝擊波
+      let surgeFl = 0;
+      for (const s of sources) surgeFl = Math.max(surgeFl, Math.max(0, 1 - Math.abs(e - s.surgeT) / 0.32) * 0.5);
       const fullFl = e >= energT ? Math.max(0, 1 - (e - energT) / 0.6) : 0;
       const fl = Math.max(surgeFl, fullFl * 0.88);
       if (fl > 0) { ctx.fillStyle = `rgba(255,255,255,${fl})`; ctx.fillRect(0, 0, W, H); }
@@ -266,7 +308,8 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
           if (sw2 > 0 && sw2 < 0.9) { const a = 1 - sw2 / 0.9; ctx.strokeStyle = `rgba(200,230,255,${a * 0.8})`; ctx.lineWidth = 3 * a + 1;
             ctx.beginPath(); ctx.arc(W / 2, H / 2, sw2 * spd, 0, Math.PI * 2); ctx.stroke(); } }
       };
-      shock(SURGE, 2, 1500); shock(energT, 3, 2000);
+      for (const s of sources) shock(s.surgeT, 2, 1500);
+      shock(energT, 3, 2000);
 
       // 前景餘燼(景深)
       for (const em of embersRef.current) {
@@ -287,7 +330,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         const pct = nodes.length ? litCount / nodes.length : 0;
         const chgH = Math.min(1, e / SURGE);
         const armWin = Math.max(0.1, SURGE - 0.6);
-        const vcbOnline = e < SURGE ? Math.max(0, Math.min(12, Math.floor(((e - 0.6) / armWin) * 12))) : 12;
+        const vcbOnline = e < SURGE ? Math.max(0, Math.min(vcbCount, Math.floor(((e - 0.6) / armWin) * vcbCount))) : Math.round(vcbCount * pct);
         const freq = e < 0.6 ? 0 : Math.min(60, 59.2 + chgH * 0.8);
         const volt = e < SURGE ? chgH : Math.min(1, 0.97 + pct * 0.03);
         const loadNow = e < SURGE ? 0 : Math.round(totalKw * pct);
@@ -318,7 +361,7 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         const tx = 30, ty = H - 116;
         ctx.font = `12px ${MONO}`;
         ([["總負載 LOAD", `${loadNow.toLocaleString()} kW`], ["頻率 FREQ", `${freq.toFixed(1)} Hz`],
-          ["VCB 上線", `${vcbOnline} / 12`], ["電壓 BUS", `${volt.toFixed(2)} pu`]] as [string, string][])
+          ["VCB 上線", `${vcbOnline} / ${vcbCount}`], ["電壓 BUS", `${volt.toFixed(2)} pu`]] as [string, string][])
           .forEach((r, i) => {
             const yy = ty + i * 22;
             ctx.textAlign = "left"; ctx.fillStyle = "#5f86a8"; ctx.fillText(r[0], tx, yy);
@@ -345,14 +388,14 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
       <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
 
       {/* 校徽 + 校名:全線帶電後從左上角淡入(不擋中間棟別) */}
-      <div style={{ position: "absolute", top: 20, left: 26, display: "flex", alignItems: "center", gap: 12, opacity: 0, animation: "wrIntroBrand 1s cubic-bezier(.2,.8,.2,1) 5.2s forwards", pointerEvents: "none" }}>
+      <div style={{ position: "absolute", top: 20, left: 26, display: "flex", alignItems: "center", gap: 12, opacity: 0, animation: "wrIntroBrand 1s cubic-bezier(.2,.8,.2,1) 5.6s forwards", pointerEvents: "none" }}>
         <img src="/stust-logo.png" alt="南臺科技大學" style={{ height: 42, filter: "drop-shadow(0 0 12px rgba(120,180,255,.6))" }} />
         <span style={{ color: "#eaf2ff", fontSize: 19, fontWeight: 700, letterSpacing: 2, textShadow: "0 0 22px #1677ffaa" }}>南臺科技大學</span>
       </div>
       {/* 進入系統:獨立固定於底部、留足邊距,不被標題擠到貼邊 */}
       <div style={{ position: "absolute", left: 0, right: 0, bottom: "6%", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
         <button onClick={onEnter} style={{
-          opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 6.6s forwards", pointerEvents: "auto",
+          opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 7.0s forwards", pointerEvents: "auto",
           background: "rgba(95,168,255,0.10)", border: "1px solid rgba(120,180,255,0.5)", color: "#cfe2ff", fontFamily: MONO,
           fontSize: 15, letterSpacing: 3, padding: "11px 30px", cursor: "pointer", borderRadius: 2,
         }}>進入系統 ▸</button>
