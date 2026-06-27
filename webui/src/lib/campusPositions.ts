@@ -22,6 +22,9 @@ export function netOfLetter(letter: string): string {
 export const NET_COLOR: Record<string, string> = { north: "#2f54eb", south: "#08979c" };
 export const NET_NAME: Record<string, string> = { north: "北電錶", south: "南電錶" };
 
+// 尚在開發中的電網:UI 就近標「開發中」(模型尚未完成校正)。校正完成移除即可。
+export const DEV_NETS = new Set(["south"]);
+
 export type Pt = [number, number];
 
 // 各棟多邊形頂點(絕對座標,以 MAP_W×MAP_H 為基準)。初值為矩形 4 點,可編輯成不規則。
