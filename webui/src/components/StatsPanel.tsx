@@ -68,13 +68,14 @@ function useEnv(): EnvData {
   return env;
 }
 
-export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curveDate, peakHour, selectedHour, onScrubHour }: {
+export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curveDate, peakHour, selectedHour, onScrubHour, dayDev = false }: {
   dash: DashboardSummary; pf: PowerFlowResult; dark?: boolean;
   daySnapshots?: PowerFlowResult[];            // 歷史尖峰日 24h 實測快照(供拖曳基準點)
   curveDate?: string;                          // 曲線所屬日期(歷史尖峰最高日)
   peakHour?: number | null;                    // 該日尖峰小時(marker 預設位置)
   selectedHour?: number | null;
   onScrubHour?: (hour: number) => void;
+  dayDev?: boolean;                            // 此電網日負載曲線(尖峰預測)尚在開發中 → 標「開發中」而非永久「載入中」
 }) {
   const C = dark
     ? { bg: "rgba(13,27,42,.55)", border: "#1b3a5b", text: "#cfe9ff", muted: "#5f86a8", accent: "#00e5ff" }
@@ -228,17 +229,24 @@ export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curve
       {/* 日負載曲線 */}
       <div style={{ ...panel, flex: 1, minHeight: 90, display: "flex", flexDirection: "column" }}>
         <div style={{ marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <div style={{ color: C.muted, fontSize: 12 }}>日負載曲線{dayDate && <span style={{ marginInlineStart: 4, opacity: 0.85 }}>· {dayDate}</span>}</div>
+          <div style={{ color: C.muted, fontSize: 12 }}>日負載曲線
+            {dayDev && !real && <Tag color="orange" style={{ marginInlineStart: 4, fontSize: 10 }}>開發中</Tag>}
+            {dayDate && !(dayDev && !real) && <span style={{ marginInlineStart: 4, opacity: 0.85 }}>· {dayDate}</span>}
+          </div>
           {real
             ? <div style={{ color: C.accent, fontSize: 10 }}>{pinLabel} · {Math.round(markVal)} kW · 拖曳切換</div>
-            : onScrubHour
-              ? <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>時段資料載入中…(約 10 秒,載好可拖曳)</div>
-              : dash.load_basis && <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>基準:{dash.load_basis}</div>}
+            : dayDev
+              ? null
+              : onScrubHour
+                ? <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>時段資料載入中…(約 10 秒,載好可拖曳)</div>
+                : dash.load_basis && <div style={{ color: C.muted, fontSize: 10, opacity: 0.9 }}>基準:{dash.load_basis}</div>}
         </div>
         <div ref={chartBoxRef} data-focus-keep onMouseDown={onChartMouseDown} style={{ flex: 1, minHeight: 0, cursor: real ? "ew-resize" : "default" }}>
           {real
             ? <ReactECharts style={{ height: "100%", width: "100%" }} option={chartOption} />
-            : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11 }}>載入中…</div>}
+            : dayDev
+              ? <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11, textAlign: "center", lineHeight: 1.6 }}>此電網日負載曲線<br />開發中</div>
+              : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11 }}>載入中…</div>}
         </div>
       </div>
 
