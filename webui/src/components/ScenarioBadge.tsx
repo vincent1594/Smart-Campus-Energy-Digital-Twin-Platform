@@ -6,6 +6,6 @@ export default function ScenarioBadge() {
   const { scenario, scenarioKind } = useNetScenario();
   if (!scenario) return null;
   return scenarioKind === "time"
-    ? <Tag color="cyan" style={{ marginBottom: 8 }}>🕒 時段負載(連動)· 數值為模擬、非基準</Tag>
-    : <Tag color="orange" style={{ marginBottom: 8 }}>模擬情境(連動)· 數值為模擬、非基準</Tag>;
+    ? <Tag className="scenario-pulse" color="cyan" style={{ marginBottom: 8 }}>🕒 時段負載(連動)· 數值為模擬、非基準</Tag>
+    : <Tag className="scenario-pulse" color="orange" style={{ marginBottom: 8 }}>模擬情境(連動)· 數值為模擬、非基準</Tag>;
 }

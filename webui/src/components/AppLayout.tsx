@@ -48,7 +48,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <Layout style={{ height: "100vh" }}>
-      <Header style={{ background: "#001529", paddingInline: 20, height: 44, lineHeight: "44px", display: "flex", alignItems: "center", gap: 53 }}>
+      <Header style={{ background: "linear-gradient(180deg, #002235 0%, #001529 100%)", paddingInline: 20, height: 44, lineHeight: "44px", display: "flex", alignItems: "center", gap: 53,
+        boxShadow: "inset 0 -1px 0 rgba(54,209,255,0.18), 0 2px 10px rgba(0,0,0,0.20)" }}>
         <img src="/stust-logo.png" alt="STUST" title="回首頁(重新整理)" onClick={() => { window.location.href = "/"; }}
           style={{ height: 26, display: "block", cursor: "pointer" }} />
         <Menu theme="dark" mode="horizontal" selectedKeys={[topSelected]} onClick={({ key }) => navigate(key)}
