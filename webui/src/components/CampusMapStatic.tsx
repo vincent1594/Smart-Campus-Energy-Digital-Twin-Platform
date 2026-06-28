@@ -215,6 +215,11 @@ export default function CampusMapStatic({
         {!editable && focusLetter && POS[focusLetter] && (
           <polygon points={POS[focusLetter].map((p) => p.join(",")).join(" ")} fill={accent} opacity={0.14} pointerEvents="none" />
         )}
+        {/* 焦點棟描邊呼吸光暈:柔和脈動,引導視線(不影響點擊) */}
+        {!editable && focusLetter && POS[focusLetter] && (
+          <polygon className="cms-focus-glow" points={POS[focusLetter].map((p) => p.join(",")).join(" ")}
+            fill="none" stroke={accent} strokeWidth={3} strokeLinejoin="round" filter="url(#cmsGlow)" pointerEvents="none" />
+        )}
 
         {/* 各棟:多邊形(預設依負載率淡色填,無框無字);編輯模式才顯示框與頂點 */}
         {markers.map((m) => {
