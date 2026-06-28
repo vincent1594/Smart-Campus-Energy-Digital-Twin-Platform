@@ -8,6 +8,7 @@ import { type Focus, useFocus } from "../focus/FocusContext";
 import { SOURCE_LETTER_BY_NET, buildingLetter } from "../lib/campusPositions";
 import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
 import { useNetScenario } from "../scenario/ActiveScenarioContext";
+import { loadScale } from "../lib/scenarioScale";
 import LoadRatioTag from "./LoadRatioTag";
 
 const kindStep: Record<string, string> = { source: "台電進線", vcb: "VCB", feeder: "饋線", transformer: "變壓器", building: "建築" };
@@ -123,6 +124,8 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
   const sFeeder = useMemo(() => new Map(scenario?.feeder_loadings.map((f) => [f.feeder_id, f.load_ratio_percent]) ?? []), [scenario]);
   const trRatio = (id: string, base: number | null) => (scenario ? sTrafo.get(id) ?? base : base);
   const fdRatio = (id: string, base: number | null) => (scenario ? sFeeder.get(id) ?? base : base);
+  // 情境連動:連接負載 = base × (情境率/基準率);結構/容量維持 base。
+  const effTrLoad = (t: TransformerDetail) => t.total_connected_load_kw * (scenario ? loadScale(sTrafo.get(t.id), t.load_ratio_percent) : 1);
 
   const trafoByName = useMemo(() => new Map(trafos.map((t) => [t.name, t])), [trafos]);
   const letterOfTrafo = (name: string) => {
@@ -165,7 +168,11 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
     const zoneBuildings = buildings.filter((b) => buildingLetter(b.id) === letter);
     const trafoNames = [...new Set(zoneBuildings.map((b) => b.transformer_name))];
     const zoneTrafos = trafoNames.map((n) => trafoByName.get(n)).filter(Boolean) as TransformerDetail[];
-    const totalLoad = zoneBuildings.reduce((s, b) => s + b.estimated_load_kw, 0);
+    const totalLoad = zoneBuildings.reduce((s, b) => {
+      const t = trafoByName.get(b.transformer_name);
+      const f = scenario && t ? loadScale(sTrafo.get(t.id), t.load_ratio_percent) : 1;
+      return s + b.estimated_load_kw * f;
+    }, 0);
     const maxRatio = Math.max(0, ...zoneTrafos.map((t) => trRatio(t.id, t.load_ratio_percent) ?? 0));
     const vcbName = zoneTrafos[0]?.vcb_name ?? "—";
     // 此棟是否即為該系統受電站(南 H1 兼宿舍 / 北 X)→ 卡片同時標明受電站身分與資訊
@@ -223,7 +230,7 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
             {tr.feeder_id ? <a onClick={() => setFocus({ kind: "feeder", id: tr.feeder_id!, label: tr.feeder_name ?? tr.feeder_id! })}>{tr.feeder_name}</a> : <Tag>開關耦合</Tag>}
           </Descriptions.Item>
           <Descriptions.Item label="所屬 VCB">{tr.vcb_name}</Descriptions.Item>
-          <Descriptions.Item label="連接負載點">{tr.connected_building_count} 個 / {tr.total_connected_load_kw} kW</Descriptions.Item>
+          <Descriptions.Item label="連接負載點">{tr.connected_building_count} 個 / {effTrLoad(tr).toFixed(1)} kW</Descriptions.Item>
           <Descriptions.Item label="運轉狀態">{(trRatio(tr.id, tr.load_ratio_percent) ?? 0) > 100 ? <Tag color="red">過載</Tag> : <Tag color="green">正常</Tag>}</Descriptions.Item>
         </Descriptions>
         <Button type="primary" ghost size="small" onClick={() => navigate("/scenario")}>規劃模擬</Button>
@@ -240,7 +247,7 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
         <Descriptions.Item label="長度">{fd.length_m.toFixed(0)} m</Descriptions.Item>
         <Descriptions.Item label="負載率"><LoadRatioTag ratio={fdRatio(fd.id, fd.load_ratio_percent)} /></Descriptions.Item>
         <Descriptions.Item label="狀態">{(fdRatio(fd.id, fd.load_ratio_percent) ?? 0) > 100 ? <Tag color="red">過載</Tag> : <Tag color="green">正常</Tag>}</Descriptions.Item>
-        <Descriptions.Item label="供電">{fd.transformer_count} 台變壓器 / {fd.connected_building_count} 棟 / {fd.total_connected_load_kw} kW</Descriptions.Item>
+        <Descriptions.Item label="供電">{fd.transformer_count} 台變壓器 / {fd.connected_building_count} 棟 / {(fd.total_connected_load_kw * (scenario ? loadScale(sFeeder.get(fd.id), fd.load_ratio_percent) : 1)).toFixed(1)} kW</Descriptions.Item>
       </Descriptions>
     );
 
@@ -248,12 +255,16 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
   if (focus.kind === "vcb" && vcb) {
     // 受影響棟別 = 此 VCB 供電的不重複實體棟(以棟別代號去重),= 地圖紅色亮起的那些
     const affected = new Set(buildings.filter((b) => trafoByName.get(b.transformer_name)?.vcb_id === vcb.id).map((b) => buildingLetter(b.id)));
+    // 情境連動:合計負載 = 旗下各變壓器 base 連接負載 × (情境率/基準率) 加總。
+    const vcbLoad = scenario
+      ? trafos.filter((t) => t.vcb_id === vcb.id).reduce((s, t) => s + effTrLoad(t), 0)
+      : vcb.total_connected_load_kw;
     return (
       <Descriptions title={<><Tag color="cyan">VCB</Tag>{vcb.name}</>} column={1} size="small">
         <Descriptions.Item label="饋線數">{vcb.feeder_count}</Descriptions.Item>
         <Descriptions.Item label="變壓器數">{vcb.transformer_count}</Descriptions.Item>
         <Descriptions.Item label="供電建築">{affected.size} 棟</Descriptions.Item>
-        <Descriptions.Item label="合計負載">{vcb.total_connected_load_kw} kW</Descriptions.Item>
+        <Descriptions.Item label="合計負載">{vcbLoad.toFixed(1)} kW</Descriptions.Item>
         <Descriptions.Item label="停電影響"><b style={{ color: "#cf1322" }}>{affected.size} 棟</b>一同停電(地圖紅標)</Descriptions.Item>
       </Descriptions>
     );

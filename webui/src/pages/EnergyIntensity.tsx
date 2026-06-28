@@ -74,9 +74,9 @@ export default function EnergyIntensity() {
   if (loading || !data || !chartOption) return <Spin size="large" style={{ display: "block", marginTop: 120 }} />;
 
   return (
-    <div style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr", gap: 10 }}>
+    <div className="cmd-stagger" style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr", gap: 10 }}>
       {/* 左:全校摘要 + 節能優先棟 */}
-      <Card size="small" title="全校用電強度" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card size="small" title={<span className="cmd-accentbar">全校用電強度</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         <Statistic value={data.campus_eui} suffix="kWh/m²·年" valueStyle={{ fontSize: 26, color: "#1677ff" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
           <span style={{ color: "#888", fontSize: 12 }}>{data.year} 年 · 參考基準</span>
@@ -117,7 +117,7 @@ export default function EnergyIntensity() {
       </Card>
 
       {/* 右:各棟 EUI 長條 */}
-      <Card size="small" title="各棟用電強度(高 → 低)" style={{ height: "100%" }}
+      <Card size="small" title={<span className="cmd-accentbar">各棟用電強度(高 → 低)</span>} style={{ height: "100%" }}
         styles={{ body: { padding: 8, height: "calc(100% - 39px)" } }}
         extra={<span style={{ fontSize: 11, color: "#999" }}><Tag color="#ff4d4f">超參考</Tag><Tag color="#fa8c16">高於全校均</Tag><Tag color="#52c41a">良好</Tag></span>}>
         <ReactECharts option={chartOption} style={{ height: "100%" }} notMerge />

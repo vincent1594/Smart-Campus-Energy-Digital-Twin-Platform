@@ -74,7 +74,7 @@ export default function VerificationCenter() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 10, alignItems: "start" }}>
         {/* 左:資料可信度分級 */}
-        <Card size="small" title="資料可信度分級" styles={{ body: { padding: "4px 10px 10px" } }}>
+        <Card size="small" title={<span className="cmd-accentbar">資料可信度分級</span>} styles={{ body: { padding: "4px 10px 10px" } }}>
           {TIER_ORDER.map((t) => {
             const items = PROVENANCE.filter((p) => p.tier === t);
             return (
@@ -101,7 +101,7 @@ export default function VerificationCenter() {
 
         {/* 右:驗證待辦 + 已知限制 */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <Card size="small" title={<span>驗證待辦 <span style={{ color: "#aaa", fontSize: 11, fontWeight: 400 }}>(需與營繕組 / 現場對答案)</span></span>}
+          <Card size="small" title={<span className="cmd-accentbar">驗證待辦 <span style={{ color: "#aaa", fontSize: 11, fontWeight: 400 }}>(需與營繕組 / 現場對答案)</span></span>}
             styles={{ body: { padding: "6px 12px 10px" } }}>
             {VERIFY.map((v) => (
               <div key={v.item} style={{ display: "flex", gap: 8, padding: "6px 0", borderBottom: "1px solid #f5f5f5" }}>
@@ -119,7 +119,7 @@ export default function VerificationCenter() {
             ))}
           </Card>
 
-          <Card size="small" title="已知限制(誠實揭露)" styles={{ body: { padding: "8px 12px" } }}>
+          <Card size="small" title={<span className="cmd-accentbar">已知限制(誠實揭露)</span>} styles={{ body: { padding: "8px 12px" } }}>
             {LIMITATIONS.map((l, i) => (
               <div key={i} style={{ display: "flex", gap: 6, fontSize: 12, color: "#666", padding: "3px 0", lineHeight: 1.5 }}>
                 <span style={{ color: "#fa8c16" }}>•</span><span>{l}</span>
@@ -130,7 +130,7 @@ export default function VerificationCenter() {
       </div>
 
       {/* 下:開發路線圖 */}
-      <Card size="small" title="開發路線圖" style={{ marginTop: 10 }} styles={{ body: { padding: 10 } }}>
+      <Card size="small" title={<span className="cmd-accentbar">開發路線圖</span>} style={{ marginTop: 10 }} styles={{ body: { padding: 10 } }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
           {ROADMAP_COL.map((col) => {
             const items = ROADMAP.filter((r) => r.status === col.status);

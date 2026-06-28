@@ -44,9 +44,9 @@ export default function HistoryTrends() {
   const maxFeeder = d.feeders[0]?.avg_kw ?? 1;
 
   return (
-    <div style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr", gap: 10 }}>
+    <div className="cmd-stagger" style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr", gap: 10 }}>
       {/* 左:統計 + 各饋線 */}
-      <Card size="small" title="實測負載概況" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card size="small" title={<span className="cmd-accentbar">實測負載概況</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         <div style={{ color: "#888", fontSize: 12 }}>期間 {d.period_start} ~ {d.period_end}（{d.days} 天)</div>
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
           <Statistic title="尖峰需量" value={d.peak_kw} suffix="kW" valueStyle={{ fontSize: 19, color: "#ff4d4f" }} />
@@ -72,10 +72,10 @@ export default function HistoryTrends() {
 
       {/* 右:兩張趨勢圖 */}
       <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
-        <Card size="small" title="每日尖峰 / 平均需量" style={{ flex: 1, minHeight: 0 }} styles={{ body: { padding: 6, height: "calc(100% - 39px)" } }}>
+        <Card size="small" title={<span className="cmd-accentbar">每日尖峰 / 平均需量</span>} style={{ flex: 1, minHeight: 0 }} styles={{ body: { padding: 6, height: "calc(100% - 39px)" } }}>
           <ReactECharts option={dailyOption} style={{ height: "100%" }} notMerge />
         </Card>
-        <Card size="small" title="典型日負載曲線(平日 / 假日)" style={{ flex: 1, minHeight: 0 }} styles={{ body: { padding: 6, height: "calc(100% - 39px)" } }}>
+        <Card size="small" title={<span className="cmd-accentbar">典型日負載曲線(平日 / 假日)</span>} style={{ flex: 1, minHeight: 0 }} styles={{ body: { padding: 6, height: "calc(100% - 39px)" } }}>
           <ReactECharts option={profileOption} style={{ height: "100%" }} notMerge />
         </Card>
       </div>

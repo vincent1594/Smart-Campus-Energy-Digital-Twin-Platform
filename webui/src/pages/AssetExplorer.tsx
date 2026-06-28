@@ -7,6 +7,9 @@ import { useFocus } from "../focus/FocusContext";
 import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
 import { downloadCSV, stamp } from "../lib/csv";
 import { useFitPageSize } from "../lib/useFillHeight";
+import { useNetScenario } from "../scenario/ActiveScenarioContext";
+import { feederRatioMap, loadScale, trafoRatioMap } from "../lib/scenarioScale";
+import ScenarioBadge from "../components/ScenarioBadge";
 import { BuildingsPanel } from "./BuildingExplorer";
 
 const RISK_COLOR: Record<string, string> = { "高": "#ff4d4f", "中": "#fa8c16", "低": "#52c41a" };
@@ -17,12 +20,20 @@ function Transformers() {
   const [detail, setDetail] = useState<TransformerDetail | null>(null);
   const { setFocus } = useFocus();
   const fh = useFitPageSize();
+  // 情境連動:有套用情境時,負載率帶到情境值;連接負載按「情境率/基準率」縮放。容量/結構維持 base。
+  const { scenario } = useNetScenario();
+  const sMap = useMemo(() => trafoRatioMap(scenario), [scenario]);
+  const effRatio = (r: TransformerDetail) => (scenario ? sMap.get(r.id) ?? r.load_ratio_percent : r.load_ratio_percent);
+  const effLoad = (r: TransformerDetail) => (scenario
+    ? Math.round(r.total_connected_load_kw * loadScale(sMap.get(r.id), r.load_ratio_percent) * 10) / 10
+    : r.total_connected_load_kw);
   useEffect(() => {
     setLoading(true);
     api.transformers().then(setRows).catch((e) => message.error(String(e.message ?? e))).finally(() => setLoading(false));
   }, []);
   return (
     <>
+      <ScenarioBadge />
       <div ref={fh.ref}>
       <Table<TransformerDetail>
         rowKey="id" size="small" loading={loading} dataSource={rows} pagination={{ pageSize: fh.pageSize }}
@@ -33,7 +44,7 @@ function Transformers() {
           { title: "型式", dataIndex: "trafo_type", render: (t) => <Tag>{t}式</Tag> },
           { title: "二次側額定", dataIndex: "lv_kv", render: (v: number) => lvLabel(v) },
           { title: "所屬 VCB", dataIndex: "vcb_name" },
-          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: (v) => <LoadRatioTag ratio={v} /> },
+          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (effRatio(a) ?? 0) - (effRatio(b) ?? 0), render: (_v, r) => <LoadRatioTag ratio={effRatio(r)} /> },
           { title: "連接負載點", dataIndex: "connected_building_count", align: "right" },
         ]}
       />
@@ -46,8 +57,8 @@ function Transformers() {
               <Descriptions.Item label="型式">{detail.trafo_type}式</Descriptions.Item>
               <Descriptions.Item label="一次側額定">11.4 kV<span style={{ color: "#999", fontSize: 12 }}>(允許 {rangeKV(11.4)} kV)</span></Descriptions.Item>
               <Descriptions.Item label="二次側額定">{lvLabel(detail.lv_kv)}<span style={{ color: "#999", fontSize: 12 }}>(允許 {lvRangeLabel(detail.lv_kv)})</span></Descriptions.Item>
-              <Descriptions.Item label="負載率">{detail.load_ratio_percent?.toFixed(1) ?? "—"}%</Descriptions.Item>
-              <Descriptions.Item label="連接負載">{detail.total_connected_load_kw} kW</Descriptions.Item>
+              <Descriptions.Item label="負載率">{effRatio(detail)?.toFixed(1) ?? "—"}%</Descriptions.Item>
+              <Descriptions.Item label="連接負載">{effLoad(detail)} kW</Descriptions.Item>
             </Descriptions>
             <List
               header={`連接負載點（${detail.connected_building_count} 個）`}
@@ -63,10 +74,29 @@ function Transformers() {
 
 function Vcbs() {
   const [rows, setRows] = useState<VcbDetail[]>([]);
+  const [trafos, setTrafos] = useState<TransformerDetail[]>([]);
   const { setFocus } = useFocus();
   const fh = useFitPageSize();
-  useEffect(() => { api.vcbs().then(setRows).catch((e) => message.error(String(e.message ?? e))); }, []);
+  // 情境連動:VCB 連接負載 = 旗下各變壓器 base 連接負載 × (情境率/基準率) 加總;需變壓器資料佐算。
+  const { scenario } = useNetScenario();
+  const sMap = useMemo(() => trafoRatioMap(scenario), [scenario]);
+  const trByName = useMemo(() => new Map(trafos.map((t) => [t.name, t])), [trafos]);
+  const effLoad = (vcb: VcbDetail) => {
+    if (!scenario || trByName.size === 0) return vcb.total_connected_load_kw;   // 無情境 / 變壓器未載入 → base
+    let sum = 0;
+    for (const name of vcb.transformers) {
+      const t = trByName.get(name);
+      if (t) sum += t.total_connected_load_kw * loadScale(sMap.get(t.id), t.load_ratio_percent);
+    }
+    return Math.round(sum * 10) / 10;
+  };
+  useEffect(() => {
+    api.vcbs().then(setRows).catch((e) => message.error(String(e.message ?? e)));
+    api.transformers().then(setTrafos).catch(() => undefined);
+  }, []);
   return (
+    <>
+    <ScenarioBadge />
     <div ref={fh.ref}>
     <Table<VcbDetail> rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: fh.pageSize }}
       onRow={(r) => ({ onClick: () => setFocus({ kind: "vcb", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
@@ -76,10 +106,11 @@ function Vcbs() {
         { title: "饋線數", dataIndex: "feeder_count", align: "right" },
         { title: "變壓器數", dataIndex: "transformer_count", align: "right" },
         { title: "連接負載點", dataIndex: "connected_building_count", align: "right" },
-        { title: "連接負載 (kW)", dataIndex: "total_connected_load_kw", align: "right", sorter: (a, b) => a.total_connected_load_kw - b.total_connected_load_kw },
+        { title: "連接負載 (kW)", dataIndex: "total_connected_load_kw", align: "right", sorter: (a, b) => effLoad(a) - effLoad(b), render: (_v, r) => effLoad(r) },
       ]}
     />
     </div>
+    </>
   );
 }
 
@@ -87,8 +118,14 @@ function Feeders() {
   const [rows, setRows] = useState<FeederDetail[]>([]);
   const { setFocus } = useFocus();
   const fh = useFitPageSize(100);
+  // 情境連動:有套用情境時,饋線負載率帶到情境值 (容量/線徑/長度維持 base)。
+  const { scenario } = useNetScenario();
+  const fMap = useMemo(() => feederRatioMap(scenario), [scenario]);
+  const effRatio = (r: FeederDetail) => (scenario ? fMap.get(r.id) ?? r.load_ratio_percent : r.load_ratio_percent);
   useEffect(() => { api.feeders().then(setRows).catch((e) => message.error(String(e.message ?? e))); }, []);
   return (
+    <>
+    <ScenarioBadge />
     <div ref={fh.ref}>
       <Table<FeederDetail> rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: fh.pageSize }}
         onRow={(r) => ({ onClick: () => setFocus({ kind: "feeder", id: r.id, label: r.name }), style: { cursor: "pointer" } })}
@@ -100,7 +137,7 @@ function Feeders() {
           { title: "R (Ω)", dataIndex: "resistance_ohm", align: "right", width: 82, render: (v: number | null) => (v != null ? v.toFixed(3) : "—"), sorter: (a, b) => (a.resistance_ohm ?? 0) - (b.resistance_ohm ?? 0) },
           { title: "X (Ω)", dataIndex: "reactance_ohm", align: "right", width: 82, render: (v: number | null) => (v != null ? v.toFixed(3) : "—") },
           { title: "變壓器數", dataIndex: "transformer_count", align: "right" },
-          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: (v) => <LoadRatioTag ratio={v} /> },
+          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (effRatio(a) ?? 0) - (effRatio(b) ?? 0), render: (_v, r) => <LoadRatioTag ratio={effRatio(r)} /> },
           { title: "連接負載點", dataIndex: "connected_building_count", align: "right" },
         ]}
       />
@@ -108,6 +145,7 @@ function Feeders() {
         長度為推估值(實際佈線未量測);R/X 依線徑單位阻抗（60mm² 0.32+j0.07、38mm² 0.5+j0.07 Ω/km）× 長度推算。
       </div>
     </div>
+    </>
   );
 }
 
