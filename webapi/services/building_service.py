@@ -3,20 +3,31 @@ from __future__ import annotations
 
 from typing import Optional
 
+import importlib
+from functools import lru_cache
+
 from webapi import state
 from webapi import topology
+from webapi.context import current_network
 from webapi.schemas import BuildingDetail, BuildingSummary
 
-try:  # 樓地板面積 (112年統計表) —— 既有面積法資料,僅供顯示
-    from data.area_loads import BUILDING_AREA, LOAD_BUILDING
-except Exception:  # pragma: no cover
-    BUILDING_AREA, LOAD_BUILDING = {}, {}
+
+@lru_cache(maxsize=None)
+def _area_tables(network_id: str) -> tuple[dict, dict]:
+    """取當前電網的樓地板面積表 (BUILDING_AREA, LOAD_BUILDING);無此檔則回空表。
+    各網資料來源:networks/<net>/data/area_loads.py (112年統計表,僅供顯示)。"""
+    try:
+        mod = importlib.import_module(f"networks.{network_id}.data.area_loads")
+        return getattr(mod, "BUILDING_AREA", {}), getattr(mod, "LOAD_BUILDING", {})
+    except Exception:  # pragma: no cover
+        return {}, {}
 
 
 def _floor_area(building_id: str) -> Optional[float]:
-    """負載點 → 所屬建物 (字母) → 樓地板面積 m²;查無回 None。"""
-    letter = LOAD_BUILDING.get(building_id)
-    return BUILDING_AREA.get(letter) if letter else None
+    """負載點 → 所屬建物 (字母) → 樓地板面積 m²;依當前電網解析,查無回 None。"""
+    building_area, load_building = _area_tables(current_network.get())
+    letter = load_building.get(building_id)
+    return building_area.get(letter) if letter else None
 
 
 def list_buildings(query: Optional[str] = None) -> list[BuildingSummary]:

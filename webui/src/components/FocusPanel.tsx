@@ -7,7 +7,7 @@ import type { BuildingDetail, BuildingSummary, DashboardSummary, FeederDetail, S
 import { type Focus, useFocus } from "../focus/FocusContext";
 import { SOURCE_LETTER_BY_NET, buildingLetter } from "../lib/campusPositions";
 import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
-import { useActiveScenario } from "../scenario/ActiveScenarioContext";
+import { useNetScenario } from "../scenario/ActiveScenarioContext";
 import LoadRatioTag from "./LoadRatioTag";
 
 const kindStep: Record<string, string> = { source: "台電進線", vcb: "VCB", feeder: "饋線", transformer: "變壓器", building: "建築" };
@@ -20,7 +20,7 @@ function OverviewSummary({ buildings, trafos, dash, onPick }: {
   const ratioColor = (r: number) => (r > 100 ? "#cf1322" : r >= 80 ? "#fa8c16" : r >= 50 ? "#1677ff" : "#52c41a");
 
   // 套用作用中模擬情境的變壓器負載率(無情境則用 base)
-  const { scenario, scenarioKind } = useActiveScenario();
+  const { scenario, scenarioKind } = useNetScenario();
   const sMap = useMemo(() => new Map(scenario?.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]) ?? []), [scenario]);
   const effR = (t: TransformerDetail) => (scenario ? sMap.get(t.id) ?? t.load_ratio_percent ?? 0 : t.load_ratio_percent ?? 0);
 
@@ -118,7 +118,7 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
   const [fd, setFd] = useState<FeederDetail | null>(null);
   const [vcb, setVcb] = useState<VcbDetail | null>(null);
 
-  const { scenario } = useActiveScenario();
+  const { scenario } = useNetScenario();
   const sTrafo = useMemo(() => new Map(scenario?.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]) ?? []), [scenario]);
   const sFeeder = useMemo(() => new Map(scenario?.feeder_loadings.map((f) => [f.feeder_id, f.load_ratio_percent]) ?? []), [scenario]);
   const trRatio = (id: string, base: number | null) => (scenario ? sTrafo.get(id) ?? base : base);

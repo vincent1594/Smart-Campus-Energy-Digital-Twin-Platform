@@ -75,7 +75,7 @@ export default function Scenario() {
   const runForecast = () => {
     if (!ts) { message.warning("請先選擇模擬時間點"); return; }
     setRunning(true);
-    api.runForecast({ timestamp: ts, pv_factor: pvf }).then((c) => { setCmp(c); setScenario(c.scenario); })
+    api.runForecast({ timestamp: ts, pv_factor: pvf }).then((c) => { setCmp(c); setScenario(c.scenario, "whatif", currentNet); })
       .catch((e) => message.error(String(e.message ?? e))).finally(() => setRunning(false));
   };
 
@@ -110,7 +110,7 @@ export default function Scenario() {
     if (tr && trKva != null) req.transformer_capacities = { [tr]: trKva };
     if (fd && fdM != null) req.feeder_lengths = { [fd]: fdM };
     setRunning(true);
-    api.runScenario(req).then((c) => { setCmp(c); setScenario(c.scenario); }).catch((e) => message.error(String(e.message ?? e))).finally(() => setRunning(false));
+    api.runScenario(req).then((c) => { setCmp(c); setScenario(c.scenario, "whatif", currentNet); }).catch((e) => message.error(String(e.message ?? e))).finally(() => setRunning(false));
   };
   const reset = () => { setTotal(base?.total_load_kw ?? 0); setZone(undefined); setZoneKw(null); setTr(undefined); setTrKva(null); setFd(undefined); setFdM(null); setCmp(null); setScenario(null); setTs(undefined); };
 

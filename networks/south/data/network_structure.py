@@ -3,13 +3,13 @@
 資料來源: VCB1~VCB6 單線圖 + 各站變壓器規格容量資料.xlsx (實測校正)
 
 南電錶涵蓋之建物正是北電錶 (論文實驗X電錶) 報告中「模型未含」者:
-  E 圖書資訊館、H1 第一宿舍、H6 第六宿舍、U 優活館、O 高齡福祉館、SP 污水處理廠
+  E 圖書資訊館 (含原污水處理廠 = E棟-5)、H1 第一宿舍、H6 第六宿舍、U 優活館、O 高齡福祉館
 
 校正 (比照北電錶):
   • 變壓器容量「以單線圖為準」(excel 規格表有些有誤);型式/電壓取自規格表。
     O 高齡福祉 = 400kVA (單線圖;excel TR-52 誤標 300)。
-  • SP 污水處理廠 = E 第 5 台 (TR_E_5 750kVA@110V) 底下的「一個負載點」(LOAD_SP),
-    不另設獨立變壓器 (依使用者指定,與其他負載一樣是 load 葉節點)。
+  • E棟-5 = E 第 5 台 (TR_E_5 750kVA@110V) 底下的負載點 (LOAD_E_5),歸入 E 圖書資訊館。
+    此台原供污水處理廠,依使用者指定改歸 E 棟 (與其他 E_x 一樣是 load 葉節點)。
   • 電容: 各 LV 母線實裝電容「折入補償後 pf」(見 load_data.py),故下方 capacitors rating 皆設 0
     (builder 在 rating>0 才建 shunt),括號註記實裝 kVAr。唯 VCB5 CB_BUS 為獨立電容饋線仍顯式建模。
 """
@@ -127,10 +127,10 @@ FEEDERS = {
                     {"name": "TR_E_4", "capacity": 1000, "voltage_hv": 11.4, "voltage_lv": 0.38,
                      "lv_bus": "E_4_LV_BUS", "loads": ["LOAD_E_4"],
                      "capacitors": [{"name": "CAP_E_4", "rating": 0}]},  # 實裝 360kVAr,折入 pf
-                    # E 第 5 台 (750kVA@110V) 供污水廠 SP — SP 為此台底下「一個負載點」(LOAD_SP)
-                    # (依使用者指定:SP 不另設獨立變壓器,與其他負載一樣是掛在變壓器底下的 load 葉節點)
+                    # E 第 5 台 (750kVA@110V):負載點 LOAD_E_5,歸入 E 圖書資訊館 (E棟-5)。
+                    # (此台原供污水處理廠;依使用者指定改歸 E 棟,與其他 E_x 負載一樣是 load 葉節點)
                     {"name": "TR_E_5", "capacity": 750, "voltage_hv": 11.4, "voltage_lv": 0.11,  # 110V
-                     "lv_bus": "E_5_LV_BUS", "loads": ["LOAD_SP"],
+                     "lv_bus": "E_5_LV_BUS", "loads": ["LOAD_E_5"],
                      "capacitors": [{"name": "CAP_E_5", "rating": 0}]},  # 實裝 240kVAr,折入 pf
                 ],
             },

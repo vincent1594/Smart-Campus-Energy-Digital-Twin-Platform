@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { PowerFlowResult } from "../api/types";
 import { kindLabel, useFocus, type FocusKind } from "../focus/FocusContext";
-import { useActiveScenario } from "../scenario/ActiveScenarioContext";
+import { useNetScenario } from "../scenario/ActiveScenarioContext";
 
 interface Alarm { level: string; kind: FocusKind; id: string; equipment: string; message: string }
 
@@ -12,7 +12,7 @@ export default function Alarms() {
   const [pf, setPf] = useState<PowerFlowResult>();
   const [err, setErr] = useState<string>();
   const { setFocus } = useFocus();
-  const { scenario, scenarioKind } = useActiveScenario();
+  const { scenario, scenarioKind } = useNetScenario();
   const navigate = useNavigate();
 
   useEffect(() => { api.powerflow().then(setPf).catch((e) => setErr(String(e.message ?? e))); }, []);
