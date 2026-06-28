@@ -277,6 +277,12 @@ export default function MapExplorer() {
     max_feeder_load_ratio_percent: scenario.max_feeder_load_ratio_percent, status: scenario.status,
   } : dash;
 
+  // V1 範圍聲明隨當前電網切換:已建模網(北)=規劃估算;開發中網(南)=初步建模、尚未校正
+  const curNetName = networks.find((n) => n.id === currentNet)?.name ?? (currentNet === "south" ? "南電錶" : "北電錶");
+  const coverageText = DEV_NETS.has(currentNet)
+    ? `${curNetName}區建置中,數據為初步建模、尚未校正`
+    : `部分數值為規劃估算、模型涵蓋${curNetName}區`;
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}
       onClick={(e) => { if (focus && !(e.target as HTMLElement).closest("[data-focus-keep]")) setFocus(null); }}>
@@ -284,7 +290,7 @@ export default function MapExplorer() {
       {/* V1 範圍/可信度聲明(連驗證中心)+ 第一次使用提示(接在後面,看過/關閉後不再出現) */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 10px", background: "#e6f4ff", border: "1px solid #91caff", borderRadius: 6, fontSize: 13, lineHeight: 1.5, color: "#0958d9", flexWrap: "wrap" }}>
         <span style={{ fontWeight: 600, background: "#0958d9", color: "#fff", borderRadius: 3, padding: "0 6px", fontSize: 12 }}>V1</span>
-        <span style={{ color: "#333" }}>部分數值為規劃估算、模型涵蓋北電錶區。各數據來源與待校正項目請見</span>
+        <span style={{ color: "#333" }}>{coverageText}。各數據來源與待校正項目請見</span>
         <a style={{ fontWeight: 600 }} onClick={() => navigate("/verify")}>驗證中心 →</a>
         {showGuide && (
           <>
