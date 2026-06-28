@@ -106,8 +106,8 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
   };
 
   return (
-    <div style={{ height: "100%", display: "grid", gridTemplateColumns: "290px 1fr 310px", gap: 8 }}>
-      <Card size="small" title="契約 / 現況需量" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+    <div className="cmd-stagger" style={{ height: "100%", display: "grid", gridTemplateColumns: "290px 1fr 310px", gap: 8 }}>
+      <Card size="small" title={<span className="cmd-accentbar">契約 / 現況需量</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         <div style={{ color: "#888", fontSize: 12, marginBottom: 2 }}>契約容量(經常)</div>
         <InputNumber size="small" style={{ width: "100%" }} addonAfter="kW" min={1} step={50} value={contract} onChange={(v) => setContract(v ?? 0)} />
         <div style={{ color: "#888", fontSize: 12, margin: "8px 0 2px" }}>基本電費單價</div>
@@ -159,7 +159,7 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
         )}
       </Card>
 
-      <Card size="small" title="超約評估 / 卸載建議" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card size="small" title={<span className="cmd-accentbar">超約評估 / 卸載建議</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         {!fc ? <Spin /> : (
           <>
             <div style={{ display: "flex", gap: 8 }}>
@@ -281,9 +281,9 @@ function OptimizeView({ contract, setContract }: { contract: number; setContract
   if (loading && !data) return <Spin size="large" style={{ display: "block", marginTop: 120 }} />;
 
   return (
-    <div style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr 340px", gap: 8 }}>
+    <div className="cmd-stagger" style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr 340px", gap: 8 }}>
       {/* 左:尖峰實況 + 假設 */}
-      <Card size="small" title="尖峰實況 / 假設" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card size="small" title={<span className="cmd-accentbar">尖峰實況 / 假設</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         {data && (
           <>
             <div style={{ color: "#888", fontSize: 12, marginBottom: 2 }}>實測尖峰(EMS 北電錶)</div>
@@ -315,7 +315,7 @@ function OptimizeView({ contract, setContract }: { contract: number; setContract
       </Card>
 
       {/* 中:年成本 vs 契約 U 曲線 */}
-      <Card size="small" title="年成本 vs 契約容量(基本電費↑ 罰款↓ 的權衡)" style={{ height: "100%" }}
+      <Card size="small" title={<span className="cmd-accentbar">年成本 vs 契約容量(基本電費↑ 罰款↓ 的權衡)</span>} style={{ height: "100%" }}
         styles={{ body: { padding: 8, height: "calc(100% - 39px)", display: "flex", flexDirection: "column" } }}>
         {!chartOption ? <Spin size="large" style={{ margin: "auto" }} /> : (
           <>
@@ -328,7 +328,7 @@ function OptimizeView({ contract, setContract }: { contract: number; setContract
       </Card>
 
       {/* 右:結論 */}
-      <Card size="small" title="結論 / 建議" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card size="small" title={<span className="cmd-accentbar">結論 / 建議</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         {data && (
           <>
             <div style={{ background: "#fff1f0", border: "1px solid #ffccc7", borderRadius: 6, padding: "10px 12px" }}>
@@ -428,7 +428,7 @@ function BillView({ contract, setContract }: { contract: number; setContract: (n
   return (
     <div style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr 330px", gap: 8 }}>
       {/* 左:月份 + 契約 + 可編輯費率 */}
-      <Card size="small" title="計費條件 / 費率(可編輯)" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card size="small" title={<span className="cmd-accentbar">計費條件 / 費率(可編輯)</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <div style={{ flex: 1 }}>
             <div style={{ color: "#888", fontSize: 12, marginBottom: 2 }}>計費月份</div>
@@ -461,7 +461,7 @@ function BillView({ contract, setContract }: { contract: number; setContract: (n
       </Card>
 
       {/* 中:電費組成 */}
-      <Card size="small" title="月電費組成" style={{ height: "100%" }}
+      <Card size="small" title={<span className="cmd-accentbar">月電費組成</span>} style={{ height: "100%" }}
         styles={{ body: { padding: 8, height: "calc(100% - 39px)", display: "flex", flexDirection: "column" } }}
         extra={bill && <Tag color={summer ? "volcano" : "blue"}>{bill.season}</Tag>}>
         {loading || !chartOption ? <Spin size="large" style={{ margin: "auto" }} /> : (
@@ -475,7 +475,7 @@ function BillView({ contract, setContract }: { contract: number; setContract: (n
       </Card>
 
       {/* 右:明細 */}
-      <Card size="small" title="月電費明細" style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card size="small" title={<span className="cmd-accentbar">月電費明細</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         {!bill ? <Spin /> : (
           <>
             <Statistic title="預估月電費" value={Math.round(bill.total)} prefix="NT$" valueStyle={{ fontSize: 24, color: "#1677ff" }} />

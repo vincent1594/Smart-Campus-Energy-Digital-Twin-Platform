@@ -302,7 +302,7 @@ export default function MapExplorer() {
         </span>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
+      <div className="cmd-stagger" style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "300px 1fr 360px", gap: 10 }}>
       {/* 左:狀態 + KPI 面板 */}
       <div style={{ height: "100%", overflow: "hidden" }}>
         <StatsPanel dash={effDash} pf={effPf} dark={dark} daySnapshots={daySnapshots} curveDate={dayDate} peakHour={dayPeakHour} selectedHour={selectedHour} onScrubHour={scrubHour} dayDev={DEV_NETS.has(currentNet)} />
@@ -365,7 +365,7 @@ export default function MapExplorer() {
       </div>
 
       {/* 右:焦點面板 */}
-      <Card data-focus-keep size="small" title="焦點詳情" style={{ height: "100%", overflow: "hidden", borderRadius: 12, border: "1px solid #eef1f5", boxShadow: "0 1px 4px rgba(20,40,80,.05)" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
+      <Card data-focus-keep size="small" title={<span className="cmd-accentbar">焦點詳情</span>} style={{ height: "100%", overflow: "hidden", borderRadius: 12, border: "1px solid #eef1f5", boxShadow: "0 1px 4px rgba(20,40,80,.05)" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
         <FocusPanel buildings={buildings} trafos={trafos} dash={dash} />
       </Card>
       </div>

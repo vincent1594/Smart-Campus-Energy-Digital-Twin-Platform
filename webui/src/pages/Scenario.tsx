@@ -128,9 +128,9 @@ export default function Scenario() {
   if (!base || !basePf) return <Spin size="large" style={{ display: "block", marginTop: 120 }} />;
 
   return (
-    <div style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr 320px", gap: 10 }}>
+    <div className="cmd-stagger" style={{ height: "100%", display: "grid", gridTemplateColumns: "300px 1fr 320px", gap: 10 }}>
       {/* 左:情境設定 */}
-      <Card size="small" title="情境設定" style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
+      <Card size="small" title={<span className="cmd-accentbar">情境設定</span>} style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
         <div style={{ color: "#888", fontSize: 12, marginBottom: 4 }}>模擬時間點(XGBoost 預測)</div>
         <DatePicker showTime format="YYYY-MM-DD HH:mm" size="small" style={{ width: "100%", marginBottom: 6 }}
           placeholder="選日期 + 時段" minuteStep={30}
@@ -199,7 +199,7 @@ export default function Scenario() {
       </Card>
 
       {/* 右:前後對比 */}
-      <Card size="small" title="修改前 / 後對比" style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
+      <Card size="small" title={<span className="cmd-accentbar">修改前 / 後對比</span>} style={{ height: "100%", display: "flex", flexDirection: "column" }} styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
         {!cmp ? <Empty description="設定左側參數後按「執行模擬」" style={{ paddingTop: 50 }} /> : (
           <>
             <CompareRow label="總負載" before={cmp.base.total_load_kw} after={cmp.scenario.total_load_kw} unit="kW" />

@@ -281,7 +281,7 @@ export default function Report() {
   );
 
   return (
-    <Card title="報表匯出 / 使用說明" size="small" style={{ height: "100%", display: "flex", flexDirection: "column" }}
+    <Card title={<span className="cmd-accentbar">報表匯出 / 使用說明</span>} size="small" style={{ height: "100%", display: "flex", flexDirection: "column" }}
       styles={{ body: { flex: 1, minHeight: 0, overflow: "auto" } }}>
       <Tabs size="small" defaultActiveKey={guideFirst ? "guide" : "report"} items={[
         { key: "report", label: "報表下載", children: reportList },

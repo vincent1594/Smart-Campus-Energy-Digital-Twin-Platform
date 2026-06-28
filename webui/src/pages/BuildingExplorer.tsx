@@ -1,9 +1,12 @@
 import { Card, Descriptions, Drawer, Input, Steps, Table, Tag, message } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
-import type { BuildingDetail, BuildingSummary } from "../api/types";
+import type { BuildingDetail, BuildingSummary, TransformerDetail } from "../api/types";
 import { useFocus } from "../focus/FocusContext";
 import { useFitPageSize } from "../lib/useFillHeight";
+import { useNetScenario } from "../scenario/ActiveScenarioContext";
+import { loadScale, trafoRatioMap } from "../lib/scenarioScale";
+import ScenarioBadge from "../components/ScenarioBadge";
 
 const kindLabel: Record<string, string> = {
   source: "台電進線",
@@ -16,16 +19,27 @@ const kindLabel: Record<string, string> = {
 // 建築查詢內容(搜尋+表格+詳情抽屜),無外層 Card。供設備查詢分頁與獨立頁共用。
 export function BuildingsPanel() {
   const [rows, setRows] = useState<BuildingSummary[]>([]);
+  const [trafos, setTrafos] = useState<TransformerDetail[]>([]);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<BuildingDetail | null>(null);
   const { setFocus } = useFocus();
   const fh = useFitPageSize();
 
+  // 情境連動:有套用情境時,估計負載 = base × (該建築變壓器的 情境率/基準率);無情境 / 變壓器未載入 → base。
+  const { scenario } = useNetScenario();
+  const sMap = useMemo(() => trafoRatioMap(scenario), [scenario]);
+  const trByName = useMemo(() => new Map(trafos.map((t) => [t.name, t])), [trafos]);
+  const effLoad = (transformerName: string, baseKw: number) => {
+    const t = trByName.get(transformerName);
+    if (!scenario || !t) return baseKw;
+    return Math.round(baseKw * loadScale(sMap.get(t.id), t.load_ratio_percent) * 10) / 10;
+  };
+
   const load = (query?: string) => {
     setLoading(true);
     api.buildings(query).then(setRows).catch((e) => message.error(String(e.message ?? e))).finally(() => setLoading(false));
   };
-  useEffect(() => load(), []);
+  useEffect(() => { load(); api.transformers().then(setTrafos).catch(() => undefined); }, []);
 
   const openDetail = (id: string) => {
     api.building(id).then(setDetail).catch((e) => message.error(String(e.message ?? e)));
@@ -33,6 +47,7 @@ export function BuildingsPanel() {
 
   return (
     <>
+      <ScenarioBadge />
       <Input.Search
         placeholder="輸入建築名稱或編號 (例如 LOAD_T)"
         allowClear
@@ -57,7 +72,11 @@ export function BuildingsPanel() {
             sorter: (a, b) => (a.floor_area_m2 ?? 0) - (b.floor_area_m2 ?? 0),
             render: (v: number | null) => (v != null ? v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"),
           },
-          { title: "估計負載 (kW)", dataIndex: "estimated_load_kw", align: "right", sorter: (a, b) => a.estimated_load_kw - b.estimated_load_kw },
+          {
+            title: "估計負載 (kW)", dataIndex: "estimated_load_kw", align: "right",
+            sorter: (a, b) => effLoad(a.transformer_name, a.estimated_load_kw) - effLoad(b.transformer_name, b.estimated_load_kw),
+            render: (_v, r) => effLoad(r.transformer_name, r.estimated_load_kw),
+          },
           { title: "所屬饋線", dataIndex: "feeder_name" },
           { title: "所屬變壓器", dataIndex: "transformer_name" },
         ]}
@@ -69,7 +88,7 @@ export function BuildingsPanel() {
           <>
             <Descriptions bordered column={1} size="small" style={{ marginBottom: 24 }}>
               <Descriptions.Item label="編號">{detail.id}</Descriptions.Item>
-              <Descriptions.Item label="估計負載">{detail.estimated_load_kw} kW</Descriptions.Item>
+              <Descriptions.Item label="估計負載">{effLoad(detail.transformer_name, detail.estimated_load_kw)} kW</Descriptions.Item>
               <Descriptions.Item label="功率因數">{detail.power_factor}</Descriptions.Item>
               <Descriptions.Item label="所屬 VCB">{detail.vcb_name}</Descriptions.Item>
               <Descriptions.Item label="所屬饋線">{detail.feeder_name ?? <Tag>開關耦合</Tag>}</Descriptions.Item>

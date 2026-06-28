@@ -1,7 +1,36 @@
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; }
-body { font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background: #f4f6fb;   /* 柔白底,比純白柔和、卡片更有層次 */
+}
 
 /* 全站隱藏捲動軸(內容仍可滾動,只是不顯示軸) */
 * { scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* 文字選取 */
+::selection { background: rgba(22,119,255,0.16); }
+
+/* ── 共用動態:進場逐列上浮淡入(承接開場通電序列的緩動,輕量、不喧賓奪主)── */
+@keyframes cmdRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.cmd-stagger > * { animation: cmdRise .5s cubic-bezier(.2,.7,.2,1) both; }
+.cmd-stagger > *:nth-child(2) { animation-delay: .05s; }
+.cmd-stagger > *:nth-child(3) { animation-delay: .10s; }
+.cmd-stagger > *:nth-child(4) { animation-delay: .15s; }
+.cmd-stagger > *:nth-child(5) { animation-delay: .20s; }
+
+/* 區塊標題左側強調光條(細緻、品牌藍) */
+.cmd-accentbar { position: relative; padding-left: 10px; }
+.cmd-accentbar::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 0.95em; border-radius: 2px;
+  background: linear-gradient(180deg, #4096ff, #1677ff);
+}
+
+/* 卡片質感:更柔的陰影 + hover 微浮起;表格列 hover 淡藍 */
+.ant-card { transition: box-shadow .25s ease, transform .25s ease; }
+.ant-card-hoverable:hover { box-shadow: 0 10px 28px rgba(20,40,80,.10); transform: translateY(-1px); }
+.ant-table-tbody > tr.ant-table-row:hover > td { background: rgba(22,119,255,0.045) !important; }
