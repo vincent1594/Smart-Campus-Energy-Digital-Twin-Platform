@@ -46,7 +46,7 @@ const SHOW_EDIT_TOOLS = false;
 export default function MapExplorer() {
   const navigate = useNavigate();
   const { focus, setFocus } = useFocus();
-  const { scenario, setScenario } = useActiveScenario();
+  const { scenario: rawScenario, scenarioKind: rawKind, scenarioNet, setScenario } = useActiveScenario();
   const { dark } = useTheme();
   const [mode, setMode] = useState<"supply" | "impact">("supply");
   const [centerView, setCenterView] = useState<"map" | "single">("map");
@@ -65,6 +65,8 @@ export default function MapExplorer() {
   const [currentNet, setCurrentNet] = useState(getNetwork());   // 當前電網 (state → 切換不刷頁,觸發重抓資料重繪)
   const [loadedNet, setLoadedNet] = useState(getNetwork());     // 作用中系統「已完成載入」的電網 (pf/buildings 對應誰);切換瞬間 ≠ currentNet → 暫不採用即時著色,避免沿用上一網殘留閃動
   const srcLetter = SOURCE_LETTER_BY_NET[currentNet] ?? null;   // 當前網受電站字母 (北 X / 南 H1)
+  // 分別連動:情境僅在其所屬電網生效;跨網檢視時視為現況,避免北電網的模擬套到南電網總覽(切回原網即重現)。
+  const scenario = rawScenario && scenarioNet === currentNet ? rawScenario : null;
   // 地圖恆顯示南北所有建物;點他系統建物即自動切到該系統。ovData = 各系統 base 潮流(供「非作用中」系統著色)。
   const [ovData, setOvData] = useState<Record<string, { buildings: BuildingSummary[]; pf: PowerFlowResult }>>({});
   useEffect(() => { api.networks().then(setNetworks).catch(() => undefined); }, []);
@@ -90,7 +92,9 @@ export default function MapExplorer() {
   // 切換電網 (currentNet 變動) → 有快取先即時套用(切換無感),背景仍重新抓取驗證;不刷頁。切換時清掉上一網的時段/情境/錯誤殘留。
   useEffect(() => {
     const net = currentNet;
-    setErr(undefined); setSelectedHour(null); setScenario(null);
+    setErr(undefined); setSelectedHour(null);
+    // 切網只清「時段檢視」(隨拖曳、綁定 selectedHour);規劃模擬(whatif)保留 → 切回原網仍連動。
+    if (rawKind === "time") setScenario(null);
     const cached = netCache.current[net];
     if (cached) { setDash(cached.dash); setPf(cached.pf); setBuildings(cached.buildings); setTrafos(cached.trafos); setGraph(cached.graph); setLoadedNet(net); }
     const dcached = dayCache.current[net];
@@ -125,7 +129,7 @@ export default function MapExplorer() {
     const hi = Math.min(23, lo + 1);
     const t = hour - lo;
     setSelectedHour(hour);
-    setScenario(t > 0.0001 && daySnapshots[hi] ? lerpSnap(daySnapshots[lo], daySnapshots[hi], t) : (daySnapshots[lo] ?? null), "time");
+    setScenario(t > 0.0001 && daySnapshots[hi] ? lerpSnap(daySnapshots[lo], daySnapshots[hi], t) : (daySnapshots[lo] ?? null), "time", currentNet);
   };
 
   const trafoByName = useMemo(() => new Map(trafos.map((t) => [t.name, t])), [trafos]);

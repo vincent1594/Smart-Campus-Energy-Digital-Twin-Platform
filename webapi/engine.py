@@ -89,7 +89,14 @@ def _parse_campus_model(net, index: NetIndex, feeder_defs: dict) -> CampusModel:
         # 中間電纜 (cable_to_bus):feeder id 須獨立避免撞名。
         # 北網 net.line 命名為 vcb_key;南網命名為 f"{vcb_key}_FEEDER"。
         # 取「實際存在於 net」的線名,兩種命名都能對到 → 饋線負載率正常顯示。
-        intermediate_id = f"{vcb_key}_IN" if "cable_to_bus" in vcb_def else None
+        # 命名:單一變電所時以其母線命名 (VCBn_{bus}),與北電錶多數饋線 VCBn_{bus} 慣例一致;
+        # 多變電所共用中間電纜 (無單一母線可代表) 才退回 VCBn_IN。
+        intermediate_id = None
+        if "cable_to_bus" in vcb_def:
+            _subs = vcb_def.get("substations", [])
+            intermediate_id = (f"{vcb_key}_{_subs[0]['bus']}"
+                               if len(_subs) == 1 and _subs[0].get("bus")
+                               else f"{vcb_key}_IN")
         if intermediate_id:
             cable_line = next((c for c in (vcb_key, f"{vcb_key}_FEEDER") if c in index.line_by_name), vcb_key)
             add_feeder(intermediate_id, vcb_key, vcb_def.get("cable_to_bus", {}), line_name=cable_line)

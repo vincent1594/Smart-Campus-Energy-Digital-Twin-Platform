@@ -5,14 +5,30 @@
 from __future__ import annotations
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
 from webapi import state
+from webapi.context import current_network
 from webapi.schemas import FeederDetail, TransformerDetail, TransformerSpec, VcbDetail
 
 _SPECS_PATH = Path(__file__).resolve().parents[1] / "data" / "transformer_specs.json"
+
+# 規格表 (transformer_specs.json) 為南北混合的全校 52 台。依「建築物」欄前綴字母判斷網別,
+# 讓規格明細 / 汰換優先序 / 汰換投資回收 隨設備查詢的南北切換各自呈現。
+# 南電網建物字首:E / H1 / H2 / H6 / U / O;污水處理廠 (= E棟-5) 亦屬南。其餘為北。
+_SOUTH_SPEC_PREFIXES = {"E", "H1", "H2", "H6", "U", "O"}
+
+
+def _spec_network(building: str) -> str:
+    b = (building or "").strip()
+    if "污水" in b:
+        return "south"
+    m = re.match(r"([A-Za-z]+\d*)", b)
+    token = m.group(1).upper() if m else ""
+    return "south" if token in _SOUTH_SPEC_PREFIXES else "north"
 
 
 def _trafo_ratio(transformer_id: str) -> Optional[float]:
@@ -60,9 +76,15 @@ def _transformer_detail(transformer_id: str) -> TransformerDetail:
 
 # ---------- 變壓器規格明細 (原始銘牌/實測資料) ----------
 @lru_cache(maxsize=1)
-def list_transformer_specs() -> list[TransformerSpec]:
+def _all_transformer_specs() -> tuple[TransformerSpec, ...]:
     raw = json.loads(_SPECS_PATH.read_text(encoding="utf-8"))
-    return [TransformerSpec(**r) for r in raw]
+    return tuple(TransformerSpec(**r) for r in raw)
+
+
+def list_transformer_specs() -> list[TransformerSpec]:
+    """依當前電網過濾規格表 (南北各自呈現);供規格明細 / 汰換優先序 / 汰換投資回收共用。"""
+    nid = current_network.get()
+    return [s for s in _all_transformer_specs() if _spec_network(s.building) == nid]
 
 
 # ---------- VCB ----------

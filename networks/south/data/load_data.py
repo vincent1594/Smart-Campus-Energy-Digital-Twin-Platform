@@ -24,13 +24,13 @@ DEFAULT_BUILDING_LOADS = {
     "LOAD_H6_3": {"p_kw": 225.7, "pf": 0.98},  # TR_H6_3 1000kVA (TR-33)
     "LOAD_H6_4": {"p_kw": 260.6, "pf": 0.99},  # TR_H6_4 1000kVA (TR-34)
 
-    # VCB3 — E_BUS (E 圖書資訊館;TR_E_1~4 為 E 自身,TR_E_5 750kVA 供污水廠 SP)
+    # VCB3 — E_BUS (E 圖書資訊館;TR_E_1~5 皆歸 E,TR_E_5 原供污水廠、依指定改歸 E棟-5)
     "LOAD_E_1": {"p_kw": 264.6, "pf": 1.00},   # TR_E_1 1000kVA (TR-4)
     "LOAD_E_2": {"p_kw": 226.4, "pf": 1.00},   # TR_E_2 1000kVA (TR-5)
     "LOAD_E_3": {"p_kw": 296.2, "pf": 1.00},   # TR_E_3 1000kVA (TR-6)
     "LOAD_E_4": {"p_kw": 187.6, "pf": 1.00},   # TR_E_4 1000kVA (TR-7)
-    # 污水廠 SP = E 第 5 台 (750kVA, TR-8) 的負載;實裝 240kVAr 電容折入補償後 pf
-    "LOAD_SP":  {"p_kw": 142.9, "pf": 1.00},   # TR_E_5 750kVA@110V (TR-8)
+    # E棟-5 = E 第 5 台 (750kVA, TR-8) 的負載 (原污水廠);實裝 240kVAr 電容折入補償後 pf
+    "LOAD_E_5":  {"p_kw": 142.9, "pf": 1.00},  # TR_E_5 750kVA@110V (TR-8)
 
     # VCB4 — U_BUS (U 優活館)
     "LOAD_U_1": {"p_kw": 230.4, "pf": 1.00},   # TR_U_1 400kVA (TR-42)

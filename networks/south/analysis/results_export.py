@@ -30,7 +30,7 @@ BUILDING_MAP = {
     "LOAD_H6_3": "H6 第六宿舍", "LOAD_H6_4": "H6 第六宿舍",
     "LOAD_E_1": "E 圖書資訊館", "LOAD_E_2": "E 圖書資訊館",
     "LOAD_E_3": "E 圖書資訊館", "LOAD_E_4": "E 圖書資訊館",
-    "LOAD_SP": "SP 污水處理廠", "LOAD_U_1": "U 優活館", "LOAD_O": "O 高齡福祉館",
+    "LOAD_E_5": "E 圖書資訊館", "LOAD_U_1": "U 優活館", "LOAD_O": "O 高齡福祉館",
 }
 
 DATA_NOTE = ("負載為佔位估算 (容量×0.5、自然功因0.85)，待實測值替換 data/load_data.py;"
