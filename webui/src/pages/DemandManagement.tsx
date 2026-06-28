@@ -1,7 +1,7 @@
 // 需量契約:兩個視圖切換 ——
 //   ① 需量預警:現況需量 vs 契約 + XGBoost 逐時尖峰 → 超約罰款 + 卸載建議
 //   ② 時間電價電費:台電高壓三段式月電費試算(各時段度數×費率 + 基本電費 + 超約)
-import { Alert, Button, Card, DatePicker, Divider, InputNumber, Progress, Segmented, Slider, Spin, Statistic, Tag, message } from "antd";
+import { Alert, Button, Card, DatePicker, Divider, InputNumber, Progress, Segmented, Skeleton, Slider, Spin, Statistic, Tag, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
@@ -135,7 +135,7 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
             <Tag color={statusColor(status.status)} style={{ marginTop: 10 }}>{STATUS_TEXT[status.status] ?? status.status}</Tag>
             <div style={{ color: "#bbb", fontSize: 11, marginTop: 8 }}>{status.load_basis}</div>
           </>
-        ) : <Spin />}
+        ) : <Skeleton active paragraph={{ rows: 4 }} />}
       </Card>
 
       <Card size="small" style={{ height: "100%" }}
@@ -146,7 +146,7 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
           onChange={(d) => d && setDate(d)} />}>
         {loading || !chartOption ? <Spin size="large" style={{ margin: "auto" }} /> : (
           <>
-            <ReactECharts option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge
+            <ReactECharts theme="bg" option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge
               onEvents={{ click: (p: { dataIndex?: number }) => p.dataIndex != null && setSelHour(p.dataIndex) }} />
             <div style={{ color: "#999", fontSize: 11, textAlign: "center", lineHeight: 1.4 }}>
               點圖任一時刻可在右側查各饋線。各饋線預測需量加總(≈台電進線);紅虛線=契約容量。特徵:時間+學期行事曆+近期實際負載。3–5月訓練→6月驗證(holdout),顯示6月。
@@ -160,7 +160,7 @@ function DemandView({ contract, setContract }: { contract: number; setContract: 
       </Card>
 
       <Card size="small" title={<span className="cmd-accentbar">超約評估 / 卸載建議</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
-        {!fc ? <Spin /> : (
+        {!fc ? <Skeleton active paragraph={{ rows: 4 }} /> : (
           <>
             <div style={{ display: "flex", gap: 8 }}>
               <Statistic title="預測尖峰" value={fc.peak_kw} suffix="kW" valueStyle={{ fontSize: 18 }} />
@@ -319,7 +319,7 @@ function OptimizeView({ contract, setContract }: { contract: number; setContract
         styles={{ body: { padding: 8, height: "calc(100% - 39px)", display: "flex", flexDirection: "column" } }}>
         {!chartOption ? <Spin size="large" style={{ margin: "auto" }} /> : (
           <>
-            <ReactECharts option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge />
+            <ReactECharts theme="bg" option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge />
             <div style={{ color: "#999", fontSize: 11, textAlign: "center", lineHeight: 1.4 }}>
               黑線最低點=最佳契約;基本電費按契約整年收,故調高雖降罰款卻墊高基本,U 形底部常很平。
             </div>
@@ -440,7 +440,7 @@ function BillView({ contract, setContract }: { contract: number; setContract: (n
           </div>
         </div>
 
-        {!rates ? <Spin /> : (
+        {!rates ? <Skeleton active paragraph={{ rows: 4 }} /> : (
           <>
             <Divider style={{ margin: "6px 0 8px" }} orientation="left" plain>夏月(6–9月)</Divider>
             <RateField label="尖峰流動" unit="元/度" value={rates.summer_peak_kwh} onChange={set("summer_peak_kwh")} />
@@ -466,7 +466,7 @@ function BillView({ contract, setContract }: { contract: number; setContract: (n
         extra={bill && <Tag color={summer ? "volcano" : "blue"}>{bill.season}</Tag>}>
         {loading || !chartOption ? <Spin size="large" style={{ margin: "auto" }} /> : (
           <>
-            <ReactECharts option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge />
+            <ReactECharts theme="bg" option={chartOption} style={{ flex: 1, minHeight: 0 }} notMerge />
             <div style={{ color: "#999", fontSize: 11, textAlign: "center", lineHeight: 1.4 }}>
               逐時 kW 以 1 小時積分為度數;台電以 15 分鐘需量計,此為規劃估算。
             </div>
@@ -476,7 +476,7 @@ function BillView({ contract, setContract }: { contract: number; setContract: (n
 
       {/* 右:明細 */}
       <Card size="small" title={<span className="cmd-accentbar">月電費明細</span>} style={{ height: "100%" }} styles={{ body: { overflow: "auto", height: "calc(100% - 39px)" } }}>
-        {!bill ? <Spin /> : (
+        {!bill ? <Skeleton active paragraph={{ rows: 4 }} /> : (
           <>
             <Statistic title="預估月電費" value={Math.round(bill.total)} prefix="NT$" valueStyle={{ fontSize: 24, color: "#1677ff" }} />
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666", margin: "4px 0 10px" }}>

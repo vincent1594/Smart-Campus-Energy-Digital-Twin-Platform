@@ -92,7 +92,7 @@ export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curve
     <div style={{ ...panel, padding: "8px 10px 8px 12px", flex: 1, borderLeft: `3px solid ${accent}`, position: "relative", overflow: "hidden" }}>
       {icon && <span style={{ position: "absolute", top: 8, right: 10, color: accent, opacity: dark ? 0.5 : 0.26, fontSize: 16 }}>{icon}</span>}
       <div style={{ color: C.muted, fontSize: 12 }}>{label}{demo && Demo}</div>
-      <div style={{ color: accent, fontSize: 20, fontWeight: 700, textShadow: dark ? `0 0 10px ${accent}66` : "none", lineHeight: 1.3, whiteSpace: "nowrap" }}>
+      <div style={{ color: accent, fontSize: 20, fontWeight: 700, textShadow: dark ? `0 0 10px ${accent}66` : "none", lineHeight: 1.3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
         {value}<span style={{ fontSize: 11, color: C.text, marginInlineStart: 3 }}>{unit}</span>
         {extra && <span style={{ fontSize: 10, color: C.muted, marginInlineStart: 4 }}>/ {extra}</span>}
       </div>
@@ -243,7 +243,7 @@ export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curve
         </div>
         <div ref={chartBoxRef} data-focus-keep onMouseDown={onChartMouseDown} style={{ flex: 1, minHeight: 0, cursor: real ? "ew-resize" : "default" }}>
           {real
-            ? <ReactECharts style={{ height: "100%", width: "100%" }} option={chartOption} />
+            ? <ReactECharts theme="bg" style={{ height: "100%", width: "100%" }} option={chartOption} />
             : dayDev
               ? <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11, textAlign: "center", lineHeight: 1.6 }}>此電網日負載曲線<br /><b>開發中</b></div>
               : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 11 }}>載入中…</div>}
