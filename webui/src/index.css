@@ -30,6 +30,9 @@ body {
   background: linear-gradient(180deg, #4096ff, #1677ff);
 }
 
+/* 數字等寬:Statistic 等數值不因位數變化抖動,更像儀表 */
+.ant-statistic-content, .ant-statistic-content-value, .num-tab { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
 /* 卡片質感:更柔的陰影 + hover 微浮起;表格列 hover 淡藍 */
 .ant-card { transition: box-shadow .25s ease, transform .25s ease; }
 .ant-card-hoverable:hover { box-shadow: 0 10px 28px rgba(20,40,80,.10); transform: translateY(-1px); }

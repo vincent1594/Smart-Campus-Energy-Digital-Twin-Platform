@@ -73,10 +73,10 @@ export default function HistoryTrends() {
       {/* 右:兩張趨勢圖 */}
       <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
         <Card size="small" title={<span className="cmd-accentbar">每日尖峰 / 平均需量</span>} style={{ flex: 1, minHeight: 0 }} styles={{ body: { padding: 6, height: "calc(100% - 39px)" } }}>
-          <ReactECharts option={dailyOption} style={{ height: "100%" }} notMerge />
+          <ReactECharts theme="bg" option={dailyOption} style={{ height: "100%" }} notMerge />
         </Card>
         <Card size="small" title={<span className="cmd-accentbar">典型日負載曲線(平日 / 假日)</span>} style={{ flex: 1, minHeight: 0 }} styles={{ body: { padding: 6, height: "calc(100% - 39px)" } }}>
-          <ReactECharts option={profileOption} style={{ height: "100%" }} notMerge />
+          <ReactECharts theme="bg" option={profileOption} style={{ height: "100%" }} notMerge />
         </Card>
       </div>
     </div>

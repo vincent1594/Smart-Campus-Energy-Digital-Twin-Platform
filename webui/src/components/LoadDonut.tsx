@@ -21,5 +21,5 @@ export default function LoadDonut({ data, total }: { data: { name: string; value
       style: { text: `總負載\n${total.toLocaleString()} kW`, textAlign: "center", fill: "#555", fontSize: 13 },
     },
   };
-  return <ReactECharts option={option} style={{ height: 280 }} />;
+  return <ReactECharts theme="bg" option={option} style={{ height: 280 }} />;
 }

@@ -120,7 +120,7 @@ export default function EnergyIntensity() {
       <Card size="small" title={<span className="cmd-accentbar">各棟用電強度(高 → 低)</span>} style={{ height: "100%" }}
         styles={{ body: { padding: 8, height: "calc(100% - 39px)" } }}
         extra={<span style={{ fontSize: 11, color: "#999" }}><Tag color="#ff4d4f">超參考</Tag><Tag color="#fa8c16">高於全校均</Tag><Tag color="#52c41a">良好</Tag></span>}>
-        <ReactECharts option={chartOption} style={{ height: "100%" }} notMerge />
+        <ReactECharts theme="bg" option={chartOption} style={{ height: "100%" }} notMerge />
       </Card>
     </div>
   );
