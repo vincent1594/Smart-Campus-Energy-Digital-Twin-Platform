@@ -20,6 +20,18 @@ ROOT = Path(__file__).resolve().parent.parent
 MODEL_FILE = ROOT / "models" / "xgb_feeder_models.pkl"  # EMS 讀取統一走 data.ems_loads._read_ems (glob 定位)
 FEEDER_COLS = [f"VCB{i}" for i in range(1, 12)]   # VCB12=0 不預測
 
+# joblib.load 結果記憶體快取:forecast 每次呼叫都要載模型,重複從磁碟反序列化是
+# 「能源管理」首屏延遲與換日期卡頓的主因。以 (路徑, mtime) 為鍵,重訓覆寫時自動失效。
+_MODEL_CACHE: dict[tuple[str, int], object] = {}
+
+
+def _load_model_cached(path: Path):
+    import joblib
+    key = (str(path), path.stat().st_mtime_ns)
+    if key not in _MODEL_CACHE:
+        _MODEL_CACHE[key] = joblib.load(path)
+    return _MODEL_CACHE[key]
+
 
 def _load_ems():
     sys.path.insert(0, str(ROOT))
@@ -258,15 +270,13 @@ def predict_day_feeders(date, lag=True):
     lag=True: 用近期實測 (lag) 模型,逐日不同;無 lag 的時段自動退回行事曆模型。
     lag=False: 純時間 + 行事曆模型 (同星期幾相同)。
     """
-    import joblib
-
     ts = pd.Series([pd.Timestamp(f"{date} {h:02d}:00") for h in range(24)])
     base = _features_cal(ts)
 
     def _cal_day():
         if not MODEL_FILE_CAL.exists():
             train_calendar_model(save=True)
-        m = joblib.load(MODEL_FILE_CAL)
+        m = _load_model_cached(MODEL_FILE_CAL)
         pr = {c: np.clip(m[c].predict(base), 0, None) for c in FEEDER_COLS}
         return [{c: float(pr[c][h]) for c in FEEDER_COLS} for h in range(24)]
 
@@ -275,7 +285,7 @@ def predict_day_feeders(date, lag=True):
 
     if not MODEL_FILE_LAG.exists():
         train_lag_model(save=True)
-    models = joblib.load(MODEL_FILE_LAG)
+    models = _load_model_cached(MODEL_FILE_LAG)
     ser = _feeder_series(_ems_sorted())
 
     valid = np.ones(24, bool)

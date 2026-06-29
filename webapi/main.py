@@ -24,6 +24,16 @@ async def lifespan(app: FastAPI):
             scenario_service.run_forecast_day()
         except Exception:  # noqa: BLE001
             pass
+        # 預熱「能源管理」需量預測路徑:XGBoost 載模型 + EMS 讀檔 + 首日預測。
+        # 這條路徑與上面的潮流暖機無關,不預熱則第一位開能源管理頁的人要現付冷啟動。
+        # 日期對齊前端預設 (DemandManagement DATA_DEFAULT = 2023-06-08)。
+        try:
+            from webapi.services import demand_service
+            from webapi.demand_config import CONTRACT_CAPACITY_KW, DEMAND_CHARGE_NT_PER_KW
+            demand_service.get_status(CONTRACT_CAPACITY_KW, DEMAND_CHARGE_NT_PER_KW)
+            demand_service.get_forecast("2023-06-08", CONTRACT_CAPACITY_KW, DEMAND_CHARGE_NT_PER_KW)
+        except Exception:  # noqa: BLE001
+            pass
 
     threading.Thread(target=_warm, daemon=True).start()
     yield
