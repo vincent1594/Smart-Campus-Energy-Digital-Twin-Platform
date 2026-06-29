@@ -1,7 +1,7 @@
 // 需量契約:兩個視圖切換 ——
 //   ① 需量預警:現況需量 vs 契約 + XGBoost 逐時尖峰 → 超約罰款 + 卸載建議
 //   ② 時間電價電費:台電高壓三段式月電費試算(各時段度數×費率 + 基本電費 + 超約)
-import { Alert, Button, Card, DatePicker, Divider, InputNumber, Progress, Segmented, Skeleton, Slider, Spin, Statistic, Tag, message } from "antd";
+import { Alert, Button, Card, DatePicker, Divider, Empty, InputNumber, Progress, Segmented, Skeleton, Slider, Spin, Statistic, Tag, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
@@ -23,11 +23,28 @@ const DATA_DEFAULT = dayjs("2023-06-08");
 export default function DemandManagement() {
   const [view, setView] = useState<string>("demand");
   const [contract, setContract] = useState<number>(3250);
+  const [available, setAvailable] = useState<boolean | null>(null);  // null=偵測中
 
-  // 共用:首次取後端預設契約容量
+  // 共用:首次取後端預設契約容量,同時偵測本電網是否提供能源管理資料。
+  // 南電網 demand/eui/tariff 皆未備 → 後端回 404;若不在此攔截,各子視圖會把
+  // 「無此資料」誤當「載入中」而永久轉圈 (loading=false 但 data 仍 undefined)。
   useEffect(() => {
-    api.demand().then((s) => setContract(s.contract_capacity_kw)).catch(() => undefined);
+    let alive = true;
+    api.demand()
+      .then((s) => { if (alive) { setContract(s.contract_capacity_kw); setAvailable(true); } })
+      .catch(() => { if (alive) setAvailable(false); });
+    return () => { alive = false; };
   }, []);
+
+  if (available === null) return <Spin size="large" style={{ display: "block", marginTop: 120 }} />;
+  if (!available) return (
+    <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Empty description={<span style={{ color: "#888", lineHeight: 1.7 }}>
+        此電網尚未提供能源管理資料<br />
+        <span style={{ fontSize: 12, color: "#bbb" }}>需量／時間電價／用電強度 目前僅北電錶具備 EMS 實測</span>
+      </span>} />
+    </div>
+  );
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
