@@ -24,3 +24,6 @@ Thumbs.db
 # 訪客統計本機 DB(勿提交;Render 用 Postgres)
 webapi/data/analytics.db
 *.db
+
+# docker compose 機密(含 DB 密碼);範本 .env.example 才提交
+/.env

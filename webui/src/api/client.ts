@@ -28,8 +28,12 @@ import type {
   VcbDetail,
   VisitStats,
 } from "./types";
-// 開發時用相對路徑 → 由 Vite proxy 轉到本機後端 (127.0.0.1:8126);正式版打 Render
-const API_BASE_URL = import.meta.env.DEV ? "" : "https://smart-campus-energy-digital-twin.onrender.com";
+// 開發時用相對路徑 → 由 Vite proxy 轉到本機後端 (127.0.0.1:8126)。
+// 正式版讀 VITE_API_BASE_URL:Render(.env.production)= Render 後端;
+// Docker compose(.env.docker)= 空字串 → 相對路徑,由 nginx 反代 /api 到 api 容器。
+const API_BASE_URL = import.meta.env.DEV
+  ? ""
+  : (import.meta.env.VITE_API_BASE_URL ?? "https://smart-campus-energy-digital-twin.onrender.com");
 
 // ── 多電網:當前選定的電網 (北/南),持久化於 localStorage ──
 // 網路相關端點路徑為 /api/{network}/...;全域端點 (visit/feedback/settings/health/networks) 不帶網路。

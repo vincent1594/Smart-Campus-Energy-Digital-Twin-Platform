@@ -1,0 +1,55 @@
+# 校園配電數位孿生平台 —— 自成一體部署(不依賴 Render)
+#   web (nginx) ──/api/*──> api (uvicorn:8126) ──> db (postgres)
+#
+# server 用法(詳見 DEPLOY.md):
+#   cp .env.example .env   # 並改掉 POSTGRES_PASSWORD
+#   docker compose up --build -d
+#   開 http://<server-ip>:8080
+#
+# 本機開發:省略 .env 也可,密碼/port 走預設值。
+
+services:
+  # 持久化:訪客統計 / 業務設定 / 使用者回饋(對齊正式環境的 Neon Postgres)
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: campus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campus}
+      POSTGRES_DB: campus
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campus -d campus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 後端:FastAPI + pandapower + XGBoost,從 repo 根啟動
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://campus:${POSTGRES_PASSWORD:-campus}@db:5432/campus
+      PORT: "8126"
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8126"
+    # 想用 curl/Postman 直打後端時取消註解:
+    # ports:
+    #   - "8126:8126"
+
+  # 前端:nginx 伺服靜態 dist + 反代 /api 到 api
+  web:
+    build: ./webui
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy   # 等後端建模/暖機就緒(Dockerfile HEALTHCHECK)
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  pgdata:
