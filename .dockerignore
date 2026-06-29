@@ -1,0 +1,22 @@
+# 後端 image 不需要前端原始碼(web service 有自己的 build context)
+webui/
+
+# 版控 / 快取 / 暫存
+.git
+.gitignore
+**/__pycache__/
+*.pyc
+.venv
+venv
+*.log
+
+# 本機 DB(容器用 Postgres;勿帶入)
+*.db
+webapi/data/*.db
+
+# 工具/IDE/記憶
+.claude
+.vscode
+
+# Office 暫存鎖檔
+~$*
