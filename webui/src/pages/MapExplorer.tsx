@@ -51,6 +51,8 @@ function lerpSnap(a: PowerFlowResult, b: PowerFlowResult, t: number): PowerFlowR
 
 // 地圖範圍編輯工具(編輯範圍/匯出座標):座標已排定,平時隱藏;需重新調整時改回 true。
 const SHOW_EDIT_TOOLS = false;
+// 第一次使用提示的「已看過」記號。改版號(v2→v3…)= 讓所有訪客(含已關閉者)重新看到一次提示
+const GUIDE_KEY = "bg_guide_seen_v2";
 
 export default function MapExplorer() {
   const navigate = useNavigate();
@@ -69,7 +71,7 @@ export default function MapExplorer() {
   const [dayDate, setDayDate] = useState<string>();                        // 該日日期(歷史尖峰最高日)
   const [dayPeakHour, setDayPeakHour] = useState<number>();                // 該日尖峰小時
   const [selectedHour, setSelectedHour] = useState<number | null>(null);   // 日曲線拖曳到的時段(null=基準)
-  const [showGuide, setShowGuide] = useState(() => !localStorage.getItem("bg_guide_seen"));   // 第一次使用提示
+  const [showGuide, setShowGuide] = useState(() => !localStorage.getItem(GUIDE_KEY));   // 第一次使用提示
   const [networks, setNetworks] = useState<{ id: string; name: string }[]>([]);   // 可切換電網 (南/北)
   const [currentNet, setCurrentNet] = useState(getNetwork());   // 當前電網 (state → 切換不刷頁,觸發重抓資料重繪)
   const [loadedNet, setLoadedNet] = useState(getNetwork());     // 作用中系統「已完成載入」的電網 (pf/buildings 對應誰);切換瞬間 ≠ currentNet → 暫不採用即時著色,避免沿用上一網殘留閃動
@@ -93,7 +95,7 @@ export default function MapExplorer() {
   const [editing, setEditing] = useState(false);                       // 地圖範圍編輯模式
   const [pendingSelect, setPendingSelect] = useState<string | null>(null);  // 跨電網點選:待新網資料就緒再套用的字母
   const [polys, setPolys] = useState<Record<string, Pt[]> | null>(null);  // 編輯中的多邊形(含南網新建物)
-  const dismissGuide = () => { localStorage.setItem("bg_guide_seen", "1"); setShowGuide(false); };
+  const dismissGuide = () => { localStorage.setItem(GUIDE_KEY, "1"); setShowGuide(false); };
 
   // 各電網主資料快取(dash/pf/buildings/trafos/graph)→ 切回已看過的電網即時套用,免重抓、連動高亮無延遲。
   const netCache = useRef<Record<string, { dash: DashboardSummary; pf: PowerFlowResult; buildings: BuildingSummary[]; trafos: TransformerDetail[]; graph: TopologyGraph }>>({});
