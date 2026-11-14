@@ -1,13 +1,29 @@
 """
-XGBoost 饋線負載預測 (5月訓練 / 6月測試)
-==========================================
-資料: EMS/11205-06(北).xls 逐時 (2023/05-06),11 條饋線 VCB1~VCB11 (VCB12=0)。
-特徵: 小時(sin/cos)、星期(sin/cos)、平日/假日 (無氣溫,純時間)。
-每饋線各一個 XGBoost regressor,目標 = 該饋線 kW。
-訓練 = 2023/05,測試 = 2023/06。
+XGBoost 饋線負載預測 —— 11 條饋線 VCB1~VCB11 各一個 regressor (VCB12=0 不建模)
+==============================================================================
+資料: EMS 逐時 (2023/03-06),11 條饋線 VCB1~VCB11。**原始電錶即為逐時解析度**,
+無 15 分鐘資料,故所有模型與下游尖峰需量皆為「逐時平均」口徑 (見下方「解析度」)。
+
+本檔含三個彼此獨立的模型,服務不同用途 —— 引用數據時務必分清:
+
+  模型            訓練/驗證            特徵                        誰在用
+  ────────────────────────────────────────────────────────────────────────
+  MODEL_FILE      5月訓練 / 6月測試    時間 (小時/星期 sin/cos)    情境 S2、EUI、帳單
+  (train_and_evaluate)                                            compute_xgb_loads
+  MODEL_FILE_CAL  全期(5+6月) + CV     時間 + 學期行事曆           lag 缺值時的退回
+  (train_calendar_model)                                          predict_day_feeders
+  MODEL_FILE_LAG  3-5月訓練 / 6月驗證  時間 + 行事曆 + lag24/168   需量預測 API
+  (train_lag_model)                                               demand_service
+
+氣溫: _features() 雖有 temp= 參數,production 呼叫端一律不傳。實測氣溫對本校園
+總量幾無預測力,加入反而升高測試誤差 (比較實驗 compare_temp_feature.py 存於 bayesgrid/論文素材/程式/)。
+
+解析度: 預測格點為每日 24 個整點。台電契約容量以 15 分鐘需量計費,逐時平均會
+系統性低估 15 分鐘尖峰 → demand_service 的超約罰款估計偏保守 (偏低)。無 15 分鐘
+原始資料可修正此點。
 
 用法:
-    python analysis/xgb_forecast.py        # 訓練 + 6月測試評估 + 存模型
+    python analysis/xgb_forecast.py        # 訓練基礎模型 + 6月測試評估 + 存模型
 之後情境 method="xgboost" 會用存好的模型 predict_feeder_kw(timestamp) 預測。
 """
 
@@ -19,6 +35,18 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_FILE = ROOT / "models" / "xgb_feeder_models.pkl"  # EMS 讀取統一走 data.ems_loads._read_ems (glob 定位)
 FEEDER_COLS = [f"VCB{i}" for i in range(1, 12)]   # VCB12=0 不預測
+
+# joblib.load 結果記憶體快取:forecast 每次呼叫都要載模型,重複從磁碟反序列化是
+# 「能源管理」首屏延遲與換日期卡頓的主因。以 (路徑, mtime) 為鍵,重訓覆寫時自動失效。
+_MODEL_CACHE: dict[tuple[str, int], object] = {}
+
+
+def _load_model_cached(path: Path):
+    import joblib
+    key = (str(path), path.stat().st_mtime_ns)
+    if key not in _MODEL_CACHE:
+        _MODEL_CACHE[key] = joblib.load(path)
+    return _MODEL_CACHE[key]
 
 
 def _load_ems():
@@ -68,7 +96,7 @@ def train_and_evaluate(save=True):
     from sklearn.metrics import mean_absolute_error, r2_score
 
     # 註: 實測氣溫對本校園總量幾無預測力 (corr≈±0.1 且月間變號),
-    # 加入反而升高測試誤差 (見 analysis/compare_temp_feature.py),故production維持純時間。
+    # 加入反而升高測試誤差 (比較實驗 compare_temp_feature.py 存於 bayesgrid/論文素材/程式/),故production維持純時間。
     t = _load_ems()
     train = t[t["dt"].dt.month == 5]
     test = t[t["dt"].dt.month == 6]
@@ -131,7 +159,12 @@ def train_calendar_model(save=True):
     """全期(5+6月)資料訓練含行事曆特徵的饋線模型;5-fold CV 評估;存 MODEL_FILE_CAL。
 
     為何全期而非 5月訓練/6月測試: 端午連假/補班等「讓週與週不同」的事件只出現在
-    6月,僅用 5月訓練學不到 → 改全期訓練 + CV 誠實估計 (見 compare_temp_feature.py)。
+    6月,僅用 5月訓練學不到 → 改全期訓練 + CV 估計 (見論文素材 compare_temp_feature.py)。
+
+    ⚠ 此處 CV 數字**不可作為泛化性能引用**: KFold(shuffle=True) 對逐時序列會洩漏
+    —— 特徵純為時間戳的函數,同一 (小時×星期×行事曆旗標) 組合在不同週幾乎同值,
+    洗牌後一份落訓練、一份落驗證,等同以近重複樣本自測,故偏樂觀。此模型僅為 lag
+    缺值時的退回路徑。需引用泛化誤差請用 train_lag_model() 的 3-5月→6月 嚴格留出。
     """
     import joblib
     import xgboost as xgb
@@ -153,6 +186,8 @@ def train_calendar_model(save=True):
     mape = np.mean(np.abs((ytot - oof) / np.clip(np.abs(ytot), 1e-6, None))) * 100
     print(f"行事曆模型 5-fold CV 總量: MAE {mae:.0f} kW  MAPE {mape:.1f}%  "
           f"R² {r2_score(ytot, oof):.2f}")
+    print("⚠ 上列 CV 因洗牌折而偏樂觀 (見 docstring),勿作泛化性能引用;"
+          "請改引 train_lag_model() 的 3-5月→6月 留出驗證。")
 
     models = {c: xgb.XGBRegressor(**params).fit(X, t[c].values) for c in FEEDER_COLS}
     if save:
@@ -248,7 +283,7 @@ def train_lag_model(save=True):
     if save:
         MODEL_FILE_LAG.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(models, MODEL_FILE_LAG)
-        print(f"✓ lag 模型(5月訓練)已存: {MODEL_FILE_LAG}")
+        print(f"✓ lag 模型(3-5月訓練)已存: {MODEL_FILE_LAG}")
     return models
 
 
@@ -258,15 +293,13 @@ def predict_day_feeders(date, lag=True):
     lag=True: 用近期實測 (lag) 模型,逐日不同;無 lag 的時段自動退回行事曆模型。
     lag=False: 純時間 + 行事曆模型 (同星期幾相同)。
     """
-    import joblib
-
     ts = pd.Series([pd.Timestamp(f"{date} {h:02d}:00") for h in range(24)])
     base = _features_cal(ts)
 
     def _cal_day():
         if not MODEL_FILE_CAL.exists():
             train_calendar_model(save=True)
-        m = joblib.load(MODEL_FILE_CAL)
+        m = _load_model_cached(MODEL_FILE_CAL)
         pr = {c: np.clip(m[c].predict(base), 0, None) for c in FEEDER_COLS}
         return [{c: float(pr[c][h]) for c in FEEDER_COLS} for h in range(24)]
 
@@ -275,7 +308,7 @@ def predict_day_feeders(date, lag=True):
 
     if not MODEL_FILE_LAG.exists():
         train_lag_model(save=True)
-    models = joblib.load(MODEL_FILE_LAG)
+    models = _load_model_cached(MODEL_FILE_LAG)
     ser = _feeder_series(_ems_sorted())
 
     valid = np.ones(24, bool)

@@ -46,7 +46,7 @@ def get_status(
     demand = base.grid_import_kw
     util = (demand / contract_kw * 100.0) if contract_kw > 0 else 0.0
     try:
-        from data.parameters import SYSTEM_PEAK_PERIOD
+        from networks.north.data.parameters import SYSTEM_PEAK_PERIOD
         basis = f"現況模型快照 · {SYSTEM_PEAK_PERIOD}"
     except Exception:  # noqa: BLE001
         basis = "現況模型快照"
@@ -66,7 +66,7 @@ def _predict_day(date: str) -> list[dict]:
 
     用 lag(近期實際負載)模型 → 逐日/逐週不同;缺 lag 的時段自動退回行事曆模型。
     """
-    from analysis.xgb_forecast import predict_day_feeders
+    from networks.north.analysis.xgb_forecast import predict_day_feeders
     return predict_day_feeders(date, lag=True)
 
 
@@ -74,8 +74,8 @@ def _actual_day(date: str) -> list[float | None]:
     """該日 0-23 時 EMS 實測總量 (Σ VCB1~11,與預測同口徑);無實測的時段為 None。"""
     import pandas as pd
 
-    from analysis.xgb_forecast import FEEDER_COLS
-    from data.ems_loads import _read_ems
+    from networks.north.analysis.xgb_forecast import FEEDER_COLS
+    from networks.north.data.ems_loads import _read_ems
 
     t = _read_ems()
     day = t[t["dt"].dt.strftime("%Y-%m-%d") == date]

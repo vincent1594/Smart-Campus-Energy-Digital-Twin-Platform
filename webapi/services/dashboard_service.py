@@ -5,7 +5,7 @@ from webapi import state
 from webapi.schemas import DashboardSummary
 
 try:  # 負載基準(情境/時點)說明 —— 來自既有模型參數
-    from data.parameters import ACTIVE_SCENARIO, SYSTEM_LOAD_TIMESTAMP, SYSTEM_PEAK_PERIOD
+    from networks.north.data.parameters import ACTIVE_SCENARIO, SYSTEM_LOAD_TIMESTAMP, SYSTEM_PEAK_PERIOD
     _LOAD_BASIS = " · ".join(x for x in (ACTIVE_SCENARIO, SYSTEM_LOAD_TIMESTAMP, SYSTEM_PEAK_PERIOD) if x)
 except Exception:  # pragma: no cover
     _LOAD_BASIS = ""

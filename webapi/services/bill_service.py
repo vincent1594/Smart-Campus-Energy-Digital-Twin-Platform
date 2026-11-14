@@ -43,7 +43,7 @@ def _predict_month(month: str) -> list[tuple[int, int, float]]:
     import joblib
     import pandas as pd
 
-    from analysis.xgb_forecast import FEEDER_COLS, MODEL_FILE, _features, train_and_evaluate
+    from networks.north.analysis.xgb_forecast import FEEDER_COLS, MODEL_FILE, _features, train_and_evaluate
 
     year, mon = (int(x) for x in month.split("-")[:2])
     days = calendar.monthrange(year, mon)[1]

@@ -21,7 +21,7 @@ _FEEDERS = [f"VCB{i}" for i in range(1, 12)]   # VCB12=電容,排除
 
 @lru_cache(maxsize=1)
 def _df():
-    from data.ems_loads import read_feeder_ems_all
+    from networks.north.data.ems_loads import read_feeder_ems_all
     t = read_feeder_ems_all().copy()      # 所有各饋線月份 (2023/03–06)
     t["total"] = t[_FEEDERS].sum(axis=1)
     return t
