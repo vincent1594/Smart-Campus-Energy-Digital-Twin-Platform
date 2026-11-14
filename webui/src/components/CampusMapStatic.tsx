@@ -12,6 +12,9 @@ export interface MapMarker {
   net?: string;   // 全校園總覽:此建物所屬系統 (north/south),用於外框識別色
 }
 
+// 負載率色階(與 ratioColor 的 bg 一致):各建 1 組玻璃質感漸層
+const BLD_COLORS = ["#bfbfbf", "#ff4d4f", "#fa8c16", "#fadb14", "#52c41a"];
+
 function distSeg(p: Pt, a: Pt, b: Pt): number {
   const dx = b[0] - a[0], dy = b[1] - a[1];
   const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
@@ -58,6 +61,7 @@ export default function CampusMapStatic({
   const POS = polys ?? BUILDING_POS;
   const hasFocus = !!focusLetter || (highlight?.size ?? 0) > 0;
   const accent = dark ? "#00e5ff" : "#1677ff";
+  const [hover, setHover] = useState<string | null>(null);   // 滑鼠移入/鍵盤聚焦的建物 → 顯示浮動名牌
 
   // 編輯模式畫布視圖:s=縮放倍率、tx/ty=平移(外層容器 px)。非編輯模式恆為 1×。
   const [view, setView] = useState({ s: 1, tx: 0, ty: 0 });
@@ -222,6 +226,14 @@ export default function CampusMapStatic({
           <filter id="cmsGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
+          {/* 建物玻璃質感填色:中心淡、邊緣深的徑向漸層(每個負載率色一組),取代平塗色塊 */}
+          {BLD_COLORS.map((col) => (
+            <radialGradient key={col} id={`cmsG${col.slice(1)}`} cx="50%" cy="42%" r="78%">
+              <stop offset="0%" stopColor={col} stopOpacity={dark ? 0.14 : 0.2} />
+              <stop offset="62%" stopColor={col} stopOpacity={dark ? 0.3 : 0.4} />
+              <stop offset="100%" stopColor={col} stopOpacity={dark ? 0.52 : 0.64} />
+            </radialGradient>
+          ))}
           {/* 羽化邊緣,讓聚光燈挖洞柔順 */}
           <filter id="cmsSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="8" /></filter>
           {/* 聚光燈遮罩:白=暗幕生效,黑=挖洞(該棟保持明亮) */}
@@ -256,7 +268,7 @@ export default function CampusMapStatic({
         )}
 
         {/* 各棟:多邊形(預設依負載率淡色填,無框無字);編輯模式才顯示框與頂點 */}
-        {markers.map((m) => {
+        {markers.map((m, idx) => {
           const pts = POS[m.letter]; if (!pts) return null;
           const c = ratioColor(m.ratio);
           const cen = centroid(pts);
@@ -281,14 +293,34 @@ export default function CampusMapStatic({
             fill = isFocus ? `${accent}4d`
               : isEmph ? `${accent}3d`
               : isHi ? (outage ? "#ff4d4f80" : `${accent}${emphActive ? "12" : "1f"}`)
-              : `${c.bg}${dark ? "4d" : "66"}`;
+              : `url(#cmsG${c.bg.slice(1)})`;   // 玻璃質感漸層(見 defs)
           }
+          // 瀏覽模式:描邊/光暈/按壓回饋交給 CSS (.cms-bld),以 CSS 變數帶入各棟色
+          const linked = isFocus || isHi || isEmph;
+          const browseStyle = {
+            "--edge": sysStroke ?? (linked ? (outage && isHi ? "#ff4d4f" : accent) : c.border),
+            "--glow": linked ? (outage && isHi ? "#ff4d4f" : accent) : c.bg,
+            animationDelay: `${Math.min(idx, 40) * 18}ms`,
+          } as React.CSSProperties;
+          const label = `${m.letter}棟 ${m.name}${m.ratio != null ? `,負載率 ${m.ratio.toFixed(0)}%` : ""}`;
           return (
             <g key={m.letter} style={{ cursor: editable ? "grab" : "pointer" }}>
-              <title>{editable ? `拖曳移動整個 ${m.letter} 範圍;拖頂點改形狀;雙擊邊加點、雙擊點刪點`
-                              : `${m.letter}棟 ${m.name}${m.ratio != null ? `｜負載率 ${m.ratio.toFixed(0)}%` : ""}`}</title>
-              <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={fill} stroke={showShape ? stroke : (sysStroke ?? "none")} strokeWidth={sysStroke ? 3 : (isFocus ? 5 : 4)}
-                style={editable ? { cursor: "grab" } : undefined}
+              {editable && <title>{`拖曳移動整個 ${m.letter} 範圍;拖頂點改形狀;雙擊邊加點、雙擊點刪點`}</title>}
+              <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={fill}
+                {...(editable
+                  ? { stroke: showShape ? stroke : "none", strokeWidth: isFocus ? 5 : 4, style: { cursor: "grab" } }
+                  : {
+                      className: `cms-bld${sysStroke ? " cms-bld--sys" : ""}${isFocus ? " cms-bld--focus" : ""}`,
+                      style: browseStyle,
+                      tabIndex: 0, role: "button", "aria-label": label,
+                      onPointerEnter: () => setHover(m.letter),
+                      onPointerLeave: () => setHover((h) => (h === m.letter ? null : h)),
+                      onFocus: () => setHover(m.letter),
+                      onBlur: () => setHover((h) => (h === m.letter ? null : h)),
+                      onKeyDown: (e: React.KeyboardEvent) => {
+                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect?.(m.letter); }
+                      },
+                    })}
                 onClick={editable ? undefined : () => onSelect?.(m.letter)}
                 onPointerDown={editable ? (e) => {
                   e.stopPropagation();
@@ -360,6 +392,46 @@ export default function CampusMapStatic({
             style={{ cursor: "crosshair" }} onClick={(e) => onPlacePlan?.(toImg(e))} />
         )}
       </svg>
+
+      {/* 浮動名牌:滑過/聚焦的建物(否則為已選取建物)上方浮出,像可點的連結按鈕。不吃事件,點擊穿到建物本身 */}
+      {!editable && !placingPlan && (() => {
+        const letter = hover ?? focusLetter;
+        const m = letter ? markers.find((x) => x.letter === letter) : undefined;
+        const pts = letter ? POS[letter] : undefined;
+        if (!m || !pts) return null;
+        const c = ratioColor(m.ratio);
+        const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+        const cx = Math.min(92, Math.max(8, ((Math.min(...xs) + Math.max(...xs)) / 2 / MAP_W) * 100));
+        const topPct = (Math.min(...ys) / MAP_H) * 100;
+        const below = topPct < 12;   // 太靠上緣 → 名牌改放建物下方,避免被裁切
+        const yPct = below ? (Math.max(...ys) / MAP_H) * 100 : topPct;
+        const selected = m.letter === focusLetter;
+        return (
+          <div key={m.letter} style={{ position: "absolute", left: `${cx}%`, top: `${yPct}%`, zIndex: 25, pointerEvents: "none",
+            transform: below ? "translate(-50%, 8px)" : "translate(-50%, calc(-100% - 8px))", lineHeight: 1.4 }}>
+            <div className="cms-pill-in" style={{
+              display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap", fontSize: 12.5,
+              padding: "5px 10px 5px 8px", borderRadius: 999,
+              background: dark ? "rgba(8,22,44,.84)" : "rgba(255,255,255,.94)",
+              color: dark ? "#e6f7ff" : "#1f2a37",
+              border: `1px solid ${dark ? "rgba(0,229,255,.32)" : "rgba(22,119,255,.16)"}`,
+              boxShadow: dark ? "0 6px 20px rgba(0,0,0,.45), 0 0 12px rgba(0,229,255,.18)" : "0 6px 18px rgba(20,40,80,.16)",
+              backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+            }}>
+              <span style={{ width: 9, height: 9, borderRadius: "50%", background: c.bg, boxShadow: `0 0 0 3px ${c.bg}33` }} />
+              <b style={{ fontWeight: 700 }}>{m.letter}棟</b>
+              <span style={{ opacity: 0.85, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
+              {m.ratio != null && (
+                <span className="num-tab" style={{ fontSize: 11.5, fontWeight: 600, padding: "0 7px", borderRadius: 999,
+                  background: `${c.bg}${dark ? "33" : "26"}`, color: dark ? "#fff" : c.border }}>{m.ratio.toFixed(0)}%</span>
+              )}
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: selected ? (dark ? "#8ff0ff" : "#389e0d") : accent }}>
+                {selected ? "已選取 ✓" : "點擊查看 ›"}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
 
       {/* 編輯模式縮放控制:滾輪指向縮放、拖空白處平移,按鈕對中心縮放 / 重設 */}
