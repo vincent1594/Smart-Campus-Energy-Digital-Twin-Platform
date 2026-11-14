@@ -395,9 +395,9 @@ export default function CampusMapStatic({
         )}
       </svg>
 
-      {/* 浮動名牌:滑過/聚焦的建物(否則為已選取建物)上方浮出,像可點的連結按鈕。不吃事件,點擊穿到建物本身 */}
+      {/* 浮動名牌:僅滑鼠移入(或鍵盤 Tab 聚焦)的建物上方浮出;移開即消失,不常駐以免擋到其他建物。不吃事件,點擊穿到建物本身 */}
       {!editable && !placingPlan && (() => {
-        const letter = hover ?? focusLetter;
+        const letter = hover;
         const m = letter ? markers.find((x) => x.letter === letter) : undefined;
         const pts = letter ? POS[letter] : undefined;
         if (!m || !pts) return null;
