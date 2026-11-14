@@ -21,5 +21,3 @@ webapi/data/*.db
 # Office 暫存鎖檔
 ~$*
 
-# 文件(後端不需要)
-docs/

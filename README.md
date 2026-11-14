@@ -16,37 +16,29 @@
 │   ├── north/                 # 北電錶 (X棟受電,12 VCB)
 │   │   ├── provider.py        # 對外介面:FEEDERS / build_net() / run_power_flow()
 │   │   ├── data/              # 📊 數據層
-│   │   │   ├── network_structure.py   # 拓撲 (源自 docs/單線圖原稿/北電錶_X/整合.txt)
+│   │   │   ├── network_structure.py   # 拓撲 (依校方高壓單線圖整理)
 │   │   │   ├── load_data.py           # DEFAULT_BUILDING_LOADS (各台平均負載 + 功因)
 │   │   │   ├── parameters.py          # 系統參數、損耗表、電壓規範、情境 SCENARIOS
 │   │   │   ├── ems_loads.py           # EMS 實測各饋線負載分配 (含 VCB3 各棟實測校正)
 │   │   │   ├── area_loads.py  pv.py  academic_calendar.py
-│   │   │   ├── 各站變壓器規格容量資料.xlsx  # 變壓器銘牌原始表
-│   │   │   ├── build_transformer_specs.py  # 上表 → webapi/data/transformer_specs.json
-│   │   │   └── test_data.py           # 數據驗證
+│   │   │   └── ems_loads.py 等      # EMS 讀取與負載分配
 │   │   ├── models/            # 🔨 建模層:network_builder.py + XGBoost 模型 (*.pkl)
 │   │   ├── analysis/          # 📈 分析層:power_flow (潮流) / xgb_forecast (饋線負載預測)
 │   │   └── EMS/               # EMS 實測逐時功率 (11203-04、11205-06 各饋線)
 │   └── south/                 # 南電錶 (H1 MVCB 受電,6 VCB;負載暫為佔位)
-│       └── provider.py  data/  models/  analysis/  EMS/
+│       └── provider.py  data/  models/  analysis/   (負載暫為估算,尚無 EMS)
 │
 ├── webapi/                    # 🌐 數位孿生平台 — FastAPI 後端 (包覆上述電網模型)
 │   ├── main.py  config.py  state.py  engine.py  db.py
 │   ├── domain.py  schemas.py  # 業務實體 / 對外 DTO
-│   ├── data/transformer_specs.json # 變壓器銘牌/實測資料 (供規格明細)
+│   ├── data/transformer_specs.json # 變壓器銘牌/實測資料 (供規格明細;由校方 Excel 轉出的靜態檔)
 │   ├── mappers/result_mapper.py    # ★ 翻譯層 (唯一碰 pandapower 欄位)
 │   ├── services/  routes/     # 查詢彙總 / HTTP 端點
 │
 ├── webui/                     # 💻 前端 (React + Vite + TypeScript + Ant Design)
 │   └── src/  (pages/ components/ api/ auth/ focus/ scenario/ theme/ lib/)
 │
-├── tools/
-│   ├── verify_engine.py       # 平台驗收 (南北兩網建網 + 潮流 + domain 解析)
-│   └── build_forecast_day.py  # 重建前端日曲線靜態檔 webui/public/forecast-day.json
-└── docs/                      # 參考資料 (網站不讀)
-    ├── V1_驗收校正清單.md/.pdf
-    ├── 單線圖原稿/            # 記事本 ASCII 單線圖 (拓撲依據)
-    └── 原始資料/              # 112年樓地板面積統計表.pdf、斷路器額定清冊/
+└── tools/build_forecast_day.py  # 重建前端日曲線靜態檔 webui/public/forecast-day.json
 ```
 
 > 📚 **論文素材不在本 repo**:論文草稿、各情境潮流報告 (`results/`)、報告產生器 (`main.py`、
@@ -63,11 +55,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1     # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. 驗收模型 (南北兩網建網 + 潮流)
-python -m tools.verify_engine
-
-# 3. (選用) 驗證數據層 / 重訓 XGBoost 模型
-python -m networks.north.data.test_data
+# 2. (選用) 重訓 XGBoost 模型
 python -m networks.north.analysis.xgb_forecast
 ```
 
@@ -148,10 +136,7 @@ Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 
 | 操作 | 命令 / 位置 |
 |------|------|
-| 驗收模型 | `python -m tools.verify_engine` |
-| 驗證數據層 | `python -m networks.north.data.test_data` |
 | 重訓 XGBoost | `python -m networks.north.analysis.xgb_forecast` |
-| 重建變壓器銘牌 JSON | `python -m networks.north.data.build_transformer_specs` |
 | 重建日曲線靜態檔 | `python -m tools.build_forecast_day`(改模型/負載/拓撲後必跑;`--check` 只檢查) |
 | 改情境/負載目標 | 編輯 `networks/north/data/parameters.py` 的 `SCENARIOS` |
 | 改電壓規範 | 改 `VOLTAGE_LIMIT_MIN/MAX` |
@@ -186,7 +171,6 @@ net, results = run_s1_baseline_powerflow(net=net)   # results["system_stats"] �
 # 從 repo 根啟動 (原生 import networks.*,無 sys.path hack)
 python -m uvicorn webapi.main:app --reload --port 8126
 # API 文件:http://127.0.0.1:8126/docs
-# 驗收:python -m tools.verify_engine
 ```
 
 啟動時 `engine.build_base()` 建網 + 跑潮流一次,結果快取於 `state`(唯讀),由各 route 共用。
@@ -197,7 +181,7 @@ python -m uvicorn webapi.main:app --reload --port 8126
 |------|------|
 | `GET /api/dashboard` | KPI 摘要 + 系統狀態 |
 | `GET /api/buildings[/{id}]` | 建築搜尋 / 詳情 + 供電路徑 |
-| `GET /api/assets/{transformers\|vcbs\|feeders}[/{id}]` | 設備查詢 (容量←model、負載率←result) |
+| `GET /api/assets/{transformers\|vcbs\|feeders}` | 設備清單 (容量←model、負載率←result);變壓器、饋線另可 `/{id}` 取單筆 |
 | `GET /api/assets/transformer-specs` | 變壓器銘牌/實測資料 (供營繕核對) |
 | `GET /api/topology` | React Flow 拓樸 (台電→VCB→饋線→變壓器→建築) |
 | `GET /api/powerflow` | base 潮流結果 |

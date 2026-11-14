@@ -158,15 +158,6 @@ SYSTEM_LOAD_TIMESTAMP = _sc.get("timestamp")           # ems 法用的實測時�
 SYSTEM_PV_FACTOR = _sc.get("pv_factor", 0.8)           # PV 出力係數 (容量×此值)
 
 # ============================================================================
-# 電容器參數
-# ============================================================================
-
-CAPACITOR_PARAMS = {
-    "default_voltage": 0.22,    # kV
-    "voltage_tolerance": 0.1,   # ±10%
-}
-
-# ============================================================================
 # PandaPower相關設定
 # ============================================================================
 
@@ -180,135 +171,8 @@ PANDAPOWER_CONFIG = {
     "numba_dict": {},
 }
 
-PANDAPOWER_OPF_CONFIG = {
-    "algorithm": "glpk",            # GLPK, cplex, or gurobi
-    "verbose": False,
-    "numba_dict": {},
-    "use_numba": False,
-}
-
-# ============================================================================
-# 保護和限制
-# ============================================================================
-
-PROTECTION_LIMITS = {
-    "overvoltage_limit": 1.05,          # 105% of nominal
-    "undervoltage_limit": 0.95,         # 95% of nominal
-    "overcurrent_limit": 1.5,           # 150% of rated
-    "thermal_limit_cable": 1.0,         # 100% of rating
-    "thermal_limit_transformer": 1.0,   # 100% of rating
-}
 
 # 電壓規範 (pu) — 集中管理，潮流檢查與報告共用
 VOLTAGE_LIMIT_MIN = 0.95
 VOLTAGE_LIMIT_MAX = 1.05
 
-# ============================================================================
-# 故障分析參數
-# ============================================================================
-
-FAULT_ANALYSIS_PARAMS = {
-    "min_voltage_fault": 0.1,       # Minimum voltage during fault (p.u.)
-    "fault_impedance": 0.001,       # 故障阻抗 (p.u.)
-    "fault_types": ["LG", "LL", "LLL", "LLLG"],  # Fault types
-}
-
-# ============================================================================
-# 日誌配置
-# ============================================================================
-
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "standard": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        },
-        "detailed": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "level": "INFO",
-            "formatter": "standard",
-        },
-        "file": {
-            "class": "logging.FileHandler",
-            "level": "DEBUG",
-            "formatter": "detailed",
-            "filename": "simulation.log",
-        },
-    },
-    "loggers": {
-        "": {
-            "handlers": ["console", "file"],
-            "level": "DEBUG",
-        }
-    },
-}
-
-# ============================================================================
-# 單位轉換常數
-# ============================================================================
-
-UNIT_CONVERSION = {
-    "kW_to_MW": 1e-3,
-    "kVA_to_MVA": 1e-3,
-    "kVAR_to_MVAR": 1e-3,
-    "A_to_kA": 1e-3,
-    "ohm_to_mohm": 1e3,
-}
-
-# ============================================================================
-# 顏色配置（用於可視化）
-# ============================================================================
-
-VISUALIZATION_CONFIG = {
-    "colors": {
-        "line": "#1f77b4",
-        "transformer": "#ff7f0e",
-        "load": "#2ca02c",
-        "capacitor": "#d62728",
-        "bus": "#9467bd",
-        "feeder": "#8c564b",
-    },
-    "figure_size": (14, 10),
-    "font_size": 10,
-}
-
-
-class ParameterValidator:
-    """參數驗證器"""
-    
-    @staticmethod
-    def validate_cable_params(cross_section: float) -> bool:
-        """驗證電纜規格"""
-        valid_sizes = list(CABLE_PARAMS.keys())
-        return cross_section in valid_sizes
-    
-    @staticmethod
-    def validate_transformer_capacity(capacity: float) -> bool:
-        """驗證變壓器容量"""
-        valid_capacities = list(TRANSFORMER_PARAMS.keys())
-        return capacity in valid_capacities
-    
-    @staticmethod
-    def validate_voltage(voltage: float, nominal: float, tolerance: float = 0.1) -> bool:
-        """驗證電壓在允許範圍內"""
-        lower = nominal * (1 - tolerance)
-        upper = nominal * (1 + tolerance)
-        return lower <= voltage <= upper
-
-
-if __name__ == "__main__":
-    # 簡單測試
-    print("系統參數:")
-    print(f"  頻率: {SYSTEM_PARAMS['frequency']} Hz")
-    print(f"  主系統電壓: {SYSTEM_PARAMS['main_voltage']} kV")
-    print(f"  低壓電壓: {SYSTEM_PARAMS['lv_voltage']} kV")
-    print()
-    print("電纜參數:")
-    for size, params in CABLE_PARAMS.items():
-        print(f"  {size}mm²: R={params['r_per_km']} Ω/km, X={params['x_per_km']} Ω/km")

@@ -93,12 +93,6 @@ def list_vcbs() -> list[VcbDetail]:
     return [_vcb_detail(v.id) for v in model.vcbs]
 
 
-def get_vcb(vcb_id: str) -> Optional[VcbDetail]:
-    if state.get_base_model().vcb(vcb_id) is None:
-        return None
-    return _vcb_detail(vcb_id)
-
-
 def _vcb_detail(vcb_id: str) -> VcbDetail:
     model = state.get_base_model()
     vcb = model.vcb(vcb_id)

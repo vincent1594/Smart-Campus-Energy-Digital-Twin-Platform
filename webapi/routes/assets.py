@@ -56,14 +56,6 @@ def list_vcbs():
     return asset_service.list_vcbs()
 
 
-@router.get("/vcbs/{vcb_id}", response_model=VcbDetail)
-def get_vcb(vcb_id: str):
-    detail = asset_service.get_vcb(vcb_id)
-    if detail is None:
-        raise HTTPException(status_code=404, detail=f"查無 VCB:{vcb_id}")
-    return detail
-
-
 # ---------- Feeder ----------
 @router.get("/feeders", response_model=list[FeederDetail])
 def list_feeders():
