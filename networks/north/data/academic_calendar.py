@@ -37,10 +37,6 @@ def _d(x) -> str:
     return pd.Timestamp(x).strftime("%Y-%m-%d")
 
 
-def is_holiday(dt) -> bool:
-    return _d(dt) in HOLIDAYS
-
-
 def is_workday(dt) -> bool:
     """有效上班/上課日:補班日 → True;週末或放假 → False;其餘平日 → True。"""
     day = _d(dt)

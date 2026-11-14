@@ -1,11 +1,10 @@
 # 校園配電數位孿生平台 —— 後端 (FastAPI + pandapower + XGBoost)
-# 從 repo 根啟動,webapi 與 data/models/networks/analysis 為 sibling 套件,原生 import。
+# 從 repo 根啟動,webapi 與 networks 為 sibling 套件,原生 import。
 FROM python:3.11-slim
 
-# PYTHONUNBUFFERED:即時日誌;MPLBACKEND=Agg:matplotlib 無頭環境不找 GUI
+# PYTHONUNBUFFERED:即時日誌
 ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    MPLBACKEND=Agg
+    PIP_NO_CACHE_DIR=1
 
 # xgboost 執行期需要 libgomp1(OpenMP);其餘相依皆有 manylinux wheel,免編譯器
 RUN apt-get update \

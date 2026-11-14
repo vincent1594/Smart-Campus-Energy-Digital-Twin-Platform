@@ -107,19 +107,6 @@ def _peak_day_date() -> str:
     return _pd.Timestamp(t.loc[t["__tot"].idxmax(), "dt"]).strftime("%Y-%m-%d")
 
 
-def _build_net_ems(timestamp: str, pv_factor: float = 0.0):
-    """暫時覆寫 builder 常數 → 以 EMS 該時刻實測建 net,再還原。pv_factor=0:直接用實測淨值。"""
-    saved = (_nb.SYSTEM_LOAD_METHOD, _nb.SYSTEM_LOAD_TIMESTAMP, _nb.SYSTEM_PV_FACTOR, _nb.SYSTEM_COINCIDENT_PEAK_KW)
-    try:
-        _nb.SYSTEM_LOAD_METHOD = "ems"
-        _nb.SYSTEM_LOAD_TIMESTAMP = timestamp
-        _nb.SYSTEM_PV_FACTOR = pv_factor
-        _nb.SYSTEM_COINCIDENT_PEAK_KW = None
-        return _nb.build_network_s1_baseline()
-    finally:
-        (_nb.SYSTEM_LOAD_METHOD, _nb.SYSTEM_LOAD_TIMESTAMP, _nb.SYSTEM_PV_FACTOR, _nb.SYSTEM_COINCIDENT_PEAK_KW) = saved
-
-
 def run_forecast_day(date: str | None = None, pv_factor: float | None = None) -> dict:
     """校園總攬日曲線:預設取「歷史尖峰最高日」(EMS 全期總負載最高那天)的 24h 實測重算。
     回傳 {date, peak_hour, snapshots};pv_factor 未指定時 = 0(用實測淨值)。"""
