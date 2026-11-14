@@ -21,3 +21,5 @@ webapi/data/*.db
 # Office 暫存鎖檔
 ~$*
 
+# 單線圖原稿(拓撲參考,後端不需要)
+docs/

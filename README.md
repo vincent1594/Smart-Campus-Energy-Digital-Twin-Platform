@@ -16,7 +16,7 @@
 │   ├── north/                 # 北電錶 (X棟受電,12 VCB)
 │   │   ├── provider.py        # 對外介面:FEEDERS / build_net() / run_power_flow()
 │   │   ├── data/              # 📊 數據層
-│   │   │   ├── network_structure.py   # 拓撲 (依校方高壓單線圖整理)
+│   │   │   ├── network_structure.py   # 拓撲 (源自 docs/單線圖原稿/北電錶_X/整合.txt)
 │   │   │   ├── load_data.py           # DEFAULT_BUILDING_LOADS (各台平均負載 + 功因)
 │   │   │   ├── parameters.py          # 系統參數、損耗表、電壓規範、情境 SCENARIOS
 │   │   │   ├── ems_loads.py           # EMS 實測各饋線負載分配 (含 VCB3 各棟實測校正)
@@ -38,7 +38,8 @@
 ├── webui/                     # 💻 前端 (React + Vite + TypeScript + Ant Design)
 │   └── src/  (pages/ components/ api/ auth/ focus/ scenario/ theme/ lib/)
 │
-└── tools/build_forecast_day.py  # 重建前端日曲線靜態檔 webui/public/forecast-day.json
+├── tools/build_forecast_day.py  # 重建前端日曲線靜態檔 webui/public/forecast-day.json
+└── docs/單線圖原稿/          # 記事本 ASCII 單線圖 (拓撲原始依據;V2 擴充 PV/儲能/發電機時用,網站不讀)
 ```
 
 > 📚 **論文素材不在本 repo**:論文草稿、各情境潮流報告 (`results/`)、報告產生器 (`main.py`、
