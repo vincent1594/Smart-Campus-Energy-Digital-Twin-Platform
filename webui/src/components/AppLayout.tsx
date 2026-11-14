@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { api } from "../api/client";
+import { asset } from "../lib/asset";
 import AccountPanel from "./AccountPanel";
 
 const { Header, Content } = Layout;
@@ -48,19 +49,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <Layout style={{ height: "100vh" }}>
-      <Header style={{ background: "linear-gradient(180deg, #002235 0%, #001529 100%)", paddingInline: 20, height: 44, lineHeight: "44px", display: "flex", alignItems: "center", gap: 53,
+      <Header style={{ background: "linear-gradient(180deg, #002235 0%, #001529 100%)", paddingInline: 20, height: 44, lineHeight: "44px", display: "flex", alignItems: "center",
         boxShadow: "inset 0 -1px 0 rgba(54,209,255,0.18), 0 2px 10px rgba(0,0,0,0.20)" }}>
-        <img src="/stust-logo.png" alt="STUST" title="回首頁(重新整理)" onClick={() => { window.location.href = "/"; }}
-          style={{ height: 26, display: "block", cursor: "pointer" }} />
+        <img src={asset("stust-wordmark-light.png")} alt="南臺科技大學" title="回首頁(重新整理)" onClick={() => { window.location.href = import.meta.env.BASE_URL; }}
+          style={{ height: 30, display: "block", cursor: "pointer" }} />
         <Menu theme="dark" mode="horizontal" selectedKeys={[topSelected]} onClick={({ key }) => navigate(key)}
           items={topNav.map((i) => ({ key: i.key, icon: topIcon[i.key], label: i.label }))}
-          style={{ flex: 1, minWidth: 0, background: "transparent", borderBottom: "none", marginInlineStart: 40 }} />
+          style={{ flex: 1, minWidth: 0, background: "transparent", borderBottom: "none", marginInlineStart: 113 }} />
         <Space size={18} style={{ color: "#fff" }}>
           <a onClick={() => { localStorage.removeItem("bg_intro_date"); window.location.reload(); }}
             style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 }} title="重新播放通電序列開場">重看開場</a>
           <Popover trigger="click" placement="bottomRight" content={<AccountPanel />} destroyTooltipOnHide>
             <span style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }} title="帳號 / 訪客統計">
-              <UserOutlined /><span>總務處 admin</span><DownOutlined style={{ fontSize: 10, opacity: 0.7 }} />
+              <UserOutlined /><span>總務處</span><DownOutlined style={{ fontSize: 10, opacity: 0.7 }} />
             </span>
           </Popover>
         </Space>

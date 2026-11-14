@@ -96,9 +96,11 @@ def optimize(
     else:
         action = "現況契約已接近最佳,無明顯調整空間。"
 
+    span = f"{min(measured)}–{max(measured)}" if measured else "無實測"
     note = (
-        f"尖峰錨點 {summer_peak:.0f} kW 取自 EMS 實測月最高需量(2023/05–06),罰款為實測零外推;"
-        f"全年成本以「高需量月數={high_months}、離峰季比例={offseason_ratio:.2f}」假設外推,"
+        f"尖峰錨點 {summer_peak:.0f} kW 取自 EMS 實測月最高需量({span}),該錨點零外推;"
+        f"惟全年 12 個月尖峰向量係以「高需量月數={high_months}、離峰季比例={offseason_ratio:.2f}」"
+        "假設外推(實測僅涵蓋部分月份,缺暑假與整年),故年總成本與建議契約屬情境估算,"
         "請依自家全年型態調整。基本電費單價沿用需量分頁設定,未分夏月/非夏月。"
     )
 

@@ -9,6 +9,7 @@ from webapi.engine import NetIndex
 from webapi.domain import CampusModel
 from webapi.schemas import (
     BuildingVoltage,
+    BusFlow,
     FeederLoading,
     PowerFlowResult,
     TransformerLoading,
@@ -57,6 +58,43 @@ def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> P
             building_id=b.id, building_name=b.name, voltage_pu=round(vm, 4),
         ))
 
+    # 全母線潮流表:電壓大小/相角 + 注入功率 + 分類。
+    # 分類慣例 (同 pandapower):掛 ext_grid 的母線 = Slack(swing);掛電壓控制發電機 gen = PV;其餘 = PQ。
+    # 本模型只有台電受電點一個 ext_grid、無 gen,故實際為「1 個 Slack + 其餘 PQ」。
+    slack_buses = set(net.ext_grid.bus.tolist()) if len(net.ext_grid) > 0 else set()
+    pv_buses = set(net.gen.bus.tolist()) if len(net.gen) > 0 else set()
+    # 逐母線把負載 Q 與電容器(shunt)Q 拆開 —— 母線淨 Q 是兩者相加,拆開才看得到電容補償量
+    load_q_by_bus: dict[int, float] = {}
+    for li in net.load.index:
+        b = int(net.load.at[li, "bus"])
+        load_q_by_bus[b] = load_q_by_bus.get(b, 0.0) + float(net.res_load.q_mvar.at[li])
+    shunt_q_by_bus: dict[int, float] = {}
+    for si in net.shunt.index:
+        b = int(net.shunt.at[si, "bus"])
+        shunt_q_by_bus[b] = shunt_q_by_bus.get(b, 0.0) + float(net.res_shunt.q_mvar.at[si])
+    bus_flows: list[BusFlow] = []
+    for i in net.bus.index:
+        vm = float(net.res_bus.vm_pu.at[i])
+        if vm != vm:   # NaN → 孤島母線 (未與電源連通),略過
+            continue
+        if i in slack_buses:
+            bus_type = "Slack"
+        elif i in pv_buses:
+            bus_type = "PV"
+        else:
+            bus_type = "PQ"
+        bus_flows.append(BusFlow(
+            bus_name=str(net.bus.name.at[i]),
+            bus_type=bus_type,
+            vn_kv=round(float(net.bus.vn_kv.at[i]), 3),
+            vm_pu=round(vm, 4),
+            va_degree=round(float(net.res_bus.va_degree.at[i]), 3),
+            p_kw=round(float(net.res_bus.p_mw.at[i]) * 1000, 2),
+            q_kvar=round(float(net.res_bus.q_mvar.at[i]) * 1000, 2),
+            load_q_kvar=round(load_q_by_bus.get(i, 0.0) * 1000, 2),
+            shunt_q_kvar=round(shunt_q_by_bus.get(i, 0.0) * 1000, 2),
+        ))
+
     total_load_kw = round(float(stats.get("total_load_p_kw", 0.0)), 1)
     total_load_kvar = round(float(stats.get("total_load_q_kvar", 0.0)), 1)
     system_loss_kw = round(
@@ -96,4 +134,5 @@ def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> P
         transformer_loadings=transformer_loadings,
         feeder_loadings=feeder_loadings,
         building_voltages=building_voltages,
+        bus_flows=bus_flows,
     )

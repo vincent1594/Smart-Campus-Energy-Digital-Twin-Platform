@@ -2,7 +2,9 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Spin } from "antd";
 import { api } from "./api/client";
+import { useAuth } from "./auth/AuthContext";
 import AppLayout from "./components/AppLayout";
+import LoginCard from "./components/LoginCard";
 import WarRoomBackdrop from "./components/WarRoomBackdrop";
 import WarRoomIntro from "./components/WarRoomIntro";
 import MapExplorer from "./pages/MapExplorer";   // 首頁:維持即時載入(進場即顯示)
@@ -23,10 +25,12 @@ const INTRO_KEY = "bg_intro_date";
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
 
 export default function App() {
-  // 「通電序列」開場一天只播一次(localStorage 記日期;頂部「重看開場」可重播)。
+  const { authed } = useAuth();   // 硬閘門:未登入不放行(登入卡浮在開場動畫上)
+  // 開場一天只播一次;但唯有「已登入 且 今天看過」才可直接跳過開場進場。
   const seen = localStorage.getItem(INTRO_KEY) === today();
-  const [entered, setEntered] = useState(seen);
-  const [showIntro, setShowIntro] = useState(!seen);   // 開場覆蓋層是否仍掛載
+  const canSkip = authed && seen;
+  const [entered, setEntered] = useState(canSkip);
+  const [showIntro, setShowIntro] = useState(!canSkip);   // 開場覆蓋層是否仍掛載
   const enter = () => { localStorage.setItem(INTRO_KEY, today()); setEntered(true); };
 
   // 記錄拜訪:一載入網頁就記(不論有沒有點進開場),每 session 一次。
@@ -74,8 +78,11 @@ export default function App() {
           onTransitionEnd={(e) => { if (entered && e.propertyName === "opacity") setShowIntro(false); }}>
           <WarRoomBackdrop />
           <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
-            <WarRoomIntro onEnter={enter} />
+            {/* 未登入:動畫背景跑,但藏起自己的進入/略過鈕,由登入卡當唯一入口 */}
+            <WarRoomIntro onEnter={enter} showEnter={authed} />
           </div>
+          {/* 硬閘門:未登入 → 浮登入卡;登入成功即放行進場(接開場運鏡) */}
+          {!authed && !entered && <LoginCard onSuccess={enter} />}
         </div>
       )}
     </>

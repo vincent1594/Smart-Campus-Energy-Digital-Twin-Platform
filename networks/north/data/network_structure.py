@@ -25,7 +25,7 @@ MAIN_NETWORK = {
 # 12個VCB Feeder定義
 FEEDERS = {
     "VCB1": {
-        "name": "VCB1 - CU_BUS",
+        "name": "VCB1 · N Y F G1",
         "bus_id": "CU_BUS",
         "substations": [
             {
@@ -84,7 +84,7 @@ FEEDERS = {
     },
 
     "VCB2": {
-        "name": "VCB2 - CU_BUS",
+        "name": "VCB2 · Z M G2 H3",
         "bus_id": "CU_BUS",
         "substations": [
             {
@@ -128,7 +128,7 @@ FEEDERS = {
     },
 
     "VCB3": {
-        "name": "VCB3 - CU_BUS",
+        "name": "VCB3 · K R L",
         "bus_id": "CU_BUS",
         "substations": [
             {
@@ -179,7 +179,7 @@ FEEDERS = {
     },
 
     "VCB4": {
-        "name": "VCB4 - P_BUS",
+        "name": "VCB4 · P",
         "bus_id": "CU_BUS",
         "cable_to_bus": {"cross_section": 38, "length": 53 * 1.2, "resistance": 0.5, "reactance": 0.07},
         "substations": [
@@ -201,7 +201,7 @@ FEEDERS = {
     },
 
     "VCB5": {
-        "name": "VCB5 - A_B_BUS",
+        "name": "VCB5 · A B",
         "bus_id": "CU_BUS",
         "substations": [
             {
@@ -222,7 +222,7 @@ FEEDERS = {
     },
 
     "VCB6": {
-        "name": "VCB6 - T_V_BUS",
+        "name": "VCB6 · T V",
         "bus_id": "CU_BUS",
         "substations": [
             {
@@ -255,7 +255,7 @@ FEEDERS = {
     },
 
     "VCB7": {
-        "name": "VCB7 - CD_BUS",
+        "name": "VCB7 · C D",
         "bus_id": "CU_BUS",
         "cable_to_bus": {"cross_section": 38, "length": 114 * 1.2, "resistance": 0.5, "reactance": 0.07},
         "substations": [
@@ -269,7 +269,7 @@ FEEDERS = {
     },
 
     "VCB8": {
-        "name": "VCB8 - S_BUS",
+        "name": "VCB8 · S",
         "bus_id": "CU_BUS",
         "substations": [
             {
@@ -300,7 +300,7 @@ FEEDERS = {
     },
 
     "VCB9": {
-        "name": "VCB9 - J_BUS",
+        "name": "VCB9 · J",
         "bus_id": "CU_BUS",
         "cable_to_bus": {"cross_section": 38, "length": 42 * 1.2, "resistance": 0.5, "reactance": 0.07},
         "substations": [
@@ -314,7 +314,7 @@ FEEDERS = {
     },
 
     "VCB10": {
-        "name": "VCB10 - W_BUS",
+        "name": "VCB10 · W",
         "bus_id": "CU_BUS",
         "substations": [
             {
@@ -345,7 +345,7 @@ FEEDERS = {
     },
 
     "VCB11": {
-        "name": "VCB11 - I_BUS",
+        "name": "VCB11 · I",
         "bus_id": "CU_BUS",
         "substations": [
             {

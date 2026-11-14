@@ -43,7 +43,7 @@ const LAT = 22.9925, LON = 120.2255;
 const CO2_EF = 0.494;
 
 // PV 導向環境:即時氣溫、雲量、日照(GHI),並估算模組溫度
-interface EnvData { temp?: number; cloud?: number; ghi?: number; live: boolean }
+interface EnvData { temp?: number; cloud?: number; ghi?: number; live: boolean; failed?: boolean }
 
 // 模組溫度估算(NOCT 法):T_module ≈ T_ambient + (NOCT-20)/800 × GHI,NOCT≈45°C
 function moduleTemp(temp?: number, ghi?: number): number | undefined {
@@ -55,15 +55,20 @@ function useEnv(): EnvData {
   const [env, setEnv] = useState<EnvData>({ live: false });
   useEffect(() => {
     let alive = true;
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,cloud_cover,shortwave_radiation&timezone=auto`)
+    // 8 秒逾時:Open-Meteo 掛住不回應時,fetch 不會自己 settle → 用 AbortController 逼它進 catch,
+    // 否則會永久卡在「連線中」。逾時/失敗後標記 failed → UI 改顯示「離線」而非一直轉圈。
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,cloud_cover,shortwave_radiation&timezone=auto`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((wd) => {
         if (!alive) return;
         const c = wd?.current ?? {};
         setEnv({ temp: c.temperature_2m, cloud: c.cloud_cover, ghi: c.shortwave_radiation, live: true });
       })
-      .catch(() => { /* 保持未連線 */ });
-    return () => { alive = false; };
+      .catch(() => { if (alive) setEnv({ live: false, failed: true }); })
+      .finally(() => clearTimeout(timer));
+    return () => { alive = false; clearTimeout(timer); ctrl.abort(); };
   }, []);
   return env;
 }
@@ -263,7 +268,7 @@ export default function StatsPanel({ dash, pf, dark = false, daySnapshots, curve
         <div style={{ color: C.muted, fontSize: 12, marginBottom: 6 }}>環境監測
           {env.live
             ? <Tag color="green" style={{ marginInlineStart: 4, fontSize: 10 }}>即時</Tag>
-            : <Tag style={{ marginInlineStart: 4, fontSize: 10, color: C.muted, borderColor: C.border, background: "transparent" }}>連線中</Tag>}
+            : <Tag style={{ marginInlineStart: 4, fontSize: 10, color: C.muted, borderColor: C.border, background: "transparent" }}>{env.failed ? "離線" : "連線中"}</Tag>}
           <span style={{ color: C.muted, fontSize: 10, marginInlineStart: 2 }}>· Open-Meteo</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between" }}>

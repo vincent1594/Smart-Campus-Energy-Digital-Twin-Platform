@@ -6,6 +6,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 import "./lib/echartsTheme";
+import { AuthProvider } from "./auth/AuthContext";
 import { FocusProvider } from "./focus/FocusContext";
 import { ActiveScenarioProvider } from "./scenario/ActiveScenarioContext";
 import { ThemeProvider, useTheme } from "./theme/ThemeContext";
@@ -20,12 +21,14 @@ function Themed() {
         token: { colorPrimary: "#1677ff" },
       }}
     >
-      <BrowserRouter>
-        <FocusProvider>
-          <ActiveScenarioProvider>
-            <App />
-          </ActiveScenarioProvider>
-        </FocusProvider>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+        <AuthProvider>
+          <FocusProvider>
+            <ActiveScenarioProvider>
+              <App />
+            </ActiveScenarioProvider>
+          </FocusProvider>
+        </AuthProvider>
       </BrowserRouter>
     </ConfigProvider>
   );

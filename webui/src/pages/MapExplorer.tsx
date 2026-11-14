@@ -1,8 +1,8 @@
-import { Alert, Button, Card, Segmented, Spin, Tag, message } from "antd";
+import { Alert, Button, Card, Segmented, Spin, Table, Tag, message, type TableColumnsType } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getNetwork, setNetwork } from "../api/client";
-import type { BuildingSummary, DashboardSummary, PowerFlowResult, TopologyGraph, TransformerDetail } from "../api/types";
+import type { BuildingSummary, BusFlow, DashboardSummary, PowerFlowResult, TopologyGraph, TransformerDetail } from "../api/types";
 import CampusMapStatic, { type MapMarker } from "../components/CampusMapStatic";
 import FeedbackButton from "../components/FeedbackButton";
 import FocusPanel from "../components/FocusPanel";
@@ -20,6 +20,7 @@ function lerpSnap(a: PowerFlowResult, b: PowerFlowResult, t: number): PowerFlowR
   const bTr = new Map(b.transformer_loadings.map((x) => [x.transformer_id, x.load_ratio_percent]));
   const bFd = new Map(b.feeder_loadings.map((x) => [x.feeder_id, x.load_ratio_percent]));
   const bBv = new Map(b.building_voltages.map((x) => [x.building_id, x.voltage_pu]));
+  const bBus = new Map((b.bus_flows ?? []).map((x) => [x.bus_name, x]));   // 母線潮流:依 bus_name 對齊兩時段
   const minV = L(a.min_voltage_pu, b.min_voltage_pu);
   const maxTr = L(a.max_transformer_load_ratio_percent, b.max_transformer_load_ratio_percent);
   return {
@@ -37,6 +38,14 @@ function lerpSnap(a: PowerFlowResult, b: PowerFlowResult, t: number): PowerFlowR
     transformer_loadings: a.transformer_loadings.map((x) => ({ ...x, load_ratio_percent: L(x.load_ratio_percent, bTr.get(x.transformer_id) ?? x.load_ratio_percent) })),
     feeder_loadings: a.feeder_loadings.map((x) => ({ ...x, load_ratio_percent: L(x.load_ratio_percent, bFd.get(x.feeder_id) ?? x.load_ratio_percent) })),
     building_voltages: a.building_voltages.map((x) => ({ ...x, voltage_pu: L(x.voltage_pu, bBv.get(x.building_id) ?? x.voltage_pu) })),
+    // 母線潮流隨時段連動:電壓大小/相角/P/Q(含負載Q、電容Q拆解)兩時段線性內插 (bus_type/vn_kv 沿用)
+    bus_flows: a.bus_flows?.map((x) => {
+      const y = bBus.get(x.bus_name);
+      return y ? { ...x, vm_pu: L(x.vm_pu, y.vm_pu), va_degree: L(x.va_degree, y.va_degree), p_kw: L(x.p_kw, y.p_kw),
+        q_kvar: L(x.q_kvar, y.q_kvar),
+        load_q_kvar: L(x.load_q_kvar ?? 0, y.load_q_kvar ?? 0),
+        shunt_q_kvar: L(x.shunt_q_kvar ?? 0, y.shunt_q_kvar ?? 0) } : x;
+    }),
   };
 }
 
@@ -49,7 +58,7 @@ export default function MapExplorer() {
   const { scenario: rawScenario, scenarioKind: rawKind, scenarioNet, setScenario } = useActiveScenario();
   const { dark } = useTheme();
   const [mode, setMode] = useState<"supply" | "impact">("supply");
-  const [centerView, setCenterView] = useState<"map" | "single">("map");
+  const [centerView, setCenterView] = useState<"map" | "single" | "bus">("map");
   const [dash, setDash] = useState<DashboardSummary>();
   const [pf, setPf] = useState<PowerFlowResult>();
   const [buildings, setBuildings] = useState<BuildingSummary[]>([]);
@@ -82,6 +91,7 @@ export default function MapExplorer() {
     return () => { alive = false; };
   }, [networks]);
   const [editing, setEditing] = useState(false);                       // 地圖範圍編輯模式
+  const [pendingSelect, setPendingSelect] = useState<string | null>(null);  // 跨電網點選:待新網資料就緒再套用的字母
   const [polys, setPolys] = useState<Record<string, Pt[]> | null>(null);  // 編輯中的多邊形(含南網新建物)
   const dismissGuide = () => { localStorage.setItem("bg_guide_seen", "1"); setShowGuide(false); };
 
@@ -200,11 +210,10 @@ export default function MapExplorer() {
   const onMapSelectAny = (letter: string) => {
     const targetNet = netOfLetter(letter);
     if (targetNet === currentNet) { onMapSelect(letter); return; }
-    setNetwork(targetNet); setCurrentNet(targetNet);
-    // 兼建物的受電站(南 H1)→ 顯示建物卡片;純受電站(北 X)→ 聚焦受電站
-    const rep = repByLetterAll.get(letter);
-    if (rep) setFocus({ kind: "building", id: rep, label: `${letter}棟` });
-    else if (letter === SOURCE_LETTER_BY_NET[targetNet]) setFocus({ kind: "source", id: SOURCE_KEY, label: `受電站(${letter}棟)` });
+    // 切到他系統:該網資料為非同步載入,此刻 vcbOfLetter 等仍是舊網、解不出新網 VCB。
+    // 故記下待處理字母,待資料就緒(loadedNet 追上 currentNet)再走 onMapSelect,行為與同網一致、
+    // 且自動尊重 supply/impact 模式(修正:看停電影響下跨電網點建物要點兩次才變紅)。
+    setNetwork(targetNet); setCurrentNet(targetNet); setPendingSelect(letter);
   };
 
   // 進入編輯模式:只處理「當前網路」的建物 (避免南網編輯混入北網建物、匯出也只含當前網)。
@@ -265,10 +274,58 @@ export default function MapExplorer() {
     else { const v = vcbOfLetter.get(letter); if (v) setFocus({ kind: "vcb", id: v, label: trafos.find((t) => t.vcb_id === v)?.vcb_name ?? v }); }
   };
 
+  // 跨電網待處理選取:待新網資料就緒(loadedNet 追上 currentNet,vcbOfLetter 已重算)再套用,
+  // 此時 onMapSelect 才解得出該建物的 VCB → 停電影響一次點擊即變紅。
+  useEffect(() => {
+    if (pendingSelect && loadedNet === currentNet) {
+      onMapSelect(pendingSelect);
+      setPendingSelect(null);
+    }
+  }, [pendingSelect, loadedNet, currentNet, vcbOfLetter]);   // eslint-disable-line react-hooks/exhaustive-deps
+
   if (err) return <Alert type="error" message="無法載入" description={err} showIcon />;
   if (!dash || !pf) return <Spin size="large" style={{ display: "block", marginTop: 120 }} />;
 
   const effPf = scenario ?? pf;
+  // 母線潮流表:優先用作用中潮流(規劃情境會反映);時段拖曳的靜態快照無此欄則退回 base pf。
+  const busFlows: BusFlow[] = effPf?.bus_flows ?? pf?.bus_flows ?? [];
+  const slackCount = busFlows.filter((b) => b.bus_type === "Slack").length;
+  // 母線功因:由淨注入 P/Q 求 |P|/√(P²+Q²)。同號=滯後(電感性)、異號或純電容=超前(電容性)。
+  // 無載/純接點(S≈0)→ 無意義,回 null 顯示「—」。
+  const pfInfo = (p: number, q: number): { v: number; lead: boolean } | null => {
+    const s = Math.hypot(p, q);
+    if (s < 0.05) return null;
+    return { v: Math.abs(p) / s, lead: p * q < 0 || (Math.abs(p) < 0.05 && q < 0) };
+  };
+  const busColumns: TableColumnsType<BusFlow> = [
+    { title: "母線", dataIndex: "bus_name", key: "bus_name", ellipsis: true,
+      render: (v: string, r: BusFlow) => <span style={{ fontSize: 12 }}>{v}<span style={{ color: "#bbb", marginLeft: 6 }}>{r.vn_kv}kV</span></span> },
+    { title: "類型", dataIndex: "bus_type", key: "bus_type", width: 74,
+      filters: [{ text: "Slack", value: "Slack" }, { text: "PV", value: "PV" }, { text: "PQ", value: "PQ" }],
+      onFilter: (val, r) => r.bus_type === val,
+      render: (t: string) => t === "Slack" ? <Tag color="gold">Slack</Tag> : t === "PV" ? <Tag color="green">PV</Tag> : <Tag>PQ</Tag> },
+    { title: "電壓 pu", dataIndex: "vm_pu", key: "vm_pu", width: 82, align: "right",
+      sorter: (a, b) => a.vm_pu - b.vm_pu,
+      render: (v: number) => <span style={{ color: v < 0.95 || v > 1.05 ? "#cf1322" : (dark ? "#ddd" : "#333") }}>{v.toFixed(4)}</span> },
+    { title: "相角 °", dataIndex: "va_degree", key: "va_degree", width: 74, align: "right",
+      sorter: (a, b) => a.va_degree - b.va_degree, render: (v: number) => v.toFixed(2) },
+    { title: "P kW", dataIndex: "p_kw", key: "p_kw", width: 78, align: "right", render: (v: number) => v.toFixed(1) },
+    { title: "負載Q", dataIndex: "load_q_kvar", key: "load_q_kvar", width: 74, align: "right",
+      render: (v?: number) => v ? v.toFixed(1) : <span style={{ color: "#ccc" }}>—</span> },
+    { title: "電容Q", dataIndex: "shunt_q_kvar", key: "shunt_q_kvar", width: 74, align: "right",
+      render: (v?: number) => v ? <span style={{ color: "#13a8a8", fontWeight: 600 }}>{v.toFixed(1)}</span> : <span style={{ color: "#ccc" }}>—</span> },
+    { title: <>淨Q <span style={{ color: "#bbb", fontWeight: 400, fontSize: 10 }}>kVAr</span></>, dataIndex: "q_kvar", key: "q_kvar", width: 92, align: "right",
+      render: (v: number) => <span style={{ color: v < 0 ? "#13a8a8" : (dark ? "#ddd" : "#333") }}>{v.toFixed(1)}</span> },
+    { title: "PF", key: "pf", width: 74, align: "right",
+      sorter: (a, b) => (pfInfo(a.p_kw, a.q_kvar)?.v ?? 2) - (pfInfo(b.p_kw, b.q_kvar)?.v ?? 2),
+      render: (_: unknown, r: BusFlow) => {
+        const info = pfInfo(r.p_kw, r.q_kvar);
+        if (!info) return <span style={{ color: "#ccc" }}>—</span>;
+        return <span style={{ color: info.v < 0.9 ? "#fa8c16" : (dark ? "#ddd" : "#333") }}>
+          {info.v.toFixed(3)}<span style={{ color: "#999", fontSize: 10, marginLeft: 2 }}>{info.lead ? "超" : "滯"}</span>
+        </span>;
+      } },
+  ];
   const effDash = scenario ? {
     ...dash, total_load_kw: scenario.total_load_kw, total_load_kvar: scenario.total_load_kvar,
     system_loss_kw: scenario.system_loss_kw, system_loss_kvar: scenario.system_loss_kvar,
@@ -317,10 +374,14 @@ export default function MapExplorer() {
       {/* 中:地圖 / 單線圖 切換 */}
       <div data-focus-keep style={{ height: "100%", display: "flex", flexDirection: "column", background: "#fff", border: "1px solid #eef1f5", borderRadius: 12, boxShadow: "0 1px 4px rgba(20,40,80,.05)", overflow: "hidden" }}>
         <div style={{ padding: "7px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f0f2f5", gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{centerView === "map" ? "校園供電地圖" : "高壓配電單線圖"}{" "}
-            {(networks.length ? networks : [{ id: currentNet, name: currentNet === "south" ? "南電錶" : "北電錶" }]).map((n) => (
-              <Tag key={n.id} color={n.id === currentNet ? "geekblue" : "default"}
-                style={{ cursor: "pointer", opacity: n.id === currentNet ? 1 : 0.7, fontWeight: 700 }}
+          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{centerView === "map" ? "校園供電地圖" : centerView === "single" ? "高壓配電單線圖" : "母線潮流表"}{" "}
+            {(networks.length ? networks : [{ id: currentNet, name: currentNet === "south" ? "南電錶" : "北電錶" }]).map((n) => {
+              // 標籤高亮:只有「地圖」總覽(無焦點)時南北系統皆亮 —— 地圖本就同時顯示兩系統建物。
+              // 鑽入某系統(有焦點)只亮作用中那個;單線圖/母線潮流是單一電網的頁面,也只亮作用中那個。
+              const lit = centerView === "map" ? (!focus || n.id === currentNet) : n.id === currentNet;
+              return (
+              <Tag key={n.id} color={lit ? "geekblue" : "default"}
+                style={{ cursor: "pointer", opacity: lit ? 1 : 0.7, fontWeight: 700 }}
                 title={DEV_NETS.has(n.id) ? `${n.name}系統開發中,數據為初步建模、尚未校正` : (n.id === currentNet ? "點選聚焦受電站、高亮整個系統" : `切換到${n.name}系統(也可直接點該系統建物)`)}
                 onClick={() => {
                   if (n.id !== currentNet) { setNetwork(n.id); setCurrentNet(n.id); setEditing(false); }   // 切換:更新 state 觸發重抓重繪,不刷頁
@@ -333,7 +394,8 @@ export default function MapExplorer() {
                 }}>
                 {n.name}系統{DEV_NETS.has(n.id) && <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, opacity: 0.85 }}>· 開發中</span>}
               </Tag>
-            ))}
+              );
+            })}
             {selectedHour != null
               ? (dayPeakHour != null && Math.round(selectedHour) !== dayPeakHour
                   ? <Tag color="cyan">🕒 {String(Math.round(selectedHour)).padStart(2, "0")}:00 · <a onClick={clearHour}>還原基準</a></Tag>
@@ -345,8 +407,8 @@ export default function MapExplorer() {
                 options={[{ label: "查供電路徑", value: "supply" }, { label: "看停電影響", value: "impact" }]} />
             )}
             {!editing && (
-              <Segmented size="small" value={centerView} onChange={(v) => setCenterView(v as "map" | "single")}
-                options={[{ label: "地圖", value: "map" }, { label: "單線圖", value: "single" }]} />
+              <Segmented size="small" value={centerView} onChange={(v) => setCenterView(v as "map" | "single" | "bus")}
+                options={[{ label: "地圖", value: "map" }, { label: "單線圖", value: "single" }, { label: "母線潮流", value: "bus" }]} />
             )}
             {SHOW_EDIT_TOOLS && editing && <Button size="small" onClick={exportPolys}>匯出座標</Button>}
             {SHOW_EDIT_TOOLS && (
@@ -364,9 +426,25 @@ export default function MapExplorer() {
                 onSelect={onMapSelectAny} onClear={() => setFocus(null)} dark={dark} fitHeight
                 editable={editing} polys={editing ? (polys ?? undefined) : undefined}
                 onPolyChange={(letter, pts) => setPolys((p) => ({ ...(p ?? {}), [letter]: pts }))} />
-            : graph
-              ? <SingleLineSvg graph={graph} pf={effPf} selectedId={focus?.id ?? null} onSelect={(n) => setFocus({ kind: n.kind as FocusKind, id: n.id, label: n.id })} />
-              : <Spin />}
+            : centerView === "single"
+              ? (graph
+                  ? <SingleLineSvg graph={graph} pf={effPf} selectedId={focus?.id ?? null} onSelect={(n) => setFocus({ kind: n.kind as FocusKind, id: n.id, label: n.id })} />
+                  : <Spin />)
+              : (
+                // 母線潮流表:牛頓-拉夫遜潮流各母線電壓大小/相角 + 注入功率 + Slack/PV/PQ 分類
+                <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+                  <div style={{ fontSize: 12, color: dark ? "#8aa" : "#999", padding: "0 2px 6px" }}>
+                    牛頓-拉夫遜潮流 · {busFlows.length} 條母線 · Slack {slackCount}、PV 0、其餘 PQ。
+                    Slack(swing)＝台電受電點,定電壓 1.0∠0°;此電網無發電機,故無 PV 母線。電壓越限(&lt;0.95 或 &gt;1.05 pu)標紅。
+                    <span style={{ color: "#13a8a8" }}>「淨Q＝負載Q＋電容Q」,電容器供給無功記負值(青色)。</span>
+                    {" "}PF＝該母線淨功因(滯=電感性、超=電容性;&lt;0.9 標橙)。
+                  </div>
+                  <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+                    <Table<BusFlow> rowKey="bus_name" size="small" columns={busColumns} dataSource={busFlows}
+                      pagination={false} sticky scroll={{ x: 650 }} />
+                  </div>
+                </div>
+              )}
         </div>
       </div>
 

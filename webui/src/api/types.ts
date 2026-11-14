@@ -197,6 +197,18 @@ export interface BuildingVoltage {
   voltage_pu: number;
 }
 
+export interface BusFlow {
+  bus_name: string;
+  bus_type: string;   // Slack / PV / PQ
+  vn_kv: number;
+  vm_pu: number;
+  va_degree: number;
+  p_kw: number;
+  q_kvar: number;         // 淨無功 (= load_q_kvar + shunt_q_kvar)
+  load_q_kvar?: number;   // 該母線負載吃掉的無功 (正=消耗)
+  shunt_q_kvar?: number;  // 該母線電容器無功 (負=電容供給)
+}
+
 export interface PowerFlowResult {
   converged: boolean;
   status: string;
@@ -216,6 +228,7 @@ export interface PowerFlowResult {
   transformer_loadings: TransformerLoading[];
   feeder_loadings: FeederLoading[];
   building_voltages: BuildingVoltage[];
+  bus_flows?: BusFlow[];   // 全母線潮流表 (供電地圖母線潮流分頁;靜態快照可能無此欄)
 }
 
 export interface TopologyNode {
@@ -243,6 +256,33 @@ export interface ScenarioRequest {
 export interface ScenarioComparison {
   base: PowerFlowResult;
   scenario: PowerFlowResult;
+}
+
+// 規劃模擬「新增建物」加入模擬(接法 A:自受電匯流排新拉一路獨立饋線)
+export interface PlanSimulateRequest {
+  buildings: {
+    id: string;
+    name: string;
+    cable_length_m: number;
+    cross_section_mm2?: number | null;
+    transformers: { capacity_kva: number; lv_voltage: number; load_kw: number; pf: number }[];
+  }[];
+}
+
+export interface PlanBuildingLoading {
+  id: string;
+  name: string;
+  load_ratio_percent: number;
+  voltage_pu: number;
+}
+
+export interface PlanSimulateResult {
+  base: PowerFlowResult;
+  scenario: PowerFlowResult;
+  added_transformers: TransformerLoading[];
+  added_feeders: FeederLoading[];
+  building_loadings: PlanBuildingLoading[];
+  warnings: string[];
 }
 
 export interface ForecastRequest {

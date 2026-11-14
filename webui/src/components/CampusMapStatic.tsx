@@ -3,6 +3,7 @@
 // 編輯(editable):拖頂點移動、雙擊多邊形邊加頂點、雙擊頂點刪除;onPolyChange 回拋。
 import { useEffect, useRef, useState } from "react";
 import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, type Pt, centroid, ratioColor } from "../lib/campusPositions";
+import { PLAN_COLOR, type PlanBuilding } from "../lib/planBuildings";
 
 export interface MapMarker {
   letter: string;
@@ -22,6 +23,7 @@ export default function CampusMapStatic({
   markers, focusLetter, highlight, emphasize, sourceLetter, onSelect, onClear, dark = false,
   editable = false, polys, onPolyChange, fitHeight = false, outage = false, hideLegend = false,
   systemBorder, systemLegend,
+  planBuildings, placingPlan = false, selectedPlanId, onPlacePlan, onSelectPlan, onMovePlan, planRatios,
 }: {
   markers: MapMarker[];
   focusLetter?: string | null;
@@ -39,10 +41,19 @@ export default function CampusMapStatic({
   hideLegend?: boolean; // 隱藏右下角圖例(負載率色階 / 停電影響)
   systemBorder?: Record<string, string>;  // 全校園總覽:net→外框色,各建物依所屬系統畫識別外框
   systemLegend?: { label: string; color: string }[];  // 全校園總覽:左上角系統圖例
+  // 規劃模擬「新增建物」:規劃建物以虛線鬼影疊在地圖上,可點選/拖移;placingPlan 時點空白處放置。
+  planBuildings?: PlanBuilding[];
+  placingPlan?: boolean;
+  selectedPlanId?: string | null;
+  onPlacePlan?: (at: Pt) => void;      // 放置模式下點地圖 → 回拋圖座標
+  onSelectPlan?: (id: string) => void; // 點規劃建物 → 選取(提供才可互動)
+  onMovePlan?: (id: string, poly: Pt[]) => void; // 拖移規劃建物 → 回拋新多邊形
+  planRatios?: Record<string, number>; // 加入模擬後:規劃建物 id→負載率,依熱力色階上色
 }) {
   const ref = useRef<HTMLDivElement>(null);          // 內層(會被縮放/平移)
   const outerRef = useRef<HTMLDivElement>(null);     // 外層(裁切視窗)
   const drag = useRef<{ letter: string; idx: number; last?: Pt } | null>(null);  // idx=-1 → 整塊平移
+  const planDrag = useRef<{ id: string; last: Pt; idx?: number } | null>(null);   // 規劃建物:idx 有值→拖該頂點改大小,否則整塊拖移
   const pan = useRef<{ cx: number; cy: number; tx: number; ty: number } | null>(null);  // 編輯模式拖空白處平移畫布
   const POS = polys ?? BUILDING_POS;
   const hasFocus = !!focusLetter || (highlight?.size ?? 0) > 0;
@@ -123,6 +134,29 @@ export default function CampusMapStatic({
     window.addEventListener("pointerup", up);
     return () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); };
   }, [editable, POS, onPolyChange]);
+
+  // 規劃建物拖移(非編輯模式亦可用;整塊平移,依游標位移搬移所有頂點)。
+  useEffect(() => {
+    if (!onMovePlan) return;
+    const mv = (e: PointerEvent) => {
+      const d = planDrag.current; if (!d) return;
+      const pb = planBuildings?.find((p) => p.id === d.id); if (!pb) return;
+      const cur = toImg(e);
+      if (d.idx != null) {
+        // 拖頂點:該頂點移到游標位置(改大小/形狀)
+        onMovePlan(d.id, pb.poly.map((p, i) => (i === d.idx ? (cur.map(Math.round) as Pt) : p)));
+      } else {
+        // 拖本體:整塊平移
+        const dx = cur[0] - d.last[0], dy = cur[1] - d.last[1];
+        d.last = cur;
+        onMovePlan(d.id, pb.poly.map((p) => [Math.round(p[0] + dx), Math.round(p[1] + dy)] as Pt));
+      }
+    };
+    const up = () => { planDrag.current = null; };
+    window.addEventListener("pointermove", mv);
+    window.addEventListener("pointerup", up);
+    return () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); };
+  }, [planBuildings, onMovePlan]);
 
   const addVertex = (letter: string, pts: Pt[], at: Pt) => {
     let best = 0, bd = Infinity;
@@ -280,6 +314,50 @@ export default function CampusMapStatic({
             受電站本身即焦點時不重複標。pointerEvents=none 讓點擊穿透到底下可選取。 */}
         {!editable && hasFocus && sourceLetter && sourceLetter !== focusLetter && POS[sourceLetter] && (
           <polygon points={POS[sourceLetter].map((p) => p.join(",")).join(" ")} fill="#9254de" fillOpacity={0.55} stroke="none" pointerEvents="none" />
+        )}
+
+        {/* 規劃建物:虛線紫色鬼影,疊在現況之上。可點選(選取後可在面板編輯)、可拖移。
+            放置模式(placingPlan)時鬼影不吃事件,讓點擊穿到下方放置遮罩。 */}
+        {!editable && planBuildings?.map((pb) => {
+          const sel = pb.id === selectedPlanId;
+          const cen = centroid(pb.poly);
+          const interactive = !!onSelectPlan && !placingPlan;
+          // 加入模擬後:依負載率以熱力色階填色(同真實建物);未模擬時維持紫色鬼影。
+          const ratio = planRatios?.[pb.id];
+          const heat = ratio != null ? ratioColor(ratio) : null;
+          const fill = heat ? `${heat.bg}${dark ? "66" : "80"}` : (sel ? `${PLAN_COLOR}47` : `${PLAN_COLOR}29`);
+          const label = ratio != null ? `${pb.name} ${ratio.toFixed(0)}%` : pb.name;
+          return (
+            <g key={pb.id} pointerEvents={interactive ? undefined : "none"} style={{ cursor: interactive ? "move" : "default" }}>
+              <title>{`${pb.name}(規劃中)${ratio != null ? `｜負載率 ${ratio.toFixed(0)}%` : ""}`}</title>
+              <polygon points={pb.poly.map((p) => p.join(",")).join(" ")}
+                fill={fill} stroke={PLAN_COLOR}
+                strokeWidth={sel ? 4 : 3} strokeDasharray="10 6" strokeLinejoin="round"
+                onPointerDown={interactive ? (e) => {
+                  e.stopPropagation();
+                  (e.target as Element).setPointerCapture?.(e.pointerId);
+                  planDrag.current = { id: pb.id, last: toImg(e) };
+                  onSelectPlan?.(pb.id);
+                } : undefined} />
+              <text x={cen[0]} y={cen[1]} textAnchor="middle" dominantBaseline="central" fontSize={ratio != null ? 17 : 20} fontWeight={700}
+                fill="#fff" stroke="rgba(0,0,0,.55)" strokeWidth={1} pointerEvents="none">{label}</text>
+              {/* 選取中:各頂點顯示控制點,拖曳改大小/形狀 */}
+              {sel && interactive && pb.poly.map((p, i) => (
+                <circle key={i} cx={p[0]} cy={p[1]} r={9} fill="#fff" stroke={PLAN_COLOR} strokeWidth={3} style={{ cursor: "nwse-resize" }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    (e.target as Element).setPointerCapture?.(e.pointerId);
+                    planDrag.current = { id: pb.id, last: toImg(e), idx: i };
+                  }} />
+              ))}
+            </g>
+          );
+        })}
+
+        {/* 放置模式:全幅透明遮罩置頂,點任一處 → 在該座標放一棟規劃建物 */}
+        {!editable && placingPlan && (
+          <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="transparent"
+            style={{ cursor: "crosshair" }} onClick={(e) => onPlacePlan?.(toImg(e))} />
         )}
       </svg>
     </div>

@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from webapi.deps import require_capability, use_network
 from webapi.powerflow import PowerFlowError
-from webapi.schemas import ForecastRequest, PowerFlowResult, ScenarioComparison, ScenarioRequest
-from webapi.services import scenario_service
+from webapi.schemas import ForecastRequest, PlanSimulateRequest, PlanSimulateResult, PowerFlowResult, ScenarioComparison, ScenarioRequest
+from webapi.services import plan_service, scenario_service
 
 router = APIRouter(prefix="/api/{network_id}/scenario", tags=["scenario"],
                    dependencies=[Depends(use_network)])
@@ -18,6 +18,17 @@ def run_scenario(req: ScenarioRequest) -> ScenarioComparison:
         return scenario_service.run_scenario(req)
     except PowerFlowError as exc:
         # 潮流不收斂等 -> 回友善訊息,而非 500
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# 規劃模擬「加入模擬」:把使用者在地圖擺的規劃建物疊入模型跑潮流 + 額定護欄
+@router.post("/plan-simulate", response_model=PlanSimulateResult)
+def plan_simulate(req: PlanSimulateRequest) -> PlanSimulateResult:
+    try:
+        return plan_service.simulate_plan(req)
+    except PowerFlowError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

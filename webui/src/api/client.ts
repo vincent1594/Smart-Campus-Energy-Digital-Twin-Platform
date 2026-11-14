@@ -19,6 +19,8 @@ import type {
   ForecastRequest,
   RecentVisit,
   ReplacementEconomicsReport,
+  PlanSimulateRequest,
+  PlanSimulateResult,
   ScenarioComparison,
   ScenarioRequest,
   TopologyGraph,
@@ -28,12 +30,15 @@ import type {
   VcbDetail,
   VisitStats,
 } from "./types";
+import { asset } from "../lib/asset";
 // 開發時用相對路徑 → 由 Vite proxy 轉到本機後端 (127.0.0.1:8126)。
 // 正式版讀 VITE_API_BASE_URL:Render(.env.production)= Render 後端;
 // Docker compose(.env.docker)= 空字串 → 相對路徑,由 nginx 反代 /api 到 api 容器。
+// 未設 VITE_API_BASE_URL 時,fallback 跟著 Vite base(IIS 子路徑部署 → /MEN,
+// 同站反代會打到 /MEN/api/...;根路徑部署 → 空字串 → 相對路徑)。
 const API_BASE_URL = import.meta.env.DEV
   ? ""
-  : (import.meta.env.VITE_API_BASE_URL ?? "https://smart-campus-energy-digital-twin.onrender.com");
+  : (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.BASE_URL.replace(/\/$/, ""));
 
 // ── 多電網:當前選定的電網 (北/南),持久化於 localStorage ──
 // 網路相關端點路徑為 /api/{network}/...;全域端點 (visit/feedback/settings/health/networks) 不帶網路。
@@ -117,12 +122,14 @@ export const api = {
   powerflow: () => get<PowerFlowResult>(napi("/powerflow")),
   runScenario: (req: ScenarioRequest) => post<ScenarioComparison>(napi("/scenario/run"), req),
   runForecast: (req: ForecastRequest) => post<ScenarioComparison>(napi("/scenario/forecast"), req),
+  planSimulate: (req: PlanSimulateRequest) => post<PlanSimulateResult>(napi("/scenario/plan-simulate"), req),
   // 日曲線尖峰日 24h 快照:北網有預算好的靜態檔 (瞬間);其餘網走 API (未備則後端回 404)
   forecastDay: async (): Promise<{ date: string; peak_hour: number; snapshots: PowerFlowResult[] }> => {
     type FD = { date: string; peak_hour: number; snapshots: PowerFlowResult[] };
     if (currentNetwork === "north") {
       try {
-        const r = await fetch("/forecast-day.json");
+        // no-store:強制跳過瀏覽器快取,避免沿用舊版靜態檔(否則日曲線母線潮流吃到無 bus_flows 的舊資料)
+        const r = await fetch(asset("forecast-day.json"), { cache: "no-store" });
         if (r.ok) return (await r.json()) as FD;
       } catch { /* 靜態檔讀取失敗 → 退回 API */ }
     }
