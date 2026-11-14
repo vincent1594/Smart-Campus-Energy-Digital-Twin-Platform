@@ -68,21 +68,18 @@ python -m networks.north.analysis.xgb_forecast
 
 ---
 
-## 情境 (SCENARIOS)
+## 平台基準電網 (SCENARIOS)
 
-定義於 `networks/north/data/parameters.py`。每情境指定**負載來源方法 (method)**、時間點與太陽能出力係數 (pv_factor);
-`xgboost_profile` 法另以 `load_kw` 為系統同時負載目標縮放。
+網站開啟時建立的基準電網(首頁、設備查詢、潮流等皆依此):
 
-| 情境 | 期間 / 類型 | 負載方法 | 系統同時負載 | PV 係數 |
-|------|------------|----------|------------|--------|
-| S0   | EMS 實測尖峰日 2023/06/08 14:00 (**北網平台基準**) | `ems` | 實測 (不縮放) | 0.0 |
-| S1   | 2023/03/01 半尖峰 | `xgboost_profile` | 1,860 kW | 0.4 |
-| S1.1 | 2026/06/08 14:00 夏季午後 | `xgboost_profile` | 3,400 kW | 0.75 |
-| S1.2 | 2026/06/08 09:00 夏季上午 | `xgboost_profile` | 2,470 kW | 0.5 |
-| S2   | XGBoost 預測 2026/06/08 14:00 | `xgboost` | 預測 (不縮放) | 0.8 |
+| 電網 | 情境 | 負載來源 | 說明 |
+|------|------|----------|------|
+| 北網 | **S0** | `ems` | EMS 實測尖峰日 2023/06/08 14:00,直接用實測淨值 (PV 係數 0,不縮放) |
+| 南網 | **S2** | `transformer` | MVCB 總盤 95 百分位 1,653 kW,依各台變壓器負載比例縮放 |
 
-以環境變數 `BAYESGRID_SCENARIO` 選擇,北網預設 **S0**(平台基準電網即依此建);南網情境另定義於 `networks/south/data/parameters.py`(預設 S2)。
-新增情境:在 `SCENARIOS` 加一筆(指定 `method`、`timestamp`、`pv_factor`、視需要 `load_kw`)即可。
+定義於 `networks/<north|south>/data/parameters.py` 的 `SCENARIOS`。
+其他情境 (北網 S1、S1.1、S1.2、S2;南網 S1) **網站不使用**,僅供論文報告程式產生各情境報告,見 `bayesgrid/論文素材/`。
+網站上的「時間點預測」「情境模擬」是依畫面輸入即時計算,不讀這張表。
 
 ---
 
