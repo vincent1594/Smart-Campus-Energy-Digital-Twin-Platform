@@ -20,13 +20,13 @@
 │   │   │   ├── load_data.py           # DEFAULT_BUILDING_LOADS (各台平均負載 + 功因)
 │   │   │   ├── parameters.py          # 系統參數、損耗表、電壓規範、情境 SCENARIOS
 │   │   │   ├── ems_loads.py           # EMS 實測各饋線負載分配 (含 VCB3 各棟實測校正)
-│   │   │   ├── area_loads.py  pv.py  academic_calendar.py  weather.py
-│   │   │   ├── build_transformer_specs.py  # Excel → webapi/data/transformer_specs.json
-│   │   │   ├── build_breaker_inventory.py  # breaker_inventory.md → 斷路器額定清冊 xlsx/csv
+│   │   │   ├── area_loads.py  pv.py  academic_calendar.py
+│   │   │   ├── 各站變壓器規格容量資料.xlsx  # 變壓器銘牌原始表
+│   │   │   ├── build_transformer_specs.py  # 上表 → webapi/data/transformer_specs.json
 │   │   │   └── test_data.py           # 數據驗證
 │   │   ├── models/            # 🔨 建模層:network_builder.py + XGBoost 模型 (*.pkl)
 │   │   ├── analysis/          # 📈 分析層:power_flow (潮流) / xgb_forecast (饋線負載預測)
-│   │   └── EMS/               # EMS 實測逐時功率 + 永康站氣溫 CSV
+│   │   └── EMS/               # EMS 實測逐時功率 (11203-04、11205-06 各饋線)
 │   └── south/                 # 南電錶 (H1 MVCB 受電,6 VCB;負載暫為佔位)
 │       └── provider.py  data/  models/  analysis/  EMS/
 │
@@ -40,8 +40,13 @@
 ├── webui/                     # 💻 前端 (React + Vite + TypeScript + Ant Design)
 │   └── src/  (pages/ components/ api/ auth/ focus/ scenario/ theme/ lib/)
 │
-├── tools/verify_engine.py     # 平台驗收 (南北兩網建網 + 潮流 + domain 解析)
-└── docs/                      # V1 驗收校正清單、單線圖原稿/ (記事本 ASCII 原稿)
+├── tools/
+│   ├── verify_engine.py       # 平台驗收 (南北兩網建網 + 潮流 + domain 解析)
+│   └── build_forecast_day.py  # 重建前端日曲線靜態檔 webui/public/forecast-day.json
+└── docs/                      # 參考資料 (網站不讀)
+    ├── V1_驗收校正清單.md/.pdf
+    ├── 單線圖原稿/            # 記事本 ASCII 單線圖 (拓撲依據)
+    └── 原始資料/              # 112年樓地板面積統計表.pdf、斷路器額定清冊/
 ```
 
 > 📚 **論文素材不在本 repo**:論文草稿、各情境潮流報告 (`results/`)、報告產生器 (`main.py`、
@@ -147,6 +152,7 @@ Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 | 驗證數據層 | `python -m networks.north.data.test_data` |
 | 重訓 XGBoost | `python -m networks.north.analysis.xgb_forecast` |
 | 重建變壓器銘牌 JSON | `python -m networks.north.data.build_transformer_specs` |
+| 重建日曲線靜態檔 | `python -m tools.build_forecast_day`(改模型/負載/拓撲後必跑;`--check` 只檢查) |
 | 改情境/負載目標 | 編輯 `networks/north/data/parameters.py` 的 `SCENARIOS` |
 | 改電壓規範 | 改 `VOLTAGE_LIMIT_MIN/MAX` |
 | 改變壓器損耗 | 改 `TRANSFORMER_LOSS_TABLE` |

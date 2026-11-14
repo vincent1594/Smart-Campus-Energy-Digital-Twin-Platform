@@ -1,7 +1,7 @@
 """把斷路器額定清冊 (breaker_inventory.md) 轉成 Excel(多分頁)+ CSV。
 
 來源:研究資料/1.高壓單線圖/ 30 張竣工單線圖。
-輸出:data/斷路器額定清冊.xlsx 及同名各分頁 CSV(UTF-8-BOM,Excel 不亂碼)。
+輸出:本資料夾的 斷路器額定清冊.xlsx 及同名各分頁 CSV(UTF-8-BOM,Excel 不亂碼)。
 """
 from pathlib import Path
 import pandas as pd

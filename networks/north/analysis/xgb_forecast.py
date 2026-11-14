@@ -15,8 +15,8 @@ XGBoost 饋線負載預測 —— 11 條饋線 VCB1~VCB11 各一個 regressor (V
   MODEL_FILE_LAG  3-5月訓練 / 6月驗證  時間 + 行事曆 + lag24/168   需量預測 API
   (train_lag_model)                                               demand_service
 
-氣溫: _features() 雖有 temp= 參數,production 呼叫端一律不傳。實測氣溫對本校園
-總量幾無預測力,加入反而升高測試誤差 (比較實驗 compare_temp_feature.py 存於 bayesgrid/論文素材/程式/)。
+氣溫: _features() 保留 temp= 參數但呼叫端一律不傳。實測氣溫對本校園總量幾無預測力,
+加入反而升高測試誤差;氣溫資料 (weather.py + 永康站 CSV) 與比較實驗已移至 bayesgrid/論文素材/程式/。
 
 解析度: 預測格點為每日 24 個整點。台電契約容量以 15 分鐘需量計費,逐時平均會
 系統性低估 15 分鐘尖峰 → demand_service 的超約罰款估計偏保守 (偏低)。無 15 分鐘
@@ -53,18 +53,6 @@ def _load_ems():
     pass  # [phase0] sys.path.insert removed
     from networks.north.data.ems_loads import _read_ems   # 重用穩健讀取器
     return _read_ems()
-
-
-def _attach_temp(t):
-    """為 EMS 逐時表依「日期」併入永康站日均溫欄 temp_mean。缺資料以全期均溫補。"""
-    from networks.north.data.weather import daily_temps
-    wx = daily_temps()[["date", "temp_mean"]].copy()
-    t = t.copy()
-    t["date"] = t["dt"].dt.normalize()
-    wx["date"] = wx["date"].dt.normalize()
-    t = t.merge(wx, on="date", how="left")
-    t["temp_mean"] = t["temp_mean"].fillna(wx["temp_mean"].mean())
-    return t
 
 
 def _features(dt, temp=None):
@@ -195,18 +183,6 @@ def train_calendar_model(save=True):
         joblib.dump(models, MODEL_FILE_CAL)
         print(f"✓ 行事曆模型已存: {MODEL_FILE_CAL}")
     return models
-
-
-def predict_feeder_kw_cal(timestamp):
-    """行事曆感知預測 (需量逐時專用) → {VCBx: kw}。無模型則自動先訓練。"""
-    import joblib
-    if not MODEL_FILE_CAL.exists():
-        train_calendar_model(save=True)
-    models = joblib.load(MODEL_FILE_CAL)
-    X = _features_cal(pd.Series([pd.Timestamp(timestamp)]))
-    out = {c: float(max(0.0, models[c].predict(X)[0])) for c in FEEDER_COLS}
-    out["VCB12"] = 0.0
-    return out
 
 
 # ── 近期實際負載 (lag/自迴歸) 模型 (需量逐時預測專用) ──────────────

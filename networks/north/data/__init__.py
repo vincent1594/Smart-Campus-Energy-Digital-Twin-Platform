@@ -4,7 +4,7 @@ Data Layer - 校園配電系統數據層
 """
 
 from .network_structure import FEEDERS, MAIN_NETWORK, CABLE_PARAMETERS, TRANSFORMER_IMPEDANCE
-from .load_data import LoadDataParser, DEFAULT_BUILDING_LOADS
+from .load_data import DEFAULT_BUILDING_LOADS
 from .parameters import (
     SYSTEM_PARAMS, CABLE_PARAMS, TRANSFORMER_PARAMS, LOAD_PARAMS,
     PANDAPOWER_CONFIG, PROTECTION_LIMITS, LOGGING_CONFIG,
@@ -19,7 +19,6 @@ __all__ = [
     'TRANSFORMER_IMPEDANCE',
     
     # 負載數據
-    'LoadDataParser',
     'DEFAULT_BUILDING_LOADS',
     
     # 系統參數
