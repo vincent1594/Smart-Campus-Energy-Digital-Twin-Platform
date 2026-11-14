@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import copy
 
-import models.network_builder as _nb  # type: ignore
+import networks.north.models.network_builder as _nb  # type: ignore
 
 from webapi import state
 from webapi.engine import _build_index
@@ -100,7 +100,7 @@ def run_forecast(timestamp: str, pv_factor: float = 0.8) -> ScenarioComparison:
 def _peak_day_date() -> str:
     """EMS 全期(各饋線實測)總負載最高的那一天 → 'YYYY-MM-DD'。"""
     import pandas as _pd
-    import data.ems_loads as _e
+    import networks.north.data.ems_loads as _e
     t = _e.read_feeder_ems_all().copy()
     fc = [f"VCB{i}" for i in range(1, 12)]            # 排除 VCB12 電容
     t["__tot"] = t[fc].sum(axis=1)
@@ -123,7 +123,7 @@ def _build_net_ems(timestamp: str, pv_factor: float = 0.0):
 def run_forecast_day(date: str | None = None, pv_factor: float | None = None) -> dict:
     """校園總攬日曲線:預設取「歷史尖峰最高日」(EMS 全期總負載最高那天)的 24h 實測重算。
     回傳 {date, peak_hour, snapshots};pv_factor 未指定時 = 0(用實測淨值)。"""
-    from data.ems_loads import compute_ems_loads
+    from networks.north.data.ems_loads import compute_ems_loads
     date = date or _peak_day_date()
     pvf = 0.0 if pv_factor is None else pv_factor
     base = state.get_base()

@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "webapi" / "data" / "transformer_specs.json"
+OUT = Path(__file__).resolve().parents[3] / "webapi" / "data" / "transformer_specs.json"   # repo 根的 webapi/
 
 # Excel 中文欄名 → JSON 英文鍵
 LABELS = {

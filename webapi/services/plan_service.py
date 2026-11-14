@@ -13,8 +13,8 @@ import copy
 import numpy as np
 import pandapower as pp
 
-from data.parameters import CABLE_PARAMS
-from models.network_builder import _add_transformer  # 複用:vk/vkr/pfe/i0 由容量+型式查表
+from networks.north.data.parameters import CABLE_PARAMS
+from networks.north.models.network_builder import _add_transformer  # 複用:vk/vkr/pfe/i0 由容量+型式查表
 from webapi import state
 from webapi.powerflow import solve_net
 from webapi.schemas import (

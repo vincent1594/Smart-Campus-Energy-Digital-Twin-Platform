@@ -27,3 +27,7 @@ webapi/data/analytics.db
 
 # docker compose 機密(含 DB 密碼);範本 .env.example 才提交
 /.env
+
+# 論文素材已移出 repo(存於 bayesgrid/論文素材/);重跑報告時的輸出勿提交
+論文/
+results/

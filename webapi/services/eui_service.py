@@ -18,7 +18,7 @@ from webapi import state
 from webapi.schemas import BuildingEUI, EUIReport
 
 try:
-    from data.area_loads import BUILDING_AREA, LOAD_BUILDING
+    from networks.north.data.area_loads import BUILDING_AREA, LOAD_BUILDING
 except Exception:  # pragma: no cover
     BUILDING_AREA, LOAD_BUILDING = {}, {}
 
@@ -41,7 +41,7 @@ def _annual_campus_kwh(year: int) -> float:
     import joblib
     import pandas as pd
 
-    from analysis.xgb_forecast import FEEDER_COLS, MODEL_FILE, _features, train_and_evaluate
+    from networks.north.analysis.xgb_forecast import FEEDER_COLS, MODEL_FILE, _features, train_and_evaluate
 
     if not MODEL_FILE.exists():
         train_and_evaluate(save=True)

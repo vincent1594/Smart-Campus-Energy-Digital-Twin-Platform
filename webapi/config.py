@@ -1,10 +1,10 @@
 """全域設定。
 
-本平台不自造資料:真相來源是 repo 根目錄的既有研究模型
-  data/network_structure.py  (FEEDERS 拓樸)
-  models/network_builder.py  (build_network_s1_baseline)
-  analysis/power_flow.py      (run_s1_baseline_powerflow)
-webapi 與這些模組是同一個 repo 根下的 sibling 套件,故從 repo 根啟動
+本平台不自造資料:真相來源是 networks/<net>/ 下的既有研究模型
+  networks/<net>/data/network_structure.py  (FEEDERS 拓樸)
+  networks/<net>/models/network_builder.py  (build_network_s1_baseline)
+  networks/<net>/analysis/power_flow.py     (run_s1_baseline_powerflow)
+webapi 與 networks 是同一個 repo 根下的 sibling 套件,故從 repo 根啟動
 (python -m uvicorn webapi.main:app) 即可原生 import,無需任何 sys.path 操作。
 本層只負責「翻譯 + API」。
 """

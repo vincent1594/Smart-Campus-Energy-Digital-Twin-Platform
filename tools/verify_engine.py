@@ -1,13 +1,27 @@
 """驗收:包覆真實模型 -> 解析 domain -> 對照表正確。
 
 執行 (在 repo 根目錄,用全域 python):
-    python -m tools.verify_engine
+    python -m tools.verify_engine          # 南北兩網都驗
+    python -m tools.verify_engine north    # 只驗指定電網
 """
+import sys
+
+from networks.registry import PROVIDERS
 from webapi.engine import build_base
 
 
 def main() -> None:
-    base = build_base()
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+    for nid in (sys.argv[1:] or list(PROVIDERS)):
+        print(f"\n################ 電網: {nid} ################")
+        verify(nid)
+
+
+def verify(network_id: str) -> None:
+    base = build_base(PROVIDERS[network_id])
     m = base.model
     s = base.results["system_stats"]
     conv = base.results["convergence"]

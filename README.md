@@ -8,51 +8,45 @@
 
 ```
 論文實驗X電錶/
-├── main.py                    # ★ 主程式:一鍵跑全部/指定情境
-├── run_s1_baseline.py         # 單情境引擎 (建模→潮流→報告;被 main 呼叫)
 ├── requirements.txt  runtime.txt
-├── README.md                  # 本文件 (使用手冊)
-├── COMPLETION_REPORT.md       # 進度/成果報告
-├── validation_report.json     # 數據層驗證輸出
+├── Dockerfile  docker-compose.yml  DEPLOY.md   # Docker 自架部署 (web+api+db)
 │
-├── data/                      # 📊 數據層
-│   ├── network_structure.py   # 饋線/母線/變壓器/電纜 拓撲 (12 VCB、R 棟、台電進線、VCB12 電容)
-│   ├── load_data.py           # DEFAULT_BUILDING_LOADS (各台真實平均負載 + 功因)
-│   ├── parameters.py          # 系統參數、損耗表、電壓規範、情境 SCENARIOS
-│   ├── ems_loads.py           # EMS 實測各饋線負載分配 (含 VCB3 各棟實測校正)
-│   ├── area_loads.py          # 樓地板面積 × 用途密度 負載法
-│   ├── pv.py                  # 各建築太陽能出力 (供負載淨值還原)
-│   ├── build_transformer_specs.py # 由 Excel 重建變壓器銘牌 JSON
-│   └── test_data.py           # 數據驗證 (run_validation)
+├── networks/                  # ⚡ 電網模型 (每網一個獨立套件,單一來源)
+│   ├── registry.py            # 電網註冊表:webapi 依 network_id 取 provider
+│   ├── north/                 # 北電錶 (X棟受電,12 VCB)
+│   │   ├── provider.py        # 對外介面:FEEDERS / build_net() / run_power_flow()
+│   │   ├── data/              # 📊 數據層
+│   │   │   ├── network_structure.py   # 拓撲 (源自 docs/單線圖原稿/北電錶_X/整合.txt)
+│   │   │   ├── load_data.py           # DEFAULT_BUILDING_LOADS (各台平均負載 + 功因)
+│   │   │   ├── parameters.py          # 系統參數、損耗表、電壓規範、情境 SCENARIOS
+│   │   │   ├── ems_loads.py           # EMS 實測各饋線負載分配 (含 VCB3 各棟實測校正)
+│   │   │   ├── area_loads.py  pv.py  academic_calendar.py  weather.py
+│   │   │   ├── build_transformer_specs.py  # Excel → webapi/data/transformer_specs.json
+│   │   │   ├── build_breaker_inventory.py  # breaker_inventory.md → 斷路器額定清冊 xlsx/csv
+│   │   │   └── test_data.py           # 數據驗證
+│   │   ├── models/            # 🔨 建模層:network_builder.py + XGBoost 模型 (*.pkl)
+│   │   ├── analysis/          # 📈 分析層:power_flow (潮流) / xgb_forecast (饋線負載預測)
+│   │   └── EMS/               # EMS 實測逐時功率 + 永康站氣溫 CSV
+│   └── south/                 # 南電錶 (H1 MVCB 受電,6 VCB;負載暫為佔位)
+│       └── provider.py  data/  models/  analysis/  EMS/
 │
-├── models/                    # 🔨 建模層
-│   ├── network_builder.py     # build_network_s1_baseline() 建 PandaPower 網路
-│   └── xgb_feeder_models.pkl  # 訓練好的各饋線 XGBoost 模型
-│
-├── analysis/                  # 📈 分析層
-│   ├── power_flow.py          # run_s1_baseline_powerflow() 牛頓-拉夫遜潮流
-│   ├── xgb_forecast.py        # 饋線負載 XGBoost 預測 (5月訓/6月測)
-│   ├── experiments.py         # 預測實驗 (誤差評估、散布圖)
-│   └── results_export.py      # export_s1_results() 報告(md/txt)+ CSV
-│
-├── EMS/                       # EMS 實測逐時功率 (11205-06 北校區, 2023/05-06)
-├── results/                   # 各情境輸出 (S0/ S1/ S1.1/ S1.2/ S2/ + experiments/)
-├── tools/verify_engine.py     # 平台驗收腳本
-├── utils/                     # 🛠️ 工具層 (預留)
-│
-├── webapi/                    # 🌐 數位孿生平台 — FastAPI 後端 (包覆上述研究模型)
-│   ├── main.py  config.py  state.py
-│   ├── engine.py              # 橋接 build_network / power_flow + 解析 domain
+├── webapi/                    # 🌐 數位孿生平台 — FastAPI 後端 (包覆上述電網模型)
+│   ├── main.py  config.py  state.py  engine.py  db.py
 │   ├── domain.py  schemas.py  # 業務實體 / 對外 DTO
-│   ├── powerflow.py  topology.py  building_names.py
 │   ├── data/transformer_specs.json # 變壓器銘牌/實測資料 (供規格明細)
 │   ├── mappers/result_mapper.py    # ★ 翻譯層 (唯一碰 pandapower 欄位)
-│   ├── services/             # 查詢彙總 (dashboard/building/asset/topology/powerflow/scenario)
-│   └── routes/              # HTTP 端點
+│   ├── services/  routes/     # 查詢彙總 / HTTP 端點
 │
-└── webui/                     # 💻 前端 (React + Vite + TypeScript + Ant Design)
-    └── src/  (pages/ components/ api/ focus/ scenario/ theme/ lib/)
+├── webui/                     # 💻 前端 (React + Vite + TypeScript + Ant Design)
+│   └── src/  (pages/ components/ api/ auth/ focus/ scenario/ theme/ lib/)
+│
+├── tools/verify_engine.py     # 平台驗收 (南北兩網建網 + 潮流 + domain 解析)
+└── docs/                      # V1 驗收校正清單、單線圖原稿/ (記事本 ASCII 原稿)
 ```
+
+> 📚 **論文素材不在本 repo**:論文草稿、各情境潮流報告 (`results/`)、報告產生器 (`main.py`、
+> `run_s1_baseline.py`、`results_export.py`)、預測實驗與論文圖程式,已移至 repo 外的
+> `bayesgrid/論文素材/`(含重跑說明 README)。本 repo 只放平台部署需要的程式與資料。
 
 ---
 
@@ -64,17 +58,15 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1     # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. 執行分析
-python main.py              # 跑全部情境 (S0, S1, S1.1, S1.2, S2)
-python main.py S1.1         # 只跑指定情境
-python main.py S1 S1.1      # 跑多個
+# 2. 驗收模型 (南北兩網建網 + 潮流)
+python -m tools.verify_engine
 
-# 3. (選用) 僅驗證數據層 / 訓練 XGBoost 模型
-python -m data.test_data
-python analysis/xgb_forecast.py
+# 3. (選用) 驗證數據層 / 重訓 XGBoost 模型
+python -m networks.north.data.test_data
+python -m networks.north.analysis.xgb_forecast
 ```
 
-結果輸出於 `results/<情境>/`,含中文報告(`.md` / `.txt`)與 4 個 CSV(母線電壓、電纜負載、變壓器負載、負載明細)。
+要產生論文用的各情境潮流報告(md/txt + CSV),見 `bayesgrid/論文素材/README.md`。
 
 > ⚠️ **務必照 `requirements.txt` 釘選版本安裝**(尤其 `xgboost` / `numpy` / `pandapower`)。
 > XGBoost 不同大版本載入同一份模型會給出不同預測,導致**本地與部署(Render)結果不一致**
@@ -84,18 +76,18 @@ python analysis/xgb_forecast.py
 
 ## 情境 (SCENARIOS)
 
-定義於 `data/parameters.py`。每情境指定**負載來源方法 (method)**、時間點與太陽能出力係數 (pv_factor);
+定義於 `networks/north/data/parameters.py`。每情境指定**負載來源方法 (method)**、時間點與太陽能出力係數 (pv_factor);
 `xgboost_profile` 法另以 `load_kw` 為系統同時負載目標縮放。
 
 | 情境 | 期間 / 類型 | 負載方法 | 系統同時負載 | PV 係數 |
 |------|------------|----------|------------|--------|
-| S0   | EMS 實測尖峰 2023/06/08 14:00 | `ems` | 實測 (不縮放) | 0.8 |
+| S0   | EMS 實測尖峰日 2023/06/08 14:00 (**北網平台基準**) | `ems` | 實測 (不縮放) | 0.0 |
 | S1   | 2023/03/01 半尖峰 | `xgboost_profile` | 1,860 kW | 0.4 |
 | S1.1 | 2026/06/08 14:00 夏季午後 | `xgboost_profile` | 3,400 kW | 0.75 |
 | S1.2 | 2026/06/08 09:00 夏季上午 | `xgboost_profile` | 2,470 kW | 0.5 |
 | S2   | XGBoost 預測 2026/06/08 14:00 | `xgboost` | 預測 (不縮放) | 0.8 |
 
-執行時以環境變數 `BAYESGRID_SCENARIO` 選擇(預設 S1);`run_s1_baseline.py` / `main.py` 會自動設定。
+以環境變數 `BAYESGRID_SCENARIO` 選擇,北網預設 **S0**(平台基準電網即依此建);南網情境另定義於 `networks/south/data/parameters.py`(預設 S2)。
 新增情境:在 `SCENARIOS` 加一筆(指定 `method`、`timestamp`、`pv_factor`、視需要 `load_kw`)即可。
 
 ---
@@ -118,7 +110,7 @@ PV 還原:EMS/預測為「淨台電值」→ gross = 饋線淨值 + Σ該饋線P
 Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 ```
 
-- 負載原值(各台平均負載、功因)存於 `data/load_data.py`,不被縮放覆寫。
+- 負載原值(各台平均負載、功因)存於 `networks/north/data/load_data.py`,不被縮放覆寫。
 - 已對應變壓器之並聯電容折入運轉功因;少數未對應/歧義負載沿用估計值(報告會標註)。
 
 ---
@@ -151,31 +143,29 @@ Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 
 | 操作 | 命令 / 位置 |
 |------|------|
-| 跑全部情境 | `python main.py` |
-| 跑單一情境 | `python main.py S1.1` |
-| 驗證數據層 | `python -m data.test_data` |
-| 重訓 XGBoost | `python analysis/xgb_forecast.py` |
-| 重建變壓器銘牌 JSON | `python data/build_transformer_specs.py` |
-| 改情境/負載目標 | 編輯 `data/parameters.py` 的 `SCENARIOS` |
+| 驗收模型 | `python -m tools.verify_engine` |
+| 驗證數據層 | `python -m networks.north.data.test_data` |
+| 重訓 XGBoost | `python -m networks.north.analysis.xgb_forecast` |
+| 重建變壓器銘牌 JSON | `python -m networks.north.data.build_transformer_specs` |
+| 改情境/負載目標 | 編輯 `networks/north/data/parameters.py` 的 `SCENARIOS` |
 | 改電壓規範 | 改 `VOLTAGE_LIMIT_MIN/MAX` |
 | 改變壓器損耗 | 改 `TRANSFORMER_LOSS_TABLE` |
-| 改負載/功因 | 改 `data/load_data.py` |
+| 改負載/功因 | 改 `networks/north/data/load_data.py` |
+| 改電網拓撲 | 改 `networks/<north\|south>/data/network_structure.py`(唯一一份) |
 
 ---
 
 ## 程式化呼叫
 
 ```python
-from models.network_builder import build_network_s1_baseline
-from analysis.power_flow import run_s1_baseline_powerflow
-from analysis.results_export import export_s1_results
+from networks.north.models.network_builder import build_network_s1_baseline
+from networks.north.analysis.power_flow import run_s1_baseline_powerflow
 
 net = build_network_s1_baseline()
-net, results = run_s1_baseline_powerflow(net=net)
-export_s1_results(net, results, output_dir="results/S1")
+net, results = run_s1_baseline_powerflow(net=net)   # results["system_stats"] 等
 ```
 
-> 注意:情境由環境變數 `BAYESGRID_SCENARIO` 決定(預設 S1),`run_s1_baseline.py` / `main.py` 會自動設定。
+> 注意:情境由環境變數 `BAYESGRID_SCENARIO` 決定(北網預設 S0)。
 
 ---
 
@@ -187,13 +177,15 @@ export_s1_results(net, results, output_dir="results/S1")
 ### 後端
 
 ```powershell
-# 從 repo 根啟動 (原生 import data/models/analysis,無 sys.path hack)
+# 從 repo 根啟動 (原生 import networks.*,無 sys.path hack)
 python -m uvicorn webapi.main:app --reload --port 8126
 # API 文件:http://127.0.0.1:8126/docs
 # 驗收:python -m tools.verify_engine
 ```
 
 啟動時 `engine.build_base()` 建網 + 跑潮流一次,結果快取於 `state`(唯讀),由各 route 共用。
+
+> 電網相關端點皆帶電網代號前綴 `/api/{north|south}/...`(下表省略);`GET /api/networks` 列出可切換電網。
 
 | 端點 | 說明 |
 |------|------|
@@ -248,4 +240,4 @@ npm run dev          # http://localhost:5173 (dev 透過 vite proxy 轉 127.0.0.
 
 ---
 
-**最後更新**: 2026-06-18 ｜ **版本**: 0.7.0 (多情境潮流 + 數位孿生平台 V1)
+**最後更新**: 2026-11-15 ｜ **版本**: 0.7.0 (多情境潮流 + 數位孿生平台 V1)

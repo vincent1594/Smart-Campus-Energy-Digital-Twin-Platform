@@ -145,7 +145,7 @@ SCENARIOS = {
     "S2":   {"period": "XGBoost預測 2026/06/08 14:00", "load_kw": None, "method": "xgboost",
              "timestamp": "2026-06-08 14:00", "pv_factor": 0.8},      # ML 預測各饋線(5月訓練)
 }
-# 執行時以環境變數 BAYESGRID_SCENARIO 選擇 (預設 S0=歷史實測尖峰日,平台基準);run_s1_baseline.py 可由命令列帶入
+# 執行時以環境變數 BAYESGRID_SCENARIO 選擇 (預設 S0=歷史實測尖峰日,平台基準);論文報告程式 run_s1_baseline.py(已移至論文素材)可由命令列帶入
 import os as _os
 ACTIVE_SCENARIO = _os.environ.get("BAYESGRID_SCENARIO", "S0").strip()
 if ACTIVE_SCENARIO not in SCENARIOS:
