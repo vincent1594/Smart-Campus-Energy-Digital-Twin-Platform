@@ -36,20 +36,6 @@ def get_stats() -> VisitStats:
     return analytics_service.get_stats()
 
 
-# 診斷:直接吐出後端收到的各種來源 IP header,判斷前面那層代理有沒有把真實客端 IP 傳下來。
-# 用法:在瀏覽器開 <站台>/api/visit/whoami(MEN 部署為 /MEN/api/visit/whoami),
-# 分別用「校內」與「手機 4G」各開一次,比對 resolved 與 x-forwarded-for 是否會變。
-@router.get("/whoami")
-def whoami(request: Request) -> dict:
-    keys = ("x-forwarded-for", "x-real-ip", "cf-connecting-ip", "true-client-ip",
-            "forwarded", "x-forwarded-host", "x-client-ip", "host")
-    return {
-        "resolved_client_ip": _client_ip(request),
-        "socket_peer": request.client.host if request.client else None,
-        "headers": {k: request.headers.get(k) for k in keys},
-    }
-
-
 # 最近訪客(含 IP,個資)—— 前端僅在登入後才呼叫/顯示
 @router.get("/recent", response_model=list[RecentVisit])
 def get_recent(limit: int = 30) -> list[RecentVisit]:

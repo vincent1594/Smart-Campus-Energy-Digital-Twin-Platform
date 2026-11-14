@@ -170,6 +170,5 @@ export const api = {
   myFeedback: (visitorId: string) => get<MyFeedback | null>(`/api/feedback/mine?visitor_id=${encodeURIComponent(visitorId)}`),
   feedbackList: (limit = 100) => get<FeedbackList>(`/api/feedback?limit=${limit}`),
   health: () => get<{ status: string }>("/api/health"),
-  getSettings: () => get<Record<string, unknown>>("/api/settings"),
   putSettings: (values: Record<string, unknown>, by = "") => put<Record<string, unknown>>("/api/settings", { values, by }),
 };
