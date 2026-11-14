@@ -2,7 +2,7 @@
 // 顯示:focusLetter/highlight 連動、dark 深色發光、showConnectors 受電站→棟連線。
 // 編輯(editable):拖頂點移動、雙擊多邊形邊加頂點、雙擊頂點刪除;onPolyChange 回拋。
 import { useEffect, useRef, useState } from "react";
-import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, type Pt, centroid, ratioColor } from "../lib/campusPositions";
+import { BUILDING_HOLES, BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, type Pt, centroid, ratioColor, shapePath } from "../lib/campusPositions";
 import { PLAN_COLOR, type PlanBuilding } from "../lib/planBuildings";
 
 export interface MapMarker {
@@ -59,6 +59,8 @@ export default function CampusMapStatic({
   const planDrag = useRef<{ id: string; last: Pt; idx?: number } | null>(null);   // 規劃建物:idx 有值→拖該頂點改大小,否則整塊拖移
   const pan = useRef<{ cx: number; cy: number; tx: number; ty: number } | null>(null);  // 編輯模式拖空白處平移畫布
   const POS = polys ?? BUILDING_POS;
+  // 建物形狀 path:瀏覽模式含中庭洞(evenodd);編輯模式只拖外框頂點,不挖洞以免與拖動後外框不符
+  const dOf = (letter: string) => shapePath(POS[letter], editable ? [] : (BUILDING_HOLES[letter] ?? []));
   const hasFocus = !!focusLetter || (highlight?.size ?? 0) > 0;
   const accent = dark ? "#00e5ff" : "#1677ff";
   const [hover, setHover] = useState<string | null>(null);   // 滑鼠移入/鍵盤聚焦的建物 → 顯示浮動名牌
@@ -241,7 +243,7 @@ export default function CampusMapStatic({
             <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="#fff" />
             <g filter="url(#cmsSoft)">
               {markers.filter((m) => (m.letter === focusLetter || highlight?.has(m.letter) || m.letter === sourceLetter) && POS[m.letter]).map((m) => (
-                <polygon key={"mk" + m.letter} points={POS[m.letter].map((p) => p.join(",")).join(" ")} fill="#000" />
+                <path key={"mk" + m.letter} d={dOf(m.letter)} fillRule="evenodd" fill="#000" />
               ))}
             </g>
           </mask>
@@ -259,11 +261,11 @@ export default function CampusMapStatic({
         )}
         {/* 焦點棟:一抹柔和色光,與同群區分 */}
         {!editable && focusLetter && POS[focusLetter] && (
-          <polygon points={POS[focusLetter].map((p) => p.join(",")).join(" ")} fill={accent} opacity={0.14} pointerEvents="none" />
+          <path d={dOf(focusLetter)} fillRule="evenodd" fill={accent} opacity={0.14} pointerEvents="none" />
         )}
         {/* 焦點棟描邊呼吸光暈:柔和脈動,引導視線(不影響點擊) */}
         {!editable && focusLetter && POS[focusLetter] && (
-          <polygon className="cms-focus-glow" points={POS[focusLetter].map((p) => p.join(",")).join(" ")}
+          <path className="cms-focus-glow" d={dOf(focusLetter)} fillRule="evenodd"
             fill="none" stroke={accent} strokeWidth={3} strokeLinejoin="round" filter="url(#cmsGlow)" pointerEvents="none" />
         )}
 
@@ -306,7 +308,7 @@ export default function CampusMapStatic({
           return (
             <g key={m.letter} style={{ cursor: editable ? "grab" : "pointer" }}>
               {editable && <title>{`拖曳移動整個 ${m.letter} 範圍;拖頂點改形狀;雙擊邊加點、雙擊點刪點`}</title>}
-              <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={fill}
+              <path d={dOf(m.letter)} fillRule="evenodd" fill={fill}
                 {...(editable
                   ? { stroke: showShape ? stroke : "none", strokeWidth: isFocus ? 5 : 4, style: { cursor: "grab" } }
                   : {
@@ -345,7 +347,7 @@ export default function CampusMapStatic({
             才不會被受電站自身的灰色負載率填色蓋掉 — 北 X 純受電站不在高亮群尤其明顯)。
             受電站本身即焦點時不重複標。pointerEvents=none 讓點擊穿透到底下可選取。 */}
         {!editable && hasFocus && sourceLetter && sourceLetter !== focusLetter && POS[sourceLetter] && (
-          <polygon points={POS[sourceLetter].map((p) => p.join(",")).join(" ")} fill="#9254de" fillOpacity={0.55} stroke="none" pointerEvents="none" />
+          <path d={dOf(sourceLetter)} fillRule="evenodd" fill="#9254de" fillOpacity={0.55} stroke="none" pointerEvents="none" />
         )}
 
         {/* 規劃建物:虛線紫色鬼影,疊在現況之上。可點選(選取後可在面板編輯)、可拖移。
