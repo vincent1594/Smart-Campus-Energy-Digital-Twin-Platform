@@ -58,7 +58,7 @@ export default function VerificationCenter() {
             ))}
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#cf1322", marginBottom: 4 }}>未納入潮流模型的建築(8 台 1000kVA 全在此)</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#fa8c16", marginBottom: 4 }}>模型涵蓋 vs 待補（南電已建模,剩北電 N 棟 1 台）</div>
             {MODEL_RECON.missing.map((m) => (
               <div key={m.name} style={{ fontSize: 12, padding: "3px 0", display: "flex", justifyContent: "space-between", gap: 8 }}>
                 <b style={{ color: "#444", whiteSpace: "nowrap" }}>{m.name}</b>

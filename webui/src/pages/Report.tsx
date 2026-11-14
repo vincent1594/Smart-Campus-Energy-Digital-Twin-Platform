@@ -1,11 +1,12 @@
 import { DownloadOutlined, EyeOutlined } from "@ant-design/icons";
 import { Button, Card, List, Modal, Table, Tabs, Tag, message } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { api } from "../api/client";
+import { api, getNetwork, setNetwork } from "../api/client";
 import UsageGuide from "../components/UsageGuide";
 import { downloadCSV, type CsvCol, stamp } from "../lib/csv";
 import { lvLabel, lvRangeLabel } from "../lib/voltage";
+import { DEV_NETS } from "../lib/campusPositions";
 
 interface ReportDef {
   key: string;
@@ -16,6 +17,7 @@ interface ReportDef {
   load: () => Promise<any[]>;   // 取資料(各報表型別不同,此處用 any)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cols: CsvCol<any>[];          // 欄位(預覽表格與 CSV 共用)
+  emsOnly?: boolean;            // 僅具 EMS 實測的電網(北)才提供;南電網等無 demand 資料時隱藏
 }
 
 const REPORTS: ReportDef[] = [
@@ -172,6 +174,7 @@ const REPORTS: ReportDef[] = [
     title: "契約容量最佳化",
     desc: "現況 vs 建議契約容量、預估年省金額,附各月實測尖峰與超約罰款(以後端已存契約/費率設定計算)。",
     filename: "契約容量最佳化",
+    emsOnly: true,
     load: async () => {
       const o = await api.contractOptimize();
       const rows: { item: string; value: string | number }[] = [
@@ -236,6 +239,22 @@ export default function Report() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  // 南北電網切換(state → 切換不刷頁;報表 load 經 napi() 自動取當前電網)
+  const [net, setNet] = useState(getNetwork());
+  const [networks, setNetworks] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => { api.networks().then(setNetworks).catch(() => undefined); }, []);
+  const switchNet = (id: string) => { if (id !== net) { setNetwork(id); setNet(id); setActive(null); } };
+
+  // 偵測目前電網是否具 EMS(需量)資料:南電網無 → demand 端點 404,藉此隱藏 emsOnly 報表。
+  // 依 net 重跑 → 切到南電網時自動隱藏「契約最佳化」。
+  const [emsReady, setEmsReady] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setEmsReady(null);
+    api.demand().then(() => alive && setEmsReady(true)).catch(() => alive && setEmsReady(false));
+    return () => { alive = false; };
+  }, [net]);
+  const visibleReports = REPORTS.filter((r) => !r.emsOnly || emsReady === true);
 
   const preview = async (r: ReportDef) => {
     setActive(r); setRows([]); setLoading(true);
@@ -244,10 +263,11 @@ export default function Report() {
     finally { setLoading(false); }
   };
 
+  const netName = networks.find((n) => n.id === net)?.name ?? (net === "south" ? "南電錶" : "北電錶");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const exportCsv = (r: ReportDef, data: any[]) => {
-    downloadCSV(`${r.filename}_${stamp()}.csv`, data, r.cols);
-    message.success(`已匯出「${r.title}」(${data.length} 筆)`);
+    downloadCSV(`${netName}_${r.filename}_${stamp()}.csv`, data, r.cols);
+    message.success(`已匯出「${netName}·${r.title}」(${data.length} 筆)`);
   };
 
   const directExport = async (r: ReportDef) => {
@@ -259,10 +279,21 @@ export default function Report() {
 
   const reportList = (
     <>
-      <div style={{ color: "#999", fontSize: 12, marginBottom: 8 }}>先預覽再匯出 · CSV(UTF-8,Excel 可直接開啟)· 取目前現況快照</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, color: "#555", fontWeight: 600, whiteSpace: "nowrap" }}>電網:</span>
+        {(networks.length ? networks : [{ id: "north", name: "北電錶" }, { id: "south", name: "南電錶" }]).map((n) => (
+          <Tag key={n.id} color={n.id === net ? "geekblue" : "default"}
+            style={{ cursor: "pointer", opacity: n.id === net ? 1 : 0.7, fontWeight: 700, marginInlineEnd: 0 }}
+            title={DEV_NETS.has(n.id) ? `${n.name}系統開發中,數據為初步建模、尚未校正` : `切換到${n.name}系統,報表將匯出此電網資料`}
+            onClick={() => switchNet(n.id)}>
+            {n.name}系統{DEV_NETS.has(n.id) && <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, opacity: 0.85 }}>· 開發中</span>}
+          </Tag>
+        ))}
+        <span style={{ color: "#999", fontSize: 12, marginLeft: "auto", whiteSpace: "nowrap" }}>先預覽再匯出 · CSV(UTF-8,Excel 可直接開啟)· 取目前現況快照</span>
+      </div>
       <List
         grid={{ gutter: 10, xs: 1, sm: 2, md: 2, lg: 3, xl: 3, xxl: 3 }}
-        dataSource={REPORTS}
+        dataSource={visibleReports}
         renderItem={(r) => (
           <List.Item style={{ marginBottom: 10 }}>
             <Card size="small" hoverable

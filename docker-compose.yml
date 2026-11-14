@@ -4,7 +4,7 @@
 # server 用法(詳見 DEPLOY.md):
 #   cp .env.example .env   # 並改掉 POSTGRES_PASSWORD
 #   docker compose up --build -d
-#   開 http://<server-ip>:8080
+#   開 http://<server-ip>:10600
 #
 # 本機開發:省略 .env 也可,密碼/port 走預設值。
 
@@ -37,19 +37,23 @@ services:
         condition: service_healthy
     expose:
       - "8126"
-    # 想用 curl/Postman 直打後端時取消註解:
-    # ports:
-    #   - "8126:8126"
+    # 後端對外 port(供 curl/Postman 直打後端;預設 10601)
+    ports:
+      - "${API_PORT:-10601}:8126"
 
   # 前端:nginx 伺服靜態 dist + 反代 /api 到 api
   web:
-    build: ./webui
+    build:
+      context: ./webui
+      args:
+        # 根路徑部署(本機/Docker)= docker;IIS /MEN/ 子路徑部署 = men
+        BUILD_MODE: ${WEB_BUILD_MODE:-docker}
     restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy   # 等後端建模/暖機就緒(Dockerfile HEALTHCHECK)
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "${WEB_PORT:-10600}:80"
 
 volumes:
   pgdata:

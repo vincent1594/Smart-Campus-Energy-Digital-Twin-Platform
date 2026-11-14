@@ -12,8 +12,8 @@
 
 | 容器 | 內容 | 對外 |
 |------|------|------|
-| `web` | nginx：前端靜態檔 + 反代 `/api` | port **8080**（可改） |
-| `api` | FastAPI + pandapower + XGBoost（內含模型與量測資料） | 僅內部 |
+| `web` | nginx：前端靜態檔 + 反代 `/api` | port **10600**（`WEB_PORT`，可改） |
+| `api` | FastAPI + pandapower + XGBoost（內含模型與量測資料） | port **10601**（`API_PORT`,供直打後端;可只走內部） |
 | `db`  | PostgreSQL（訪客統計／設定／回饋持久化） | 僅內部，資料存於 volume |
 
 ## 前置需求
@@ -34,7 +34,7 @@ cd 論文實驗X電錶          # 或 clone 下來的資料夾名
 
 # 2) 設定環境變數（密碼、port）
 cp .env.example .env
-nano .env                 # 改掉 POSTGRES_PASSWORD;要吃 80 port 就把 WEB_PORT 改 80
+nano .env                 # 改掉 POSTGRES_PASSWORD;預設 WEB_PORT=10600、要吃 80 port 就改 80
 
 # 3) 建置並啟動（首次約 5–10 分鐘:裝相依 + 建模）
 docker compose up --build -d
@@ -44,7 +44,7 @@ docker compose ps
 docker compose logs -f api      # 看到 "Application startup complete" 即可
 ```
 
-開瀏覽器：`http://<server-ip>:8080`
+開瀏覽器：`http://<server-ip>:10600`
 
 ## 常用維運指令
 
@@ -61,6 +61,33 @@ git pull && docker compose up --build -d   # 更新到最新版
 
 - **首次啟動較慢**：後端會建立南/北兩個電網模型、跑潮流、背景暖機，約 1–2 分鐘才會 healthy；`depends_on` 已設成等 api healthy 後才放行前端，屬正常。
 - **資料持久化**：DB 存在 named volume `pgdata`，`docker compose down` 不會掉、`down -v` 才會清。
-- **正式對外**：建議在前面再擺一層 nginx/Caddy 反向代理綁網域 + Let's Encrypt 憑證（HTTPS）。內部 `web` 只開 8080，對外用反代轉 443。
+- **正式對外**：建議在前面再擺一層 nginx/Caddy 反向代理綁網域 + Let's Encrypt 憑證（HTTPS）。內部 `web` 只開 10600，對外用反代轉 443。
 - **改了密碼後**：若 DB volume 已存在舊密碼資料，改 `.env` 不會自動換密碼；要全新套用得先 `docker compose down -v`（會清資料）。
 - **設定 `restart: unless-stopped`**：server 重開機後容器會自動拉回。
+
+## 疑難排解
+
+### Windows 開不了頁面 / 綁埠失敗 `bind: An attempt was made to access a socket in a way forbidden by its access permissions`
+
+**症狀**：`docker compose up` 時 web 或 api 起不來,報上面這行;或 `http://localhost:10600` 打不開,但 `docker ps` 看容器其實有在跑。
+
+**原因**：Windows 的 Hyper-V/WSL2 在開機時會**動態保留**一批 100 埠的區塊(例如 `10575–10674`),剛好把預設的 `WEB_PORT=10600` / `API_PORT=10601` 吃掉,導致 Docker 無法綁這些埠。
+
+**先確認**是不是踩到保留區(看你的埠有沒有落在某段範圍內):
+```powershell
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+**解法(擇一)**:
+
+1. **把埠釘死成持久排除(保留 10600/10601,推薦)** — 開**系統管理員** PowerShell 跑:
+   ```powershell
+   net stop winnat
+   netsh int ipv4 add excludedportrange protocol=tcp startport=10600 numberofports=2 store=persistent
+   net start winnat
+   ```
+   跑完再 `show excludedportrange`,`10600 10601` 會標成 `*`(Administered)—— 這種是你自己釘的,程式可以綁,且 Hyper-V 不會再搶。`store=persistent` 重開機後仍有效。之後 `docker compose up -d` 即可。
+
+2. **換一個沒被保留的埠** — 改 `.env` 的 `WEB_PORT`/`API_PORT`(挑上面 `show` 結果所有區塊之外的值),再 `docker compose up -d --force-recreate`。
+
+> 註:同一台機器歷史上也踩過 `8080`(被 `8079–8178` 擋)才改用其他埠。這些區塊每次開機可能位移,若哪天又打不開,先 `show excludedportrange` 對一下再重跑上面步驟。

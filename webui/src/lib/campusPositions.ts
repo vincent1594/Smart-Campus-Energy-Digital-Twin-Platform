@@ -1,6 +1,7 @@
 // 校園地圖背景 + 各棟「多邊形」範圍(不規則,可在校園地圖編輯模式拖頂點/加點/刪點後匯出)。
+import { asset } from "./asset";
 
-export const MAP_IMAGE = "/campus_map_1036x733.png";
+export const MAP_IMAGE = asset("campus_map_1036x733.png");
 // 座標空間維持 1498×1050:各棟多邊形以此為基準校準,新底圖為同一取景的另一解析度,
 // SVG 疊圖以 preserveAspectRatio="none" 等比例對應 → 換圖不影響標記對齊。
 export const MAP_W = 1498;

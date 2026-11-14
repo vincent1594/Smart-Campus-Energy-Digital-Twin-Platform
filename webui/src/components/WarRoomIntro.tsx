@@ -5,6 +5,7 @@
 // ④ 100% 全線帶電:全螢幕白光 + 衝擊波 + 標題 → ⑤ 全網同步心跳脈動 + 前景餘燼。
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
+import { asset } from "../lib/asset";
 import type { BuildingSummary, PowerFlowResult, TransformerDetail } from "../api/types";
 import { BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, NET_NAME, SOURCE_LETTER_BY_NET, buildingLetter, centroid, type Pt } from "../lib/campusPositions";
 
@@ -33,7 +34,7 @@ interface NetData { pf?: PowerFlowResult; buildings: BuildingSummary[]; trafos: 
 interface SourceV { net: string; letter: string; sx: number; sy: number; surgeT: number; maxDist: number; totalKw: number }
 interface NodeV { L: string; cx: number; cy: number; igniteDist: number; color: string; poly: Pt[]; hash: number; srcIdx: number }
 
-export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
+export default function WarRoomIntro({ onEnter, showEnter = true }: { onEnter: () => void; showEnter?: boolean }) {
   const [data, setData] = useState<Record<string, NetData>>({});
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -439,29 +440,28 @@ export default function WarRoomIntro({ onEnter }: { onEnter: () => void }) {
         @keyframes wrStudioCard { 0%, 62% { opacity: 1 } 100% { opacity: 0 } }
         @keyframes wrStudioIn { 0% { opacity: 0; transform: scale(.9) } 55% { opacity: 1 } 100% { opacity: 1; transform: none } }
       `}</style>
-      <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
+      {showEnter && (
+        <a onClick={onEnter} style={{ position: "absolute", top: 22, right: 26, color: "#7c848e", fontFamily: MONO, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>略過 SKIP ▸</a>
+      )}
 
       {/* 校徽 + 校名:全線帶電後從左上角淡入(不擋中間棟別) */}
-      <div style={{ position: "absolute", top: 20, left: 26, display: "flex", alignItems: "center", gap: 12, opacity: 0, animation: "wrIntroBrand 1s cubic-bezier(.2,.8,.2,1) 5.6s forwards", pointerEvents: "none" }}>
-        <img src="/stust-logo.png" alt="南臺科技大學" style={{ height: 42, filter: "drop-shadow(0 0 12px rgba(120,180,255,.6))" }} />
-        <span style={{ color: "#eaf2ff", fontSize: 19, fontWeight: 700, letterSpacing: 2, textShadow: "0 0 22px #1677ffaa" }}>南臺科技大學</span>
+      <div style={{ position: "absolute", top: 20, left: 26, opacity: 0, animation: "wrIntroBrand 1s cubic-bezier(.2,.8,.2,1) 5.6s forwards", pointerEvents: "none" }}>
+        <img src={asset("stust-wordmark-light.png")} alt="南臺科技大學" style={{ height: 30, display: "block", filter: "drop-shadow(0 0 12px rgba(120,180,255,.45))" }} />
       </div>
-      {/* 進入系統:獨立固定於底部、留足邊距,不被標題擠到貼邊 */}
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: "6%", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-        <button onClick={onEnter} style={{
-          opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 7.0s forwards", pointerEvents: "auto",
-          background: "rgba(95,168,255,0.10)", border: "1px solid rgba(120,180,255,0.5)", color: "#cfe2ff", fontFamily: MONO,
-          fontSize: 15, letterSpacing: 3, padding: "11px 30px", cursor: "pointer", borderRadius: 2,
-        }}>進入系統 ▸</button>
-      </div>
+      {/* 進入系統:獨立固定於底部、留足邊距,不被標題擠到貼邊(未登入時隱藏,由登入卡當入口) */}
+      {showEnter && (
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: "6%", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+          <button onClick={onEnter} style={{
+            opacity: 0, transform: "translateY(8px)", animation: "wrIntroBtn 0.7s ease 7.0s forwards", pointerEvents: "auto",
+            background: "rgba(95,168,255,0.10)", border: "1px solid rgba(120,180,255,0.5)", color: "#cfe2ff", fontFamily: MONO,
+            fontSize: 15, letterSpacing: 3, padding: "11px 30px", cursor: "pointer", borderRadius: 2,
+          }}>進入系統 ▸</button>
+        </div>
+      )}
 
       {/* 開場片廠 logo 卡:純黑中央校徽 → 淡出後進入通電序列(置最上層,淡出後不擋操作) */}
       <div style={{ position: "absolute", inset: 0, background: "#01030a", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", animation: "wrStudioCard 2s ease forwards" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, animation: "wrStudioIn 0.9s cubic-bezier(.2,.8,.2,1) forwards" }}>
-          <img src="/stust-logo.png" alt="南臺科技大學" style={{ height: 104, filter: "drop-shadow(0 0 28px rgba(120,180,255,.65))" }} />
-          <div style={{ fontSize: 33, fontWeight: 800, letterSpacing: 9, color: "#eaf2ff", textShadow: "0 0 36px #1677ffcc" }}>南臺科技大學</div>
-          <div style={{ fontSize: 11.5, letterSpacing: 5, color: "#7da8d8", fontFamily: MONO }}>SOUTHERN TAIWAN UNIVERSITY OF SCIENCE AND TECHNOLOGY</div>
-        </div>
+        <img src={asset("stust-wordmark-light.png")} alt="南臺科技大學" style={{ animation: "wrStudioIn 0.9s cubic-bezier(.2,.8,.2,1) forwards", width: "min(640px, 76vw)", height: "auto", display: "block", filter: "drop-shadow(0 0 40px rgba(120,180,255,.45))" }} />
       </div>
     </div>
   );

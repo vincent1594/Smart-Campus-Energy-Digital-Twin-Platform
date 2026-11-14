@@ -32,6 +32,19 @@ class FeederLoading(BaseModel):
     load_ratio_percent: float
 
 
+class BusFlow(BaseModel):
+    """單一母線潮流:電壓大小/相角 + 注入功率 + 母線分類 (Slack/PV/PQ)。"""
+    bus_name: str
+    bus_type: str          # Slack(swing,有 ext_grid) / PV(有電壓控制發電機 gen) / PQ(其餘)
+    vn_kv: float           # 額定電壓 (11.4 / 0.38 / 0.22)
+    vm_pu: float           # 電壓大小 (標么)
+    va_degree: float       # 電壓相角 (度)
+    p_kw: float            # 母線實功 (pandapower res_bus 慣例:消耗為正、供給為負,故 Slack 受電點為負)
+    q_kvar: float          # 母線「淨」無功 (= 負載 Q + 電容 Q;同上慣例)
+    load_q_kvar: float = 0.0   # 該母線負載吃掉的無功 (正=消耗);拆解用,讓電容補償現形
+    shunt_q_kvar: float = 0.0  # 該母線電容器/電抗器的無功 (負=電容供給、正=電抗吸收)
+
+
 class PowerFlowResult(BaseModel):
     converged: bool
     status: str = "OK"   # OK / WARNING(電壓或熱越限) / ERROR(孤島或未供電)
@@ -51,6 +64,7 @@ class PowerFlowResult(BaseModel):
     transformer_loadings: list[TransformerLoading]
     feeder_loadings: list[FeederLoading]
     building_voltages: list[BuildingVoltage]
+    bus_flows: list[BusFlow] = []   # 全母線潮流表 (供電地圖母線潮流分頁)
 
 
 # ---------- Dashboard ----------
@@ -323,6 +337,42 @@ class ScenarioRequest(BaseModel):
 class ScenarioComparison(BaseModel):
     base: PowerFlowResult
     scenario: PowerFlowResult
+
+
+# ---------- 規劃模擬:新增建物(what-if,接法 A = 自受電匯流排新拉一路獨立饋線) ----------
+class PlanTransformerIn(BaseModel):
+    capacity_kva: float
+    lv_voltage: float = 0.38    # 低壓側 kV (0.22 / 0.38)
+    load_kw: float = 0.0
+    pf: float = 0.9
+
+
+class PlanBuildingIn(BaseModel):
+    id: str
+    name: str
+    cable_length_m: float = 100.0
+    cross_section_mm2: Optional[int] = None   # 進站電纜線徑;未填用預設饋線規格
+    transformers: list[PlanTransformerIn] = []
+
+
+class PlanSimulateRequest(BaseModel):
+    buildings: list[PlanBuildingIn]
+
+
+class PlanBuildingLoading(BaseModel):
+    id: str
+    name: str
+    load_ratio_percent: float   # 該棟最大變壓器負載率(供地圖以熱力色階上色)
+    voltage_pu: float           # 該棟最低低壓母線電壓 pu(隨負載/電纜長度變化)
+
+
+class PlanSimulateResult(BaseModel):
+    base: PowerFlowResult
+    scenario: PowerFlowResult
+    added_transformers: list[TransformerLoading] = []   # 新增建物各變壓器負載率
+    added_feeders: list[FeederLoading] = []             # 新增建物進站電纜負載率
+    building_loadings: list[PlanBuildingLoading] = []   # 每棟(id→負載率),供地圖上色
+    warnings: list[str] = []                             # 額定護欄:過載/低壓白話警告
 
 
 # 模擬時間點:用 XGBoost 預測該時刻各饋線負載後模擬

@@ -4,8 +4,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-# --mode docker → 載入 .env.docker(VITE_API_BASE_URL 空 = 相對路徑)
-RUN npm run build -- --mode docker
+# build mode 可切換(由 docker-compose 的 WEB_BUILD_MODE 控制,預設 docker):
+#   docker → .env.docker:根路徑部署(VITE_API_BASE_URL 空 = 相對路徑,本機 localhost)
+#   men    → .env.men   :IIS /MEN/ 子路徑部署(base=/MEN/、API=/MEN,給 ARR 反代)
+ARG BUILD_MODE=docker
+RUN npm run build -- --mode ${BUILD_MODE}
 
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf

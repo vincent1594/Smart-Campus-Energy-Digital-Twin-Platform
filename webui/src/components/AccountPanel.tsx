@@ -1,41 +1,26 @@
-// 帳號面板:點 header 的「總務處 admin」展開。
-// 上:訪客統計(今日/累計 人數+次數 + 近 14 天迷你長條);下:登入表單(展示版)。
-import { Button, Divider, Input, Rate, Tag, Tooltip, message } from "antd";
+// 帳號面板:點 header 的「總務處」展開。登入已移到開場登入卡 —— 進得來就代表已登入。
+// 上:訪客統計(彙總,兩組帳號都可見);下:帳號 + 登出。
+// 訪客 IP 明細 / 使用者回饋明細屬後台個資 → 僅管理者(admin)可見;總務處使用者顯示「僅管理者可見」。
+import { Button, Divider, Rate, Tag, Tooltip } from "antd";
 import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import type { FeedbackList, RecentVisit, VisitStats } from "../api/types";
 
-// ⚠ 展示用前端驗證(非真實安全);正式帳密/權限角色為 V2(見驗證中心路線圖)。
-const DEMO_USER = "admin";
-const DEMO_PASS = "stust2026";
-
 export default function AccountPanel() {
+  const { role, isAdmin, logout } = useAuth();
   const [stats, setStats] = useState<VisitStats>();
-  const [acc, setAcc] = useState("");
-  const [pwd, setPwd] = useState("");
-  const [role, setRole] = useState<string | null>(() => localStorage.getItem("bg_role"));
   const [recent, setRecent] = useState<RecentVisit[]>([]);
   const [fb, setFb] = useState<FeedbackList>();
 
   useEffect(() => { api.visitStats().then(setStats).catch(() => undefined); }, []);
-  // 最近訪客 IP / 回饋明細 屬個資 → 僅登入後才抓
+  // 訪客 IP / 回饋明細屬個資 → 僅管理者抓取
   useEffect(() => {
-    if (!role) return;
+    if (!isAdmin) return;
     api.recentVisits(40).then(setRecent).catch(() => undefined);
     api.feedbackList(50).then(setFb).catch(() => undefined);
-  }, [role]);
-
-  const login = () => {
-    if (acc.trim() === DEMO_USER && pwd === DEMO_PASS) {
-      localStorage.setItem("bg_role", "管理員");
-      setRole("管理員"); setPwd("");
-      message.success("已登入(展示)");
-    } else {
-      message.error("帳號或密碼錯誤");
-    }
-  };
-  const logout = () => { localStorage.removeItem("bg_role"); setRole(null); };
+  }, [isAdmin]);
 
   const maxV = Math.max(1, ...(stats?.daily.map((d) => d.visits) ?? [1]));
 
@@ -44,10 +29,10 @@ export default function AccountPanel() {
       {/* 身分 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <span style={{ fontWeight: 600 }}><UserOutlined style={{ marginInlineEnd: 6 }} />總務處</span>
-        {role ? <Tag color="green">已登入 · {role}</Tag> : <Tag>未登入</Tag>}
+        <Tag color="green">已登入 · {role ?? "—"}</Tag>
       </div>
 
-      {/* 訪客統計 */}
+      {/* 訪客統計(彙總,兩組帳號皆可見) */}
       <Divider orientation="left" plain style={{ margin: "6px 0 8px", fontSize: 12 }}>訪客統計</Divider>
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
         {[["今日", stats?.today_people, stats?.today_visits], ["累計", stats?.total_people, stats?.total_visits]].map(([label, ppl, vis]) => (
@@ -74,11 +59,13 @@ export default function AccountPanel() {
         </>
       )}
 
-      {/* 登入 */}
-      <Divider orientation="left" plain style={{ margin: "10px 0 8px", fontSize: 12 }}>{role ? "帳號" : "登入"}</Divider>
-      {role ? (
+      {/* 帳號 */}
+      <Divider orientation="left" plain style={{ margin: "10px 0 8px", fontSize: 12 }}>帳號</Divider>
+      <Button size="small" block icon={<LogoutOutlined />} onClick={logout}>登出</Button>
+
+      {isAdmin ? (
         <>
-          <Button size="small" block icon={<LogoutOutlined />} onClick={logout}>登出</Button>
+          {/* 最近訪客 IP —— 僅管理者可見 */}
           <Divider orientation="left" plain style={{ margin: "12px 0 6px", fontSize: 12 }}>
             最近訪客 IP <span style={{ color: "#bbb", fontWeight: 400 }}>({recent.length})</span>
           </Divider>
@@ -91,7 +78,7 @@ export default function AccountPanel() {
                 </div>
               ))}
           </div>
-          <div style={{ fontSize: 10, color: "#bbb", marginTop: 6 }}>IP 屬個資,僅登入後可見。</div>
+          <div style={{ fontSize: 10, color: "#bbb", marginTop: 6 }}>IP 屬個資,僅管理者可見。</div>
 
           {/* 使用者回饋(評分 + 留言)—— 僅管理者可見 */}
           <Divider orientation="left" plain style={{ margin: "12px 0 6px", fontSize: 12 }}>
@@ -121,14 +108,9 @@ export default function AccountPanel() {
           </div>
         </>
       ) : (
-        <>
-          <Input size="small" placeholder="帳號" prefix={<UserOutlined />} value={acc} onChange={(e) => setAcc(e.target.value)} style={{ marginBottom: 6 }} />
-          <Input.Password size="small" placeholder="密碼" value={pwd} onChange={(e) => setPwd(e.target.value)} onPressEnter={login} style={{ marginBottom: 8 }} />
-          <Button type="primary" size="small" block onClick={login}>登入</Button>
-          <div style={{ fontSize: 10, color: "#bbb", marginTop: 8, lineHeight: 1.5 }}>
-            展示用前端驗證,非真實安全。正式帳密與權限角色為 V2(見驗證中心路線圖)。
-          </div>
-        </>
+        <div style={{ fontSize: 11, color: "#999", marginTop: 12, lineHeight: 1.6, background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 6, padding: "8px 10px" }}>
+          訪客 IP 明細與使用者回饋屬後台個資,僅<b>管理者</b>可見。
+        </div>
       )}
     </div>
   );
