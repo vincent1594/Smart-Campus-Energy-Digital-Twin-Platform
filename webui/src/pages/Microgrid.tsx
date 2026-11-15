@@ -8,7 +8,6 @@ import type { DerAsset, DerKind } from "../api/types";
 import ScenarioBadge from "../components/ScenarioBadge";
 import Table from "../components/ResizableTable";
 import { useFocus } from "../focus/FocusContext";
-import { useFitPageSize } from "../lib/useFillHeight";
 import { useNetScenario } from "../scenario/ActiveScenarioContext";
 
 const NET = "north";
@@ -24,7 +23,6 @@ export default function Microgrid() {
   const [loading, setLoading] = useState(true);
   const { setFocus } = useFocus();
   const navigate = useNavigate();
-  const fh = useFitPageSize(150);
   // 情境連動:北網有套用情境時,出力改取情境潮流結果
   const { scenario } = useNetScenario(NET);
   const sOut = useMemo(() => new Map(scenario?.der_outputs?.map((o) => [o.der_id, o]) ?? []), [scenario]);
@@ -49,8 +47,8 @@ export default function Microgrid() {
         <Alert type="info" showIcon style={{ marginBottom: 8 }}
           message={<>基準情境 (2023/06/08 14:00 實測淨值) 未拆分太陽能,出力顯示 0;儲能待機、發電機備用。到<a onClick={() => navigate("/scenario")}>「規劃模擬」</a>選時間點可看各設備出力。</>} />
       )}
-      <div ref={fh.ref}>
-        <Table<DerAsset> rowKey="der_id" size="small" dataSource={rows} loading={loading} pagination={{ pageSize: fh.pageSize }}
+      <div>
+        <Table<DerAsset> rowKey="der_id" size="small" dataSource={rows} loading={loading} pagination={false}
           onRow={(r) => ({ onClick: () => { setFocus({ kind: "transformer", id: r.transformer_id, label: r.transformer_id }); navigate("/"); }, style: { cursor: "pointer" } })}
           columns={[
             { title: "站別", dataIndex: "site", width: 120 },
