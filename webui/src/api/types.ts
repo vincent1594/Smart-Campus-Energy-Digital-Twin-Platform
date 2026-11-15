@@ -53,6 +53,11 @@ export interface BuildingDetail {
   transformer_name: string;
   transformer_capacity_kva: number;
   supply_path: SupplyPathNode[];
+  // 微電網:所屬變壓器低壓母線上的本地電源 (無則空)
+  local_bus?: string | null;
+  local_bus_kv?: number | null;
+  local_sources?: DerAsset[];
+  transformer_export_kw?: number;   // 變壓器逆送功率 (>0 = 往台電送)
 }
 
 export interface TransformerDetail {
@@ -183,6 +188,7 @@ export interface TransformerLoading {
   capacity_kva: number;
   actual_load_kva: number;
   load_ratio_percent: number;
+  power_kw?: number;   // 高壓側實功;負值 = 逆送 (低壓側微電網往台電送)
 }
 
 export interface FeederLoading {
@@ -229,11 +235,33 @@ export interface PowerFlowResult {
   feeder_loadings: FeederLoading[];
   building_voltages: BuildingVoltage[];
   bus_flows?: BusFlow[];   // 全母線潮流表 (供電地圖母線潮流分頁;靜態快照可能無此欄)
+  der_outputs?: DerOutput[];      // 微電網設備出力 (發電/放電為正)
+  der_generation_kw?: number;     // 微電網發電合計
+}
+
+// ---------- 微電網 (太陽能 / 儲能 / 發電機) ----------
+export type DerKind = "pv" | "ess" | "gen";
+export interface DerOutput { der_id: string; kind: DerKind; power_kw: number; in_service: boolean }
+export interface DerAsset {
+  der_id: string;
+  name: string;
+  kind: DerKind;
+  site: string;
+  building: string;
+  transformer_id: string;
+  rating_kw: number;
+  kwp: number | null;
+  energy_kwh: number | null;
+  interface: string;
+  note: string;
+  source: string;
+  power_kw: number;      // 基準情境出力
+  in_service: boolean;
 }
 
 export interface TopologyNode {
   id: string;
-  kind: SupplyPathNode["kind"];
+  kind: SupplyPathNode["kind"] | "der";   // der = 微電網設備 (接在變壓器下)
   label: string;
 }
 export interface TopologyEdge {

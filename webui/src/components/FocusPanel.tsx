@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getNetwork } from "../api/client";
-import type { BuildingDetail, BuildingSummary, DashboardSummary, FeederDetail, SupplyPathNode, TransformerDetail, VcbDetail } from "../api/types";
+import type { BuildingDetail, BuildingSummary, DashboardSummary, DerAsset, FeederDetail, PowerFlowResult, SupplyPathNode, TransformerDetail, VcbDetail } from "../api/types";
 import { type Focus, useFocus } from "../focus/FocusContext";
 import { SOURCE_LETTER_BY_NET, buildingLetter } from "../lib/campusPositions";
 import { lvLabel, lvRangeLabel, rangeKV } from "../lib/voltage";
@@ -87,10 +87,77 @@ function OverviewSummary({ buildings, trafos, dash, onPick }: {
   );
 }
 
-// 供電路徑:電纜/變壓器/VCB 可點 → 切焦點
-function PathView({ nodes, onPick }: { nodes: SupplyPathNode[]; onPick: (f: Focus) => void }) {
+/** 建築詳細資料 → 本地電源 (情境連動:有套用情境時出力/逆送改取情境潮流結果);無微電網回 null。 */
+export function localSupplyOf(bd: BuildingDetail, scenario: PowerFlowResult | null): LocalSupply | null {
+  if (!bd.local_sources?.length || !bd.local_bus) return null;
+  const out = new Map(scenario?.der_outputs?.map((o) => [o.der_id, o]) ?? []);
+  const tl = scenario?.transformer_loadings.find((t) => t.transformer_id === bd.transformer_id);
+  return {
+    bus: bd.local_bus,
+    busKv: bd.local_bus_kv ?? null,
+    exportKw: tl?.power_kw != null ? Math.max(0, -tl.power_kw) : (bd.transformer_export_kw ?? 0),
+    sources: bd.local_sources.map((d) => {
+      const o = out.get(d.der_id);
+      return {
+        id: d.der_id, kind: d.kind,
+        size: d.kind === "pv" ? `${d.kwp}kWp` : d.kind === "ess" ? `${d.rating_kw}kW/${d.energy_kwh}kWh` : `${d.rating_kw}kW`,
+        kwp: d.kwp ?? 0, ratingKw: d.rating_kw, energyKwh: d.energy_kwh ?? 0,
+        powerKw: o ? o.power_kw : d.power_kw, inService: o ? o.in_service : d.in_service,
+      };
+    }),
+  };
+}
+
+// 微電網本地電源:在變壓器與建築之間插入「低壓母線匯流點 + 本地電源」
+export interface LocalSupply {
+  bus: string;
+  busKv: number | null;
+  sources: { id: string; kind: "pv" | "ess" | "gen"; size: string; kwp: number; ratingKw: number; energyKwh: number; powerKw: number; inService: boolean }[];
+  exportKw: number;   // 變壓器逆送 (>0 = 往台電送)
+}
+
+// 供電路徑:電纜/變壓器/VCB 可點 → 切焦點;有微電網時插入匯流母線與本地電源 (點本地電源 → 微電網頁)
+function PathView({ nodes, onPick, local, onOpenMicrogrid }: {
+  nodes: SupplyPathNode[]; onPick: (f: Focus) => void; local?: LocalSupply | null; onOpenMicrogrid?: () => void;
+}) {
+  type Row = { t: "node"; n: SupplyPathNode } | { t: "bus" };
+  const rows: Row[] = [];
+  nodes.forEach((n) => {
+    if (n.kind === "building" && local) rows.push({ t: "bus" });
+    rows.push({ t: "node", n });
+  });
+  // 本地電源依類型合併成一列 (例:☀98kWp 0kW · 🔋200kW/430kWh 待機),維持焦點面板一頁不捲動
+  const kindSummary = (k: "pv" | "ess" | "gen") => {
+    const ss = local?.sources.filter((s) => s.kind === k) ?? [];
+    if (!ss.length) return null;
+    const p = ss.reduce((a, s) => a + (s.inService ? s.powerKw : 0), 0);
+    const tot = (f: (s: (typeof ss)[number]) => number) => +ss.reduce((a, s) => a + f(s), 0).toFixed(2);
+    const size = k === "pv" ? `${tot((s) => s.kwp)}kWp`
+      : k === "ess" ? `${tot((s) => s.ratingKw)}kW/${tot((s) => s.energyKwh)}kWh` : `${tot((s) => s.ratingKw)}kW`;
+    const state = ss.every((s) => !s.inService) ? "備用" : k === "ess" && Math.abs(p) < 0.05 ? "待機"
+      : p < 0 ? `充電${(-p).toFixed(0)}kW` : `${p.toFixed(0)}kW`;
+    return { icon: { pv: "☀", ess: "🔋", gen: "⚡" }[k], size, state, live: p > 0.05 };
+  };
+  const compact = { padding: "5px 0" };
   return (
-    <List size="small" dataSource={nodes} renderItem={(n) => {
+    <List size="small" dataSource={rows} renderItem={(r) => {
+      if (r.t === "bus") return (
+        <List.Item style={{ ...compact, cursor: onOpenMicrogrid ? "pointer" : undefined, display: "block" }} onClick={onOpenMicrogrid}>
+          <Space size={6}>
+            <Tag color="green">母線</Tag>
+            <span>{local!.bus}{local!.busKv ? ` ${Math.round(local!.busKv * 1000)}V` : ""}</span>
+            <span style={{ color: "#999", fontSize: 12 }}>＋本地電源</span>
+          </Space>
+          <div style={{ fontSize: 12, marginTop: 2, paddingLeft: 4, color: "#666" }}>
+            {(["pv", "ess", "gen"] as const).map((k) => kindSummary(k)).filter(Boolean).map((s, i) => (
+              <span key={i} style={{ marginRight: 10, whiteSpace: "nowrap" }}>
+                {s!.icon} {s!.size} <span style={{ color: s!.live ? "#389e0d" : "#999" }}>{s!.state}</span>
+              </span>
+            ))}
+          </div>
+        </List.Item>
+      );
+      const n = r.n;
       const clickable = n.kind === "vcb" || n.kind === "feeder" || n.kind === "transformer";
       const extra = n.kind === "feeder"
         ? `${n.length_m?.toFixed(0) ?? "?"}m · ${n.cross_section_mm2 ?? "?"}mm² · ${n.load_ratio_percent?.toFixed(0) ?? "?"}%`
@@ -98,12 +165,13 @@ function PathView({ nodes, onPick }: { nodes: SupplyPathNode[]; onPick: (f: Focu
         ? `${n.capacity_kva ?? "?"}kVA · ${n.load_ratio_percent?.toFixed(0) ?? "?"}%`
         : "";
       return (
-        <List.Item style={clickable ? { cursor: "pointer" } : undefined}
+        <List.Item style={clickable ? { ...compact, cursor: "pointer" } : compact}
           onClick={clickable ? () => onPick({ kind: n.kind as Focus["kind"], id: n.id, label: n.name }) : undefined}>
           <Space size={6}>
             <Tag>{kindStep[n.kind]}</Tag>
             <span>{n.name}</span>
             {extra && <span style={{ color: "#999", fontSize: 12 }}>{extra}</span>}
+            {n.kind === "transformer" && local && local.exportKw > 0.5 && <Tag color="orange">逆送 {local.exportKw.toFixed(1)} kW</Tag>}
           </Space>
         </List.Item>
       );
@@ -118,6 +186,7 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
   const [tr, setTr] = useState<TransformerDetail | null>(null);
   const [fd, setFd] = useState<FeederDetail | null>(null);
   const [vcb, setVcb] = useState<VcbDetail | null>(null);
+  const [trDers, setTrDers] = useState<DerAsset[]>([]);   // 焦點變壓器低壓側的微電網設備
 
   const { scenario } = useNetScenario();
   const sTrafo = useMemo(() => new Map(scenario?.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]) ?? []), [scenario]);
@@ -134,10 +203,13 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
   };
 
   useEffect(() => {
-    setBd(null); setTr(null); setFd(null); setVcb(null);
+    setBd(null); setTr(null); setFd(null); setVcb(null); setTrDers([]);
     if (!focus) return;
     if (focus.kind === "building") api.building(focus.id).then(setBd).catch(() => {});
-    else if (focus.kind === "transformer") api.transformer(focus.id).then(setTr).catch(() => {});
+    else if (focus.kind === "transformer") {
+      api.transformer(focus.id).then(setTr).catch(() => {});
+      api.der().then((ds) => setTrDers(ds.filter((d) => d.transformer_id === focus.id))).catch(() => setTrDers([]));
+    }
     else if (focus.kind === "feeder") api.feeder(focus.id).then(setFd).catch(() => {});
     else if (focus.kind === "vcb") api.vcbs().then((vs) => setVcb(vs.find((v) => v.id === focus.id) ?? null));
   }, [focus]);
@@ -205,7 +277,8 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
           </List.Item>
         )} />
         <Divider orientation="left" style={{ margin: "8px 0" }}>供電路徑</Divider>
-        <PathView nodes={(bd?.supply_path ?? []).map((n) => n.kind === "transformer" ? { ...n, load_ratio_percent: trRatio(n.id, n.load_ratio_percent ?? null) } : n.kind === "feeder" ? { ...n, load_ratio_percent: fdRatio(n.id, n.load_ratio_percent ?? null) } : n)} onPick={setFocus} />
+        <PathView nodes={(bd?.supply_path ?? []).map((n) => n.kind === "transformer" ? { ...n, load_ratio_percent: trRatio(n.id, n.load_ratio_percent ?? null) } : n.kind === "feeder" ? { ...n, load_ratio_percent: fdRatio(n.id, n.load_ratio_percent ?? null) } : n)} onPick={setFocus}
+          local={bd ? localSupplyOf(bd, scenario) : null} onOpenMicrogrid={() => navigate("/microgrid")} />
         <Button type="primary" ghost size="small" style={{ marginTop: 8 }} onClick={() => navigate("/scenario")}>規劃模擬</Button>
       </>
     );
@@ -232,6 +305,22 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
           <Descriptions.Item label="所屬 VCB">{tr.vcb_name}</Descriptions.Item>
           <Descriptions.Item label="連接負載點">{tr.connected_building_count} 個 / {effTrLoad(tr).toFixed(1)} kW</Descriptions.Item>
           <Descriptions.Item label="運轉狀態">{(trRatio(tr.id, tr.load_ratio_percent) ?? 0) > 100 ? <Tag color="red">過載</Tag> : <Tag color="green">正常</Tag>}</Descriptions.Item>
+          {trDers.length > 0 && (
+            <Descriptions.Item label="微電網">
+              <Space size={[4, 4]} wrap>
+                {trDers.map((d) => {
+                  const o = scenario?.der_outputs?.find((x) => x.der_id === d.der_id);
+                  const on = o ? o.in_service : d.in_service;
+                  const p = o ? o.power_kw : d.power_kw;
+                  const icon = d.kind === "pv" ? "☀" : d.kind === "ess" ? "🔋" : "⚡";
+                  const size = d.kind === "pv" ? `${d.kwp}kWp` : d.kind === "ess" ? `${d.rating_kw}kW/${d.energy_kwh}kWh` : `${d.rating_kw}kW`;
+                  return <Tag key={d.der_id} color={d.kind === "pv" ? "green" : d.kind === "ess" ? "cyan" : "orange"}>
+                    {icon} {d.der_id} {size} · {on ? `${p.toFixed(0)}kW` : "備用"}
+                  </Tag>;
+                })}
+              </Space>
+            </Descriptions.Item>
+          )}
         </Descriptions>
         <Button type="primary" ghost size="small" onClick={() => navigate("/scenario")}>規劃模擬</Button>
       </>

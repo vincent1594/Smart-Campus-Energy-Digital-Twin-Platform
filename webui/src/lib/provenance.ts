@@ -24,6 +24,7 @@ export const PROVENANCE: ProvenanceItem[] = [
   { feature: "變壓器銘牌規格", tier: "measured", source: "各站變壓器規格容量表 (Excel)", note: "設備查詢「規格明細」忠實呈現,不對應潮流模型", page: "設備查詢" },
   { feature: "樓地板面積", tier: "measured", source: "112 年校舍統計表", note: "建築查詢 / EUI 分母", page: "設備查詢 · 用電強度" },
   { feature: "契約容量 3,250 kW", tier: "measured", source: "營繕組確認", note: "北電錶經常契約;影響全部需量/罰款計算", page: "能源管理" },
+  { feature: "微電網設備(C/D、Z 棟太陽能/儲能/發電機)", tier: "measured", source: "技師用印竣工圖 ESS-2.1(大同智能,竣工 2025-10-31)", note: "C/D:PV 98.01kWp、儲能 200kW/430kWh;Z:PV 29.4kWp、儲能 25kW/105kWh、LPG 14kW。D 棟 PV 由原 112.86 改竣工值", page: "微電網" },
   { feature: "電網拓樸(線徑/容量/VCB 接線)", tier: "measured", source: "校內單線圖 / 設備清冊", note: "pandapower 建模基礎(饋線長度除外,見下方)", page: "校園總覽 · 設備查詢" },
 
   // 🔵 模型推算
@@ -37,6 +38,7 @@ export const PROVENANCE: ProvenanceItem[] = [
   { feature: "EUI 參考基準 120", tier: "assumption", source: "全國大專參考區間", note: "建議填學校歷史值;前端可編輯", page: "用電強度" },
   { feature: "汰換風險權重", tier: "assumption", source: "工程判斷(屆齡.40/負載.25/溫度.20/效率.15)", note: "相對排序,非絕對壽命", page: "設備查詢 · 汰換優先序" },
   { feature: "饋線長度 / R / X", tier: "assumption", source: "長度推估(×1.2 經驗係數)、R/X = 線徑單位阻抗 × 長度", note: "實際佈線長度未量測;影響潮流壓降/損耗精度,設備查詢已標「估」", page: "設備查詢 · 饋線" },
+  { feature: "微電網運轉狀態(儲能待機、發電機備用)", tier: "assumption", source: "基準情境假設", note: "尚未接 EMS 即時 SOC/充放電;太陽能出力 = kWp × 日照係數(基準為實測淨值,係數 0)", page: "微電網" },
   { feature: "各棟年用電量", tier: "assumption", source: "現況負載占比 × 全校年預測", note: "近似分配,非各棟獨立電錶", page: "用電強度" },
   { feature: "汰換投資回收(成本/年省/回收年限)", tier: "assumption", source: "標準變壓器損耗模型 + 換新單價假設", note: "節能用銘牌典型損耗(非 spec.efficiency,其值域不合理);單價/電價前端可編輯", page: "設備查詢 · 汰換投資回收" },
   { feature: "規劃新增建物模擬", tier: "assumption", source: "接法 A:自受電匯流排新拉獨立饋線;電纜線徑預設 60mm²", note: "疊入 pandapower 重跑潮流 + 額定護欄(過載/低壓);連接方式與線徑為規劃假設,可再細化", page: "規劃模擬" },
@@ -55,6 +57,7 @@ export const LIMITATIONS: string[] = [
   "設備汰換為相對風險排序,需現場檢測(油測 / 紅外線)佐證。",
   "校園總覽可拖曳尖峰日 24h 各時段,但全平台仍為情境快照、無長期時序資料庫(EMS 各饋線約 4 個月〔3–6月〕、另 9–10 月僅總量;缺 7–8 月暑假與整年)。",
   "登入為展示用前端驗證(帳密寫死於前端、兩組帳號),非真實安全;正式後端帳密 / 權限角色為 V2。訪客人數以裝置(visitor_id)計;IP 於反向代理後可能顯示為單一出口位址。",
+  "微電網設備直接掛在 TR_CD / TR_Z_MAIN 的 220V 母線;中間的介接變壓器(200/75/50kVA)未建成潮流元件,其損耗與壓降未計。C/D、Z 的太陽能以發電設備呈現(負載為實際用電),L/M/P 的太陽能仍從負載淨扣。",
   "規劃模擬「新增建物」為 what-if 疊加:採接法 A(自受電匯流排新拉一路獨立饋線)、電纜線徑預設 60mm²,屬規劃假設;疊入 pandapower 重跑潮流並做額定護欄,尚未接經濟(電池/回收)最佳化。",
 ];
 
@@ -108,6 +111,7 @@ export const ROADMAP: RoadmapItem[] = [
   { title: "歷史趨勢 + 互動單線圖", status: "done" },
   { title: "校園總覽日負載曲線:拖曳基準點看尖峰日各時段", status: "done", note: "基準改 EMS 實測尖峰日(2023/06/08, 4,220kW);拖曳即時連動 KPI/地圖/焦點" },
   { title: "驗證中心", status: "done" },
+  { title: "微電網建模(C/D、Z 竣工圖):微電網頁 + 單線圖節點", status: "done", note: "下一步:規劃模擬儲能充放電/發電機控制、地圖圖示" },
   { title: "設備汰換投資回收(NT$/回收年限)", status: "done", note: "高風險群換新總額/年省/回收年限" },
   { title: "需量預測升級:行事曆 + 近期負載(逐週不同)", status: "done", note: "3–5月訓/6月驗 MAPE~20%;預測vs實際對照、點圖查逐時各饋線" },
   { title: "規劃模擬:地圖新增建物 → 疊入潮流 + 額定護欄", status: "done", note: "接法A(自受電匯流排新拉獨立饋線);變壓器/電纜過載、低壓白話警告" },

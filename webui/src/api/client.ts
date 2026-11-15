@@ -7,6 +7,7 @@ import type {
   DashboardSummary,
   DemandForecast,
   DemandStatus,
+  DerAsset,
   EUIReport,
   FeedbackList,
   FeedbackResult,
@@ -116,6 +117,8 @@ export const api = {
     return get<ReplacementEconomicsReport>(napi(`/assets/replacement-economics${s ? `?${s}` : ""}`));
   },
   vcbs: () => get<VcbDetail[]>(napi("/assets/vcbs")),
+  der: () => get<DerAsset[]>(napi("/assets/der")),
+  derOf: (net: string) => get<DerAsset[]>(`/api/${net}/assets/der`),
   feeders: () => get<FeederDetail[]>(napi("/assets/feeders")),
   feeder: (id: string) => get<FeederDetail>(napi(`/assets/feeders/${encodeURIComponent(id)}`)),
   topology: () => get<TopologyGraph>(napi("/topology")),
