@@ -254,29 +254,33 @@ export default function FocusPanel({ buildings, trafos, dash }: { buildings: Bui
       <>
         {isSource && (
           <>
-            <Space><Tag color="purple">受電站</Tag><b style={{ fontSize: 16 }}>{letter}棟</b></Space>
-            <Descriptions column={1} size="small" style={{ marginTop: 8 }}>
-              <Descriptions.Item label="進線">台電 11.4kV(本棟為{side}受電站)</Descriptions.Item>
-              <Descriptions.Item label="VCB">{dash?.vcb_count ?? "—"} 路匯集於本棟</Descriptions.Item>
-              <Descriptions.Item label="停電影響">此處停電 → 整個{side}系統停電</Descriptions.Item>
-            </Descriptions>
-            <Divider style={{ margin: "10px 0" }} />
+            <Space size={6}><Tag color="purple">受電站</Tag><span style={{ fontSize: 13, color: "#555" }}>台電 11.4kV 進線 · {dash?.vcb_count ?? "—"} 路 VCB 匯集</span></Space>
+            <div style={{ marginTop: 4, fontSize: 12, color: "#cf1322" }}>此處停電 → 整個{side}系統停電</div>
+            <Divider style={{ margin: "8px 0" }} />
           </>
         )}
-        <Space><Tag color="blue">建築</Tag><b style={{ fontSize: 16 }}>{letter}棟</b></Space>
-        <Descriptions column={1} size="small" style={{ marginTop: 8 }}>
-          <Descriptions.Item label="區域總負載">{totalLoad.toFixed(1)} kW</Descriptions.Item>
-          <Descriptions.Item label="最高負載率"><LoadRatioTag ratio={maxRatio} /></Descriptions.Item>
-          <Descriptions.Item label="所屬 VCB">{vcbName}</Descriptions.Item>
-        </Descriptions>
-        <Divider orientation="left" style={{ margin: "8px 0" }}>變壓器(點擊切換)</Divider>
-        <List size="small" dataSource={zoneTrafos} renderItem={(t) => (
-          <List.Item style={{ cursor: "pointer" }} onClick={() => setFocus({ kind: "transformer", id: t.id, label: t.name })}>
-            <span>{t.name}（{t.capacity_kva} kVA）</span>
-            <LoadRatioTag ratio={trRatio(t.id, t.load_ratio_percent)} />
-          </List.Item>
-        )} />
-        <Divider orientation="left" style={{ margin: "8px 0" }}>供電路徑</Divider>
+        {/* 精簡版:基本資料兩行 + 變壓器小標籤 (多台時不再一台一列),維持焦點面板一頁不捲動 */}
+        <Space size={6} wrap>
+          <Tag color="blue">建築</Tag><b style={{ fontSize: 16 }}>{letter}棟</b>
+          <LoadRatioTag ratio={maxRatio} />
+        </Space>
+        <div style={{ marginTop: 6, fontSize: 13, color: "#555" }}>
+          區域總負載 <b>{totalLoad.toFixed(1)} kW</b><span style={{ color: "#ccc", margin: "0 6px" }}>|</span>{vcbName}
+        </div>
+        <Divider orientation="left" style={{ margin: "8px 0 6px" }}>變壓器(點擊切換)</Divider>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {zoneTrafos.map((t) => {
+            const r = trRatio(t.id, t.load_ratio_percent);
+            const c = r == null ? "#999" : r > 100 ? "#ff4d4f" : r >= 80 ? "#fa8c16" : "#52c41a";
+            return (
+              <span key={t.id} onClick={() => setFocus({ kind: "transformer", id: t.id, label: t.name })}
+                style={{ cursor: "pointer", fontSize: 12, padding: "2px 8px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fafafa", whiteSpace: "nowrap" }}>
+                {t.name} <span style={{ color: "#999" }}>{t.capacity_kva}kVA</span> <b style={{ color: c }}>{r != null ? `${r.toFixed(0)}%` : "—"}</b>
+              </span>
+            );
+          })}
+        </div>
+        <Divider orientation="left" style={{ margin: "8px 0 4px" }}>供電路徑</Divider>
         <PathView nodes={(bd?.supply_path ?? []).map((n) => n.kind === "transformer" ? { ...n, load_ratio_percent: trRatio(n.id, n.load_ratio_percent ?? null) } : n.kind === "feeder" ? { ...n, load_ratio_percent: fdRatio(n.id, n.load_ratio_percent ?? null) } : n)} onPick={setFocus}
           local={bd ? localSupplyOf(bd, scenario) : null} onOpenMicrogrid={() => navigate("/microgrid")} />
         <Button type="primary" ghost size="small" style={{ marginTop: 8 }} onClick={() => navigate("/scenario")}>規劃模擬</Button>
