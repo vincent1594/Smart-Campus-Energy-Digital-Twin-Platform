@@ -17,6 +17,7 @@ const CampusMapPage = lazy(() => import("./pages/CampusMapPage"));
 const DemandManagement = lazy(() => import("./pages/DemandManagement"));
 const EnergyIntensity = lazy(() => import("./pages/EnergyIntensity"));
 const HistoryTrends = lazy(() => import("./pages/HistoryTrends"));
+const Microgrid = lazy(() => import("./pages/Microgrid"));
 const Report = lazy(() => import("./pages/Report"));
 const Scenario = lazy(() => import("./pages/Scenario"));
 const VerificationCenter = lazy(() => import("./pages/VerificationCenter"));
@@ -59,6 +60,7 @@ export default function App() {
                 <Route path="/assets" element={<AssetExplorer />} />
                 <Route path="/scenario" element={<Scenario />} />
                 <Route path="/demand" element={<DemandManagement />} />
+                <Route path="/microgrid" element={<Microgrid />} />
                 <Route path="/eui" element={<EnergyIntensity />} />
                 <Route path="/history" element={<HistoryTrends />} />
                 <Route path="/alarms" element={<Alarms />} />

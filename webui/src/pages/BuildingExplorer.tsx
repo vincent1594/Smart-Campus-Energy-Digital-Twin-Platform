@@ -8,6 +8,7 @@ import { useFitPageSize } from "../lib/useFillHeight";
 import { useNetScenario } from "../scenario/ActiveScenarioContext";
 import { loadScale, trafoRatioMap } from "../lib/scenarioScale";
 import ScenarioBadge from "../components/ScenarioBadge";
+import { localSupplyOf } from "../components/FocusPanel";
 
 const kindLabel: Record<string, string> = {
   source: "台電進線",
@@ -102,10 +103,29 @@ export function BuildingsPanel() {
               direction="vertical"
               size="small"
               current={detail.supply_path.length - 1}
-              items={detail.supply_path.map((n) => ({
-                title: n.name,
-                description: kindLabel[n.kind] ?? n.kind,
-              }))}
+              items={detail.supply_path.map((n) => {
+                // 微電網:變壓器那一步下方加一行本地電源摘要 (+ 逆送)
+                const local = n.kind === "transformer" ? localSupplyOf(detail, scenario) : null;
+                const sum = (k: "pv" | "ess" | "gen") => (detail.local_sources ?? []).filter((d) => d.kind === k);
+                const pv = sum("pv").reduce((s, d) => s + (d.kwp ?? 0), 0);
+                const ess = sum("ess"); const gen = sum("gen");
+                const txt = [
+                  pv ? `☀${+pv.toFixed(2)}kWp` : "",
+                  ess.length ? `🔋${ess.reduce((s, d) => s + d.rating_kw, 0)}kW/${ess.reduce((s, d) => s + (d.energy_kwh ?? 0), 0)}kWh` : "",
+                  gen.length ? `⚡${gen.reduce((s, d) => s + d.rating_kw, 0)}kW` : "",
+                ].filter(Boolean).join(" ");
+                return {
+                  title: n.name,
+                  description: local ? (
+                    <>
+                      {kindLabel[n.kind] ?? n.kind}
+                      <div style={{ color: "#389e0d", fontSize: 12 }}>＋ 本地電源 {txt}
+                        {local.exportKw > 0.5 && <Tag color="orange" style={{ marginLeft: 6 }}>逆送 {local.exportKw.toFixed(1)} kW</Tag>}
+                      </div>
+                    </>
+                  ) : (kindLabel[n.kind] ?? n.kind),
+                };
+              })}
             />
           </>
         )}

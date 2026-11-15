@@ -2,8 +2,37 @@
 // 顯示:focusLetter/highlight 連動、dark 深色發光、showConnectors 受電站→棟連線。
 // 編輯(editable):拖頂點移動、雙擊多邊形邊加頂點、雙擊頂點刪除;onPolyChange 回拋。
 import { useEffect, useId, useRef, useState } from "react";
-import { BUILDING_HOLES, BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, type Pt, centroid, ratioColor, shapePath } from "../lib/campusPositions";
+import { BUILDING_HOLES, BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, MG_BADGE_POS, type Pt, centroid, ratioColor, shapePath } from "../lib/campusPositions";
 import { PLAN_COLOR, type PlanBuilding } from "../lib/planBuildings";
+import { MICROGRID_NET, useMicrogridBadges } from "../lib/microgrid";
+import { useNetScenario } from "../scenario/ActiveScenarioContext";
+import type { DerKind } from "../api/types";
+
+// 再生能源徽章圖示 (自繪 SVG,各平台一致):太陽能=太陽、儲能=電池、發電機/微電網供電=閃電
+const MG_COLOR: Record<DerKind | "served", string> = { pv: "#faad14", ess: "#13c2c2", gen: "#fa8c16", served: "#52c41a" };
+function MgIcon({ kind, size = 13 }: { kind: DerKind | "served"; size?: number }) {
+  const c = MG_COLOR[kind];
+  if (kind === "pv") return (
+    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden>
+      <circle cx="8" cy="8" r="3.2" fill={c} />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+        <line key={a} x1="8" y1="1.2" x2="8" y2="3.2" stroke={c} strokeWidth="1.6" strokeLinecap="round" transform={`rotate(${a} 8 8)`} />
+      ))}
+    </svg>
+  );
+  if (kind === "ess") return (
+    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden>
+      <rect x="4" y="2.5" width="8" height="12" rx="1.6" fill="none" stroke={c} strokeWidth="1.6" />
+      <rect x="6.3" y="1" width="3.4" height="1.8" rx=".5" fill={c} />
+      <rect x="5.6" y="8" width="4.8" height="5" rx=".6" fill={c} />
+    </svg>
+  );
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden>
+      <path d="M9.4 1 3.5 9.2h4L6.6 15l5.9-8.2h-4z" fill={c} />
+    </svg>
+  );
+}
 
 export interface MapMarker {
   letter: string;
@@ -65,6 +94,13 @@ export default function CampusMapStatic({
   const accent = dark ? "#00e5ff" : "#1677ff";
   const [hover, setHover] = useState<string | null>(null);   // 滑鼠移入/鍵盤聚焦的建物 → 顯示浮動名牌
   const uid = useId().replace(/:/g, "");   // 同頁多張地圖時 clipPath id 不互撞
+  // 再生能源徽章 (C/D/Z):有設備者列圖示;套用北網情境且有出力時亮起並顯示發電量
+  const mgBadges = useMicrogridBadges();
+  const { scenario: mgScenario } = useNetScenario(MICROGRID_NET);
+  const mgOutput = (ids: string[]) => ids.reduce((s, id) => {
+    const o = mgScenario?.der_outputs?.find((x) => x.der_id === id);
+    return s + (o && o.in_service ? Math.max(0, o.power_kw) : 0);
+  }, 0);
 
   // 編輯模式畫布視圖:s=縮放倍率、tx/ty=平移(外層容器 px)。非編輯模式恆為 1×。
   const [view, setView] = useState({ s: 1, tx: 0, ty: 0 });
@@ -218,6 +254,11 @@ export default function CampusMapStatic({
                   <span style={{ width: 9, height: 9, borderRadius: 2, background: col, display: "inline-block" }} />{lab}
                 </span>
               ))}
+              {markers.some((m) => mgBadges.has(m.letter)) && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 2, paddingLeft: 8, borderLeft: `1px solid ${dark ? "rgba(255,255,255,.18)" : "#e5e5e5"}` }}>
+                  <MgIcon kind="pv" size={11} /><MgIcon kind="ess" size={11} />再生能源
+                </span>
+              )}
             </>
           )}
         </div>
@@ -405,6 +446,37 @@ export default function CampusMapStatic({
         )}
       </svg>
 
+      {/* 再生能源徽章:建物外框右上角的固定大小膠囊 (HTML 疊加,不隨 SVG 拉伸變形);不吃事件,點擊穿到建物。
+          有設備者列 ☀/🔋/⚡;僅共用變壓器者 (C 棟) 為淡色虛框「微電網供電」。北網情境有出力時亮起並顯示 kW。 */}
+      {!editable && markers.map((m) => {
+        const bd = mgBadges.get(m.letter);
+        const pts = POS[m.letter];
+        if (!bd || !pts) return null;
+        const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+        const kw = bd.served ? 0 : mgOutput(bd.derIds);
+        const live = kw > 0.05;
+        // 預先搜好的空位 (MG_BADGE_POS) 置中於該點;否則退回外框右上角
+        const spot = MG_BADGE_POS[m.letter];
+        const vertical = !!spot?.vertical;   // 徽章尺寸固定 (發電量只在名牌顯示),才不會變寬壓到旁邊
+        return (
+          <div key={"mg" + m.letter} className={`cms-mg-badge${live ? " cms-mg-badge--live" : ""}`}
+            style={{
+              position: "absolute", zIndex: 21, pointerEvents: "none", lineHeight: 1,
+              left: `${((spot ? spot.at[0] : Math.max(...xs)) / MAP_W) * 100}%`,
+              top: `${((spot ? spot.at[1] : Math.min(...ys)) / MAP_H) * 100}%`,
+              transform: spot ? "translate(-50%, -50%)" : "translate(-38%, -62%)",
+              display: "flex", flexDirection: vertical ? "column" : "row", alignItems: "center", gap: 1, whiteSpace: "nowrap",
+              padding: bd.served ? "2px" : vertical ? "3px 2px" : "2px 3px", borderRadius: 999,
+              background: dark ? "rgba(8,22,44,.86)" : "rgba(255,255,255,.95)",
+              border: bd.served ? `1px dashed ${dark ? "rgba(82,196,26,.55)" : "rgba(82,196,26,.7)"}` : `1px solid ${dark ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.08)"}`,
+              boxShadow: dark ? "0 2px 6px rgba(0,0,0,.5)" : "0 1px 4px rgba(20,40,80,.18)",
+              opacity: bd.served ? 0.82 : 1,
+            }}>
+            {bd.served ? <MgIcon kind="served" size={8} /> : bd.kinds.map((k) => <MgIcon key={k} kind={k} size={8} />)}
+          </div>
+        );
+      })}
+
       {/* 浮動名牌:僅滑鼠移入(或鍵盤 Tab 聚焦)的建物上方浮出;移開即消失,不常駐以免擋到其他建物。不吃事件,點擊穿到建物本身 */}
       {!editable && !placingPlan && (() => {
         const letter = hover;
@@ -421,25 +493,28 @@ export default function CampusMapStatic({
         return (
           <div key={m.letter} style={{ position: "absolute", left: `${cx}%`, top: `${yPct}%`, zIndex: 25, pointerEvents: "none",
             transform: below ? "translate(-50%, 8px)" : "translate(-50%, calc(-100% - 8px))", lineHeight: 1.4 }}>
+            {/* 一行:棟號 名稱 負載率 (+ 微電網小圖示);選取中的棟以藍框表示 */}
             <div className="cms-pill-in" style={{
-              display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap", fontSize: 12.5,
-              padding: "5px 10px 5px 8px", borderRadius: 999,
+              display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", fontSize: 12.5,
+              padding: "4px 9px", borderRadius: 999,
               background: dark ? "rgba(8,22,44,.84)" : "rgba(255,255,255,.94)",
               color: dark ? "#e6f7ff" : "#1f2a37",
-              border: `1px solid ${dark ? "rgba(0,229,255,.32)" : "rgba(22,119,255,.16)"}`,
+              border: `1px solid ${selected ? accent : dark ? "rgba(0,229,255,.32)" : "rgba(22,119,255,.16)"}`,
               boxShadow: dark ? "0 6px 20px rgba(0,0,0,.45), 0 0 12px rgba(0,229,255,.18)" : "0 6px 18px rgba(20,40,80,.16)",
               backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
             }}>
-              <span style={{ width: 9, height: 9, borderRadius: "50%", background: c.bg, boxShadow: `0 0 0 3px ${c.bg}33` }} />
               <b style={{ fontWeight: 700 }}>{m.letter}棟</b>
-              <span style={{ opacity: 0.85, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
+              <span style={{ opacity: 0.85, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
               {m.ratio != null && (
-                <span className="num-tab" style={{ fontSize: 11.5, fontWeight: 600, padding: "0 7px", borderRadius: 999,
+                <span className="num-tab" style={{ fontSize: 11.5, fontWeight: 600, padding: "0 6px", borderRadius: 999,
                   background: `${c.bg}${dark ? "33" : "26"}`, color: dark ? "#fff" : c.border }}>{m.ratio.toFixed(0)}%</span>
               )}
-              <span style={{ fontSize: 11.5, fontWeight: 600, color: selected ? (dark ? "#8ff0ff" : "#389e0d") : accent }}>
-                {selected ? "已選取 ✓" : "點擊查看 ›"}
-              </span>
+              {mgBadges.get(m.letter) && (
+                <span style={{ display: "inline-flex", gap: 1 }}>
+                  {mgBadges.get(m.letter)!.served ? <MgIcon kind="served" size={11} />
+                    : mgBadges.get(m.letter)!.kinds.map((k) => <MgIcon key={k} kind={k} size={11} />)}
+                </span>
+              )}
             </div>
           </div>
         );

@@ -438,7 +438,7 @@ export default function MapExplorer() {
                 <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
                   <div style={{ fontSize: 12, color: dark ? "#8aa" : "#999", padding: "0 2px 6px" }}>
                     牛頓-拉夫遜潮流 · {busFlows.length} 條母線 · Slack {slackCount}、PV 0、其餘 PQ。
-                    Slack(swing)＝台電受電點,定電壓 1.0∠0°;此電網無發電機,故無 PV 母線。電壓越限(&lt;0.95 或 &gt;1.05 pu)標紅。
+                    Slack(swing)＝台電受電點,定電壓 1.0∠0°;微電網太陽能/儲能/發電機以定功率(PQ)注入建模、不控制電壓,故無 PV 母線。電壓越限(&lt;0.95 或 &gt;1.05 pu)標紅。
                     <span style={{ color: "#13a8a8" }}>「淨Q＝負載Q＋電容Q」,電容器供給無功記負值(青色)。</span>
                     {" "}PF＝該母線淨功因(滯=電感性、超=電容性;&lt;0.9 標橙)。
                   </div>

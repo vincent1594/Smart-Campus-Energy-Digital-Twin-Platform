@@ -66,9 +66,14 @@ body {
 .cms-pill-in { animation: cmsPillIn .18s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes cmsPillIn { from { opacity: 0; transform: translateY(4px) scale(.96); } to { opacity: 1; transform: none; } }
 
+/* 地圖再生能源徽章:淡入;有出力時綠色呼吸光暈 */
+.cms-mg-badge { animation: cmsBldIn .5s ease-out .3s both; }
+.cms-mg-badge--live { animation: cmsBldIn .5s ease-out .3s both, cmsMgLive 2.2s ease-in-out .8s infinite; }
+@keyframes cmsMgLive { 0%, 100% { box-shadow: 0 0 0 0 rgba(82,196,26,.0), 0 1px 4px rgba(20,40,80,.18); } 50% { box-shadow: 0 0 10px 2px rgba(82,196,26,.55), 0 1px 4px rgba(20,40,80,.18); } }
+
 /* 使用者偏好減少動態:關閉地圖動畫與轉場 */
 @media (prefers-reduced-motion: reduce) {
-  .cms-bld, .cms-pill-in, .cms-focus-glow { animation: none; transition: none; }
+  .cms-bld, .cms-pill-in, .cms-focus-glow, .cms-mg-badge, .cms-mg-badge--live { animation: none; transition: none; }
 }
 
 /* 情境連動標籤微脈動(glow 取 Tag 自身文字色 → 橘/青各自發光) */

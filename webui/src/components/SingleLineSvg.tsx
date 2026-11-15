@@ -26,6 +26,13 @@ const KIND_STYLE: Record<string, { bg: string; border: string }> = {
   building: { bg: "#fafafa", border: "#8c8c8c" },
 };
 
+// 微電網設備 (kind="der"):依設備代號前綴分類上色 —— 太陽能綠、儲能藍、發電機橙
+function derStyle(id: string): { bg: string; border: string; icon: string } {
+  if (id.startsWith("PV_")) return { bg: "#f6ffed", border: "#389e0d", icon: "☀" };
+  if (id.startsWith("BESS_")) return { bg: "#e6fffb", border: "#08979c", icon: "🔋" };
+  return { bg: "#fff7e6", border: "#d46b08", icon: "⚡" };
+}
+
 export default function SingleLineSvg({ graph, pf, selectedId, onSelect }: {
   graph: TopologyGraph;
   pf?: PowerFlowResult;
@@ -34,6 +41,7 @@ export default function SingleLineSvg({ graph, pf, selectedId, onSelect }: {
 }) {
   const trafo = new Map(pf?.transformer_loadings.map((t) => [t.transformer_id, t.load_ratio_percent]) ?? []);
   const feederR = new Map(pf?.feeder_loadings.map((f) => [f.feeder_id, f.load_ratio_percent]) ?? []);
+  const derOut = new Map(pf?.der_outputs?.map((o) => [o.der_id, o]) ?? []);
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
 
   const adj = new Map<string, string[]>();
@@ -73,9 +81,10 @@ export default function SingleLineSvg({ graph, pf, selectedId, onSelect }: {
     if (!n) return;
     const k = n.kind;
     const ratio = k === "transformer" ? trafo.get(id) : k === "feeder" ? feederR.get(id) : undefined;
-    const row = yIdx[k] ?? 0;
-    yIdx[k] = row + 1;
-    pos.set(id, { x: COLX[k] ?? 0, y: PADTOP + row * ROWGAP, w: NODEW[k] ?? 150, k, ratio, label: n.label });
+    const col = k === "der" ? "building" : k;   // 微電網設備與建築同欄、依序排列
+    const row = yIdx[col] ?? 0;
+    yIdx[col] = row + 1;
+    pos.set(id, { x: COLX[col] ?? 0, y: PADTOP + row * ROWGAP, w: NODEW[col] ?? 150, k, ratio, label: n.label });
   });
 
   const maxRows = Math.max(1, ...Object.values(yIdx));
@@ -84,7 +93,7 @@ export default function SingleLineSvg({ graph, pf, selectedId, onSelect }: {
 
   const COL_TITLE: { x: number; t: string }[] = [
     { x: COLX.source, t: "台電進線" }, { x: COLX.vcb, t: "VCB" }, { x: COLX.feeder, t: "饋線" },
-    { x: COLX.transformer, t: "變壓器" }, { x: COLX.building, t: "建築" },
+    { x: COLX.transformer, t: "變壓器" }, { x: COLX.building, t: "建築 / 微電網" },
   ];
 
   return (
@@ -107,16 +116,24 @@ export default function SingleLineSvg({ graph, pf, selectedId, onSelect }: {
         {order.map((id) => {
           const p = pos.get(id);
           if (!p) return null;
-          const col = p.k === "transformer" || p.k === "feeder" ? ratioColor(p.ratio) : (KIND_STYLE[p.k] ?? { bg: "#fff", border: "#999" });
+          const isDer = p.k === "der";
+          const ds = isDer ? derStyle(id) : null;
+          const col = p.k === "transformer" || p.k === "feeder" ? ratioColor(p.ratio) : (ds ?? KIND_STYLE[p.k] ?? { bg: "#fff", border: "#999" });
           const sel = id === selectedId;
           const dim = related ? !related.has(id) : false;
-          const label = p.ratio != null ? `${p.label}  ${p.ratio.toFixed(0)}%` : p.label;
+          // 微電網設備:圖示 + 名稱 + 目前出力 (停用者標「備用」)
+          const o = isDer ? derOut.get(id) : undefined;
+          const outTxt = o ? (o.in_service ? `${o.power_kw.toFixed(0)}kW` : "備用") : "";
+          const label = isDer ? `${ds!.icon} ${p.label.replace(/^\S+ /, "")}${outTxt ? ` · ${outTxt}` : ""}`
+            : p.ratio != null ? `${p.label}  ${p.ratio.toFixed(0)}%` : p.label;
+          // 點微電網設備 → 聚焦其所屬變壓器 (焦點面板以變壓器呈現)
+          const pick = () => (isDer && parent.get(id) ? onSelect({ kind: "transformer", id: parent.get(id)! }) : onSelect({ kind: p.k, id }));
           return (
-            <g key={id} transform={`translate(${p.x},${p.y})`} style={{ cursor: "pointer" }} opacity={dim ? 0.28 : 1} onClick={() => onSelect({ kind: p.k, id })}>
-              <title>{p.ratio != null ? `${p.label}（負載率 ${p.ratio.toFixed(0)}%）` : p.label}</title>
+            <g key={id} transform={`translate(${p.x},${p.y})`} style={{ cursor: "pointer" }} opacity={dim ? 0.28 : 1} onClick={pick}>
+              <title>{isDer ? `${p.label}${outTxt ? `（目前 ${outTxt}）` : ""}` : p.ratio != null ? `${p.label}（負載率 ${p.ratio.toFixed(0)}%）` : p.label}</title>
               <rect width={p.w} height={NODEH} rx={4} fill={col.bg} stroke={sel ? "#1677ff" : col.border} strokeWidth={sel ? 2.5 : 1.2} />
               <text x={6} y={NODEH / 2 + 1} dominantBaseline="middle" fontSize={11} fill={p.k === "source" ? "#fff" : "#000"} style={{ pointerEvents: "none" }}>
-                {label.length > 22 ? `${label.slice(0, 21)}…` : label}
+                {label.length > (isDer ? 28 : 22) ? `${label.slice(0, isDer ? 27 : 21)}…` : label}
               </text>
             </g>
           );

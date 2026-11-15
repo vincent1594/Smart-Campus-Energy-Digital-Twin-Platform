@@ -1,7 +1,7 @@
 import {
   AlertOutlined, AppstoreOutlined, BarChartOutlined, DashboardOutlined,
   DownOutlined, EnvironmentOutlined, FileTextOutlined, FundProjectionScreenOutlined,
-  HomeOutlined, LineChartOutlined, SafetyCertificateOutlined, ThunderboltOutlined, UserOutlined,
+  HomeOutlined, LineChartOutlined, SafetyCertificateOutlined, SunOutlined, ThunderboltOutlined, UserOutlined,
 } from "@ant-design/icons";
 import { Layout, Menu, Popover, Space, message } from "antd";
 import { useEffect } from "react";
@@ -16,6 +16,7 @@ const { Header, Content } = Layout;
 const topNav = [
   { key: "/", label: "校園總覽" },
   { key: "/assets", label: "設備查詢" },
+  { key: "/microgrid", label: "微電網" },
   { key: "/scenario", label: "規劃模擬" },
   { key: "/demand", label: "能源管理" },
   { key: "/history", label: "歷史趨勢" },
@@ -27,7 +28,7 @@ const topNav = [
 const topIcon: Record<string, ReactNode> = {
   "/": <DashboardOutlined />, "/map": <EnvironmentOutlined />, "/buildings": <HomeOutlined />,
   "/assets": <AppstoreOutlined />, "/scenario": <FundProjectionScreenOutlined />,
-  "/demand": <ThunderboltOutlined />, "/eui": <BarChartOutlined />,
+  "/demand": <ThunderboltOutlined />, "/microgrid": <SunOutlined />, "/eui": <BarChartOutlined />,
   "/history": <LineChartOutlined />, "/alarms": <AlertOutlined />, "/report": <FileTextOutlined />,
   "/verify": <SafetyCertificateOutlined />,
 };
