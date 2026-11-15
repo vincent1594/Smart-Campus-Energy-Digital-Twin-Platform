@@ -8,6 +8,7 @@ from __future__ import annotations
 from networks.north.data.network_structure import FEEDERS
 from networks.north.models.network_builder import build_network_s1_baseline
 from networks.north.analysis.power_flow import run_s1_baseline_powerflow
+from networks.north.data.der import MICROGRID_SITES, SOURCE_DOC as DER_SOURCE_DOC  # 微電網 (webapi.engine 讀取)
 
 NETWORK_ID = "north"
 DISPLAY_NAME = "北電錶"

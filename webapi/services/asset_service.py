@@ -12,7 +12,23 @@ from typing import Optional
 
 from webapi import state
 from webapi.context import current_network
-from webapi.schemas import FeederDetail, TransformerDetail, TransformerSpec, VcbDetail
+from webapi.schemas import DerAsset, FeederDetail, TransformerDetail, TransformerSpec, VcbDetail
+
+
+def list_der() -> list[DerAsset]:
+    """微電網設備清單 + 基準情境出力 (無微電網的網回空清單)。"""
+    model = state.get_base_model()
+    outs = {o.der_id: o for o in state.get_base_result().der_outputs}
+    rows: list[DerAsset] = []
+    for d in model.ders:
+        o = outs.get(d.id)
+        rows.append(DerAsset(
+            der_id=d.id, name=d.name, kind=d.kind, site=d.site, building=d.building,
+            transformer_id=d.transformer_id, rating_kw=d.rating_kw, kwp=d.kwp, energy_kwh=d.energy_kwh,
+            interface=d.interface, note=d.note, source=d.source,
+            power_kw=o.power_kw if o else 0.0, in_service=o.in_service if o else True,
+        ))
+    return rows
 
 _SPECS_PATH = Path(__file__).resolve().parents[1] / "data" / "transformer_specs.json"
 

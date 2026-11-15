@@ -10,10 +10,33 @@ from webapi.domain import CampusModel
 from webapi.schemas import (
     BuildingVoltage,
     BusFlow,
+    DerOutput,
     FeederLoading,
     PowerFlowResult,
     TransformerLoading,
 )
+
+
+def map_der_outputs(model: CampusModel, net, index: NetIndex) -> list[DerOutput]:
+    """微電網設備出力:sgen (太陽能/發電機) 發電為正;storage 依 pandapower 慣例充電為正 → 反號成放電為正。"""
+    out: list[DerOutput] = []
+    for d in model.ders:
+        if d.kind == "ess":
+            i = index.storage_by_name.get(d.id)
+            if i is None:
+                continue
+            on = bool(net.storage.at[i, "in_service"])
+            p = -float(net.res_storage.p_mw.at[i]) * 1000 if on and i in net.res_storage.index else 0.0
+        else:
+            i = index.sgen_by_name.get(d.id)
+            if i is None:
+                continue
+            on = bool(net.sgen.at[i, "in_service"])
+            p = float(net.res_sgen.p_mw.at[i]) * 1000 if on and i in net.res_sgen.index else 0.0
+        if p != p or abs(p) < 1e-9:   # NaN (未通電) 或 -0.0
+            p = 0.0
+        out.append(DerOutput(der_id=d.id, kind=d.kind, power_kw=round(p, 2), in_service=on))
+    return out
 
 
 def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> PowerFlowResult:
@@ -34,6 +57,8 @@ def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> P
             capacity_kva=round(capacity_kva, 1),
             actual_load_kva=round(ratio / 100.0 * capacity_kva, 1),
             load_ratio_percent=round(ratio, 1),
+            # 高壓側實功:正=台電往低壓送電;負=低壓側(微電網)往台電逆送
+            power_kw=round(float(net.res_trafo.p_hv_mw.at[i]) * 1000, 1),
         ))
 
     # 饋線 (HV 電纜) 負載率
@@ -113,6 +138,9 @@ def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> P
     max_tr = max((t.load_ratio_percent for t in transformer_loadings), default=0.0)
     max_fd = max((f.load_ratio_percent for f in feeder_loadings), default=0.0)
 
+    der_outputs = map_der_outputs(model, net, index)
+    der_generation_kw = round(sum(max(0.0, o.power_kw) for o in der_outputs), 1)
+
     # 既有 power_flow 的狀態:OK / WARNING(越限) / ERROR(孤島或未供電)
     status = conv.get("status", "OK")
     return PowerFlowResult(
@@ -135,4 +163,6 @@ def map_power_flow(model: CampusModel, net, index: NetIndex, results: dict) -> P
         feeder_loadings=feeder_loadings,
         building_voltages=building_voltages,
         bus_flows=bus_flows,
+        der_outputs=der_outputs,
+        der_generation_kw=der_generation_kw,
     )

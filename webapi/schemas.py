@@ -24,12 +24,39 @@ class TransformerLoading(BaseModel):
     capacity_kva: float
     actual_load_kva: float
     load_ratio_percent: float
+    power_kw: float = 0.0   # 高壓側實功;負值=逆送 (低壓側微電網往台電送電)
 
 
 class FeederLoading(BaseModel):
     feeder_id: str
     feeder_name: str
     load_ratio_percent: float
+
+
+class DerOutput(BaseModel):
+    """微電網設備潮流結果。power_kw:發電/放電為正、充電為負。"""
+    der_id: str
+    kind: str              # pv / ess / gen
+    power_kw: float
+    in_service: bool = True
+
+
+class DerAsset(BaseModel):
+    """微電網設備清單 (設備查詢「微電網」分頁);power_kw 為基準情境出力。"""
+    der_id: str
+    name: str
+    kind: str              # pv / ess / gen
+    site: str
+    building: str
+    transformer_id: str
+    rating_kw: float
+    kwp: Optional[float] = None
+    energy_kwh: Optional[float] = None
+    interface: str = ""
+    note: str = ""
+    source: str = ""
+    power_kw: float = 0.0
+    in_service: bool = True
 
 
 class BusFlow(BaseModel):
@@ -65,6 +92,8 @@ class PowerFlowResult(BaseModel):
     feeder_loadings: list[FeederLoading]
     building_voltages: list[BuildingVoltage]
     bus_flows: list[BusFlow] = []   # 全母線潮流表 (供電地圖母線潮流分頁)
+    der_outputs: list[DerOutput] = []   # 微電網設備出力
+    der_generation_kw: float = 0.0      # 微電網發電合計 (太陽能+發電機+儲能放電)
 
 
 # ---------- Dashboard ----------
@@ -113,6 +142,11 @@ class BuildingDetail(BaseModel):
     transformer_name: str
     transformer_capacity_kva: float
     supply_path: list[SupplyPathNode]
+    # 微電網:所屬變壓器低壓母線上的本地電源 (太陽能/儲能/發電機);無則為空
+    local_bus: Optional[str] = None            # 匯流點 (變壓器低壓母線),例如 "CD_LV_BUS"
+    local_bus_kv: Optional[float] = None
+    local_sources: list[DerAsset] = []
+    transformer_export_kw: float = 0.0         # 變壓器逆送功率 (>0 = 往台電送電)
 
 
 class BuildingSummary(BaseModel):

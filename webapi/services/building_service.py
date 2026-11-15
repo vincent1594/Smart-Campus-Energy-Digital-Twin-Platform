@@ -69,7 +69,26 @@ def get_building(building_id: str) -> Optional[BuildingDetail]:
         transformer_id=tr.id if tr else "", transformer_name=tr.name if tr else "",
         transformer_capacity_kva=tr.capacity_kva if tr else 0.0,
         supply_path=_enriched_path(model, building_id),
+        **_local_sources(tr.id if tr else ""),
     )
+
+
+def _local_sources(transformer_id: str) -> dict:
+    """所屬變壓器低壓母線上的微電網設備 + 匯流母線 + 逆送功率;無微電網回空 dict (欄位用預設值)。"""
+    from webapi.services.asset_service import list_der
+    sources = [d for d in list_der() if d.transformer_id == transformer_id]
+    if not sources:
+        return {}
+    base = state.get_base()
+    net, i = base.net, base.index.trafo_by_name.get(transformer_id)
+    bus = int(net.trafo.at[i, "lv_bus"]) if i is not None else None
+    tl = next((t for t in state.get_base_result().transformer_loadings if t.transformer_id == transformer_id), None)
+    return {
+        "local_bus": str(net.bus.at[bus, "name"]) if bus is not None else None,
+        "local_bus_kv": float(net.bus.at[bus, "vn_kv"]) if bus is not None else None,
+        "local_sources": sources,
+        "transformer_export_kw": round(max(0.0, -tl.power_kw), 1) if tl else 0.0,
+    }
 
 
 def _enriched_path(model, building_id: str):

@@ -55,11 +55,29 @@ class Building:
 
 
 @dataclass
+class DistributedResource:
+    """微電網分散式電源 (太陽能 / 儲能 / 發電機),掛在某台變壓器的低壓側。"""
+    id: str                     # 設備代號,例如 "PV_D1"、"BESS_Z"
+    name: str
+    kind: str                   # "pv" / "ess" / "gen"
+    site: str                   # 站別,例如 "C/D 棟"
+    building: str               # 棟別字母,例如 "D"
+    transformer_id: str         # 所屬變壓器,例如 "TR_CD"
+    rating_kw: float            # 額定功率 (逆變器/PCS/發電機)
+    kwp: Optional[float] = None         # 太陽能模組容量
+    energy_kwh: Optional[float] = None  # 儲能容量
+    interface: str = ""         # 介接方式 (介接變壓器等,未建成潮流元件)
+    note: str = ""
+    source: str = ""            # 資料來源 (竣工圖)
+
+
+@dataclass
 class CampusModel:
     vcbs: list[VCB] = field(default_factory=list)
     feeders: list[Feeder] = field(default_factory=list)
     transformers: list[Transformer] = field(default_factory=list)
     buildings: list[Building] = field(default_factory=list)
+    ders: list[DistributedResource] = field(default_factory=list)
     source_name: str = "台電 (TPC) 11.4kV"
 
     # --- 查表 helper ---
