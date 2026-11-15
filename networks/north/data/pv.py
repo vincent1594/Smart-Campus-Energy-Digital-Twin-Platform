@@ -8,14 +8,16 @@ EMS 量測為「淨台電用電」(已扣 PV),故 EMS 法分配時:
 
 from .network_structure import FEEDERS
 from .area_loads import LOAD_BUILDING
+from .der import MICROGRID_BUILDINGS, microgrid_pv_kw, pv_kwp_by_building
 
 # 各棟 PV 裝置容量 (kW, 修正後)。E/K 為避難空間不施作=0;H1(199.98)模型未含,略。
+# D、Z 為微電網站,容量以竣工圖 ESS-2.1 為準 (der.py 單一來源:D 98.01、Z 29.4;
+# 原值 D 112.86、Z 29.7)。這兩棟仍照此分配 EMS 淨值,network_builder 再把 PV 加回負載、建成 sgen 供給。
 PV_CAPACITY_KW = {
-    "D": 112.86,
     "L": 178.2,
     "M": 121.77,
     "P": 95.04,
-    "Z": 29.7,
+    **pv_kwp_by_building(),
 }
 PV_OUTPUT_FACTOR = 0.8   # 預設出力係數 (夏季尖峰);各情境可於 SCENARIOS.pv_factor 覆寫
 
@@ -37,7 +39,8 @@ def pv_output_by_load(factor=PV_OUTPUT_FACTOR):
                         bld_loads.setdefault(b, []).append((ln, cap / len(lst) if lst else 0))
     out = {}
     for b, cap_kw in PV_CAPACITY_KW.items():
-        pv = cap_kw * factor
+        # 微電網棟:各逆變器出力封頂後加總 (與 network_builder 的 sgen 同一算法)
+        pv = microgrid_pv_kw(b, factor) if b in MICROGRID_BUILDINGS else cap_kw * factor
         lst = bld_loads.get(b, [])
         totw = sum(w for _, w in lst)
         for ln, w in lst:

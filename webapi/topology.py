@@ -34,6 +34,17 @@ def build_graph(model: CampusModel) -> nx.DiGraph:
         g.add_node(b.id, kind="building", name=b.name)
         g.add_edge(b.transformer_id, b.id)
 
+    # 微電網設備:接在所屬變壓器下,與建築同層 (kind="der";name 帶類型與容量)
+    kind_label = {"pv": "太陽能", "ess": "儲能", "gen": "發電機"}
+    for d in model.ders:
+        if not g.has_node(d.transformer_id):
+            continue
+        size = (f"{d.kwp:g}kWp" if d.kind == "pv" and d.kwp
+                else f"{d.rating_kw:g}kW/{d.energy_kwh:g}kWh" if d.kind == "ess" and d.energy_kwh
+                else f"{d.rating_kw:g}kW")
+        g.add_node(d.id, kind="der", name=f"{kind_label.get(d.kind, d.kind)} {d.id} {size}", der_kind=d.kind)
+        g.add_edge(d.transformer_id, d.id)
+
     return g
 
 

@@ -18,8 +18,14 @@ from networks.north.data.load_data import DEFAULT_BUILDING_LOADS
 from networks.north.data.parameters import (SYSTEM_PARAMS, CABLE_PARAMS, TRANSFORMER_PARAMS, PANDAPOWER_CONFIG,
                              LOAD_PARAMS, SYSTEM_COINCIDENT_PEAK_KW, SYSTEM_LOAD_METHOD,
                              SYSTEM_LOAD_TIMESTAMP, SYSTEM_PV_FACTOR, get_transformer_loss)
-from networks.north.data.area_loads import compute_area_loads
+from networks.north.data.area_loads import compute_area_loads, LOAD_BUILDING
 from networks.north.data.ems_loads import compute_ems_loads, compute_ems_profile_loads
+from networks.north.data.der import MICROGRID_SITES, MICROGRID_BUILDINGS, pv_device_kw
+from networks.north.data.pv import pv_output_by_load
+
+# 會從負載「淨扣」太陽能的負載法 (EMS 實測為淨台電用電)。微電網棟在這些法下要把 PV 加回、改由 sgen 供給。
+PV_NETTED_METHODS = {"ems", "ems_profile", "xgboost", "xgboost_profile"}
+MICROGRID_BY_LV_BUS = {s["lv_bus"]: s for s in MICROGRID_SITES}
 
 # 配置日誌
 logging.basicConfig(level=logging.INFO)
@@ -72,6 +78,11 @@ def build_network_s1_baseline():
         else:
             logger.info(f"負載基礎: 各台實載加總 {raw_total_kw:.1f} kW (未套用分散係數)")
     
+    # 微電網棟 (D/Z):preset_loads 已把其 PV 淨扣 → 加回 (負載 = 實際用電),由 sgen 供給,母線淨功率不變。
+    pv_netted = preset_loads is not None and SYSTEM_LOAD_METHOD in PV_NETTED_METHODS
+    mg_pv_addback = ({ln: kw for ln, kw in pv_output_by_load(SYSTEM_PV_FACTOR).items()
+                      if LOAD_BUILDING.get(ln) in MICROGRID_BUILDINGS} if pv_netted else {})
+
     # 1. 創建新的 PandaPower 網路
     net = pp.create_empty_network(
         name="Campus 11.4kV Distribution Network - S1 Baseline"
@@ -196,6 +207,8 @@ def build_network_s1_baseline():
                         else:
                             pf = load_data.get("pf", LOAD_PARAMS["default_power_factor"])
                             q_kvar = p_kw * np.tan(np.arccos(pf))
+                        # 微電網棟:有功加回 PV (Q 維持以淨值推算,使母線淨功率與加回前完全一致)
+                        p_kw += mg_pv_addback.get(load_name, 0.0)
                         pp.create_load(
                             net, lv_bus_id,
                             p_mw=p_kw / 1000,  # 轉換為 MW
@@ -217,7 +230,12 @@ def build_network_s1_baseline():
                             name=capacitor["name"]
                         )
                         logger.info(f"      └─ CAP {capacitor['name']}: {capacitor['rating']}kVAr")
-    
+
+                # 微電網分散式電源 (掛在此台變壓器的低壓母線)
+                site = MICROGRID_BY_LV_BUS.get(trafo["lv_bus"])
+                if site:
+                    _add_microgrid(net, lv_bus_id, site, SYSTEM_PV_FACTOR if pv_netted else 0.0)
+
     # 4. 網路驗證
     logger.info("\n" + "=" * 70)
     logger.info("網路統計:")
@@ -277,6 +295,36 @@ def _add_main_source(net):
         logger.info(f"✓ 台電進線主纜: {mc['cross_section']}mm²×{qty}, 長度未知 (假設 {mc.get('length',100)}m)")
 
     return main_bus
+
+
+def _add_microgrid(net, lv_bus_id: int, site: Dict, pv_factor: float):
+    """微電網設備 (data/der.py) → pandapower:pv=sgen、ess=storage、gen=sgen(LPG)。
+
+    基準情境:PV 出力 = kWp × pv_factor;儲能待機 (p=0);發電機停用 (備用)。
+    介接變壓器不建元件,設備直接掛 220V 低壓母線。自訂欄位 der_kind / rating_kw / kwp / energy_kwh 供 webapi 讀取。
+    """
+    for d in site["devices"]:
+        kind = d["kind"]
+        rating_mva = d["rating_kw"] / 1000.0
+        if kind == "pv":
+            p_kw = pv_device_kw(d, pv_factor)   # kWp×係數,逆變器額定封頂
+            i = pp.create_sgen(net, lv_bus_id, p_mw=p_kw / 1000.0, q_mvar=0.0, sn_mva=rating_mva,
+                               name=d["name"], type="PV")
+            net.sgen.at[i, "der_kind"] = "pv"
+            net.sgen.at[i, "kwp"] = d["kwp"]
+        elif kind == "gen":
+            p_kw = 0.0
+            i = pp.create_sgen(net, lv_bus_id, p_mw=0.0, q_mvar=0.0, sn_mva=rating_mva,
+                               name=d["name"], type="LPG", in_service=False)
+            net.sgen.at[i, "der_kind"] = "gen"
+        elif kind == "ess":
+            p_kw = 0.0
+            i = pp.create_storage(net, lv_bus_id, p_mw=0.0, max_e_mwh=d["energy_kwh"] / 1000.0,
+                                  sn_mva=rating_mva, soc_percent=50.0, name=d["name"], type="BESS")
+            net.storage.at[i, "energy_kwh"] = d["energy_kwh"]
+        else:
+            continue
+        logger.info(f"      └─ DER {d['name']} ({kind}): {d['rating_kw']}kW → {p_kw:.1f}kW")
 
 
 def _add_hv_bus(net, bus_name: str, voltage: float = 11.4):

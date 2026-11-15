@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from webapi.deps import use_network
 from webapi.schemas import (
+    DerAsset,
     FeederDetail,
     ReplacementEconomicsReport,
     TransformerDetail,
@@ -48,6 +49,12 @@ def get_transformer(transformer_id: str):
     if detail is None:
         raise HTTPException(status_code=404, detail=f"查無變壓器:{transformer_id}")
     return detail
+
+
+# ---------- 微電網 (太陽能 / 儲能 / 發電機) ----------
+@router.get("/der", response_model=list[DerAsset])
+def list_der():
+    return asset_service.list_der()
 
 
 # ---------- VCB ----------

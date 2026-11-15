@@ -15,7 +15,7 @@ from networks.registry import DEFAULT_NETWORK_ID, get_provider
 
 from webapi.building_names import building_name
 from webapi.config import SOURCE_NAME
-from webapi.domain import Building, CampusModel, Feeder, Transformer, VCB
+from webapi.domain import Building, CampusModel, DistributedResource, Feeder, Transformer, VCB
 
 
 @dataclass
@@ -25,6 +25,8 @@ class NetIndex:
     line_by_name: dict[str, int] = field(default_factory=dict)
     load_by_name: dict[str, int] = field(default_factory=dict)
     load_bus_by_name: dict[str, int] = field(default_factory=dict)
+    sgen_by_name: dict[str, int] = field(default_factory=dict)      # 太陽能 / 發電機
+    storage_by_name: dict[str, int] = field(default_factory=dict)   # 儲能
 
 
 @dataclass
@@ -48,7 +50,27 @@ def _build_index(net) -> NetIndex:
         name = str(net.load.at[i, "name"])
         idx.load_by_name[name] = int(i)
         idx.load_bus_by_name[name] = int(net.load.at[i, "bus"])
+    for i in net.sgen.index:
+        idx.sgen_by_name[str(net.sgen.at[i, "name"])] = int(i)
+    for i in net.storage.index:
+        idx.storage_by_name[str(net.storage.at[i, "name"])] = int(i)
     return idx
+
+
+def _parse_ders(sites: list, source_doc: str, transformer_ids: set) -> list[DistributedResource]:
+    """微電網站 (provider.MICROGRID_SITES) → DistributedResource;所屬變壓器不在模型中者略過。"""
+    out: list[DistributedResource] = []
+    for s in sites:
+        if s["transformer"] not in transformer_ids:
+            continue
+        for d in s["devices"]:
+            out.append(DistributedResource(
+                id=d["name"], name=d["name"], kind=d["kind"], site=s["site"], building=s["building"],
+                transformer_id=s["transformer"], rating_kw=float(d["rating_kw"]),
+                kwp=d.get("kwp"), energy_kwh=d.get("energy_kwh"),
+                interface=d.get("interface", ""), note=d.get("note", ""), source=source_doc,
+            ))
+    return out
 
 
 def _parse_campus_model(net, index: NetIndex, feeder_defs: dict) -> CampusModel:
@@ -155,5 +177,9 @@ def build_base(provider) -> BaseModel:
     results = provider.run_power_flow(net)
     index = _build_index(net)
     model = _parse_campus_model(net, index, provider.FEEDERS)
+    # 微電網:只有提供 MICROGRID_SITES 的網才有 (目前為北電錶)
+    model.ders = _parse_ders(getattr(provider, "MICROGRID_SITES", []),
+                             getattr(provider, "DER_SOURCE_DOC", ""),
+                             {t.id for t in model.transformers})
     return BaseModel(net=net, results=results, model=model, index=index,
                      network_id=provider.NETWORK_ID, provider=provider)
