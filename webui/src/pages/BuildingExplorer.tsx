@@ -69,12 +69,12 @@ export function BuildingsPanel() {
           { title: "編號", dataIndex: "id", width: 120 },
           { title: "建築", dataIndex: "name" },
           {
-            title: "樓地板面積 (m²)", dataIndex: "floor_area_m2", align: "right",
+            title: "樓地板面積 (m²)", dataIndex: "floor_area_m2",
             sorter: (a, b) => (a.floor_area_m2 ?? 0) - (b.floor_area_m2 ?? 0),
             render: (v: number | null) => (v != null ? v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"),
           },
           {
-            title: "估計負載 (kW)", dataIndex: "estimated_load_kw", align: "right",
+            title: "估計負載 (kW)", dataIndex: "estimated_load_kw",
             sorter: (a, b) => effLoad(a.transformer_name, a.estimated_load_kw) - effLoad(b.transformer_name, b.estimated_load_kw),
             render: (_v, r) => effLoad(r.transformer_name, r.estimated_load_kw),
           },
