@@ -74,3 +74,16 @@ body {
 /* 情境連動標籤微脈動(glow 取 Tag 自身文字色 → 橘/青各自發光) */
 @keyframes bgBadgePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } 50% { box-shadow: 0 0 9px 0 currentColor; } }
 .scenario-pulse { animation: bgBadgePulse 1.9s ease-in-out infinite; }
+
+/* 可調欄寬表格(ResizableTable):標題列欄位右緣的拖曳把手,滑過時顯示分隔線 */
+.rt-handle {
+  position: absolute; top: 0; right: -5px; bottom: 0; width: 10px; z-index: 2;
+  cursor: col-resize; touch-action: none;
+}
+.rt-handle::after {
+  content: ""; position: absolute; top: 20%; bottom: 20%; left: 4px; width: 2px; border-radius: 1px;
+  background: transparent; transition: background .15s;
+}
+.ant-table-thead > tr > th:hover .rt-handle::after { background: rgba(22,119,255,.35); }
+.rt-handle:hover::after, .rt-resizing .rt-handle::after { background: #1677ff; }
+body.rt-resizing, body.rt-resizing * { cursor: col-resize !important; user-select: none !important; }

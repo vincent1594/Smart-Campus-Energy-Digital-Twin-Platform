@@ -1,4 +1,5 @@
-import { Alert, Button, Card, Segmented, Spin, Table, Tag, message, type TableColumnsType } from "antd";
+import { Alert, Button, Card, Segmented, Spin, Tag, message, type TableColumnsType } from "antd";
+import Table from "../components/ResizableTable";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getNetwork, setNetwork } from "../api/client";

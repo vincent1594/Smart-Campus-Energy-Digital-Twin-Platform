@@ -1,4 +1,5 @@
-import { Card, Descriptions, Drawer, Input, Steps, Table, Tag, message } from "antd";
+import { Card, Descriptions, Drawer, Input, Steps, Tag, message } from "antd";
+import Table from "../components/ResizableTable";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import type { BuildingDetail, BuildingSummary, TransformerDetail } from "../api/types";
