@@ -41,12 +41,12 @@ function Transformers() {
         onRow={(r) => ({ onClick: () => { setDetail(r); setFocus({ kind: "transformer", id: r.id, label: r.name }); }, style: { cursor: "pointer" } })}
         columns={[
           { title: "編號", dataIndex: "id" },
-          { title: "容量 (kVA)", dataIndex: "capacity_kva", align: "right", sorter: (a, b) => a.capacity_kva - b.capacity_kva },
+          { title: "容量 (kVA)", dataIndex: "capacity_kva", sorter: (a, b) => a.capacity_kva - b.capacity_kva },
           { title: "型式", dataIndex: "trafo_type", render: (t) => <Tag>{t}式</Tag> },
           { title: "二次側額定", dataIndex: "lv_kv", render: (v: number) => lvLabel(v) },
           { title: "所屬 VCB", dataIndex: "vcb_name" },
-          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (effRatio(a) ?? 0) - (effRatio(b) ?? 0), render: (_v, r) => <LoadRatioTag ratio={effRatio(r)} /> },
-          { title: "連接負載點", dataIndex: "connected_building_count", align: "right" },
+          { title: "負載率", dataIndex: "load_ratio_percent", sorter: (a, b) => (effRatio(a) ?? 0) - (effRatio(b) ?? 0), render: (_v, r) => <LoadRatioTag ratio={effRatio(r)} /> },
+          { title: "連接負載點", dataIndex: "connected_building_count" },
         ]}
       />
       </div>
@@ -104,10 +104,10 @@ function Vcbs() {
       columns={[
         { title: "編號", dataIndex: "id" },
         { title: "名稱", dataIndex: "name" },
-        { title: "饋線數", dataIndex: "feeder_count", align: "right" },
-        { title: "變壓器數", dataIndex: "transformer_count", align: "right" },
-        { title: "連接負載點", dataIndex: "connected_building_count", align: "right" },
-        { title: "連接負載 (kW)", dataIndex: "total_connected_load_kw", align: "right", sorter: (a, b) => effLoad(a) - effLoad(b), render: (_v, r) => effLoad(r) },
+        { title: "饋線數", dataIndex: "feeder_count" },
+        { title: "變壓器數", dataIndex: "transformer_count" },
+        { title: "連接負載點", dataIndex: "connected_building_count" },
+        { title: "連接負載 (kW)", dataIndex: "total_connected_load_kw", sorter: (a, b) => effLoad(a) - effLoad(b), render: (_v, r) => effLoad(r) },
       ]}
     />
     </div>
@@ -133,13 +133,13 @@ function Feeders() {
         columns={[
           { title: "編號", dataIndex: "id" },
           { title: "所屬 VCB", dataIndex: "vcb_name" },
-          { title: "線徑", dataIndex: "cross_section_mm2", align: "right", width: 84, render: (v: number | null) => (v != null ? `${v} mm²` : "—") },
-          { title: <span>長度 <Tag color="default" style={{ marginInlineStart: 2, fontSize: 10, padding: "0 4px", lineHeight: "16px" }}>估</Tag></span>, dataIndex: "length_m", align: "right", width: 96, render: (v: number) => `${v.toFixed(0)} m`, sorter: (a, b) => a.length_m - b.length_m },
-          { title: "R (Ω)", dataIndex: "resistance_ohm", align: "right", width: 82, render: (v: number | null) => (v != null ? v.toFixed(3) : "—"), sorter: (a, b) => (a.resistance_ohm ?? 0) - (b.resistance_ohm ?? 0) },
-          { title: "X (Ω)", dataIndex: "reactance_ohm", align: "right", width: 82, render: (v: number | null) => (v != null ? v.toFixed(3) : "—") },
-          { title: "變壓器數", dataIndex: "transformer_count", align: "right" },
-          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", sorter: (a, b) => (effRatio(a) ?? 0) - (effRatio(b) ?? 0), render: (_v, r) => <LoadRatioTag ratio={effRatio(r)} /> },
-          { title: "連接負載點", dataIndex: "connected_building_count", align: "right" },
+          { title: "線徑", dataIndex: "cross_section_mm2", width: 84, render: (v: number | null) => (v != null ? `${v} mm²` : "—") },
+          { title: <span>長度 <Tag color="default" style={{ marginInlineStart: 2, fontSize: 10, padding: "0 4px", lineHeight: "16px" }}>估</Tag></span>, dataIndex: "length_m", width: 96, render: (v: number) => `${v.toFixed(0)} m`, sorter: (a, b) => a.length_m - b.length_m },
+          { title: "R (Ω)", dataIndex: "resistance_ohm", width: 82, render: (v: number | null) => (v != null ? v.toFixed(3) : "—"), sorter: (a, b) => (a.resistance_ohm ?? 0) - (b.resistance_ohm ?? 0) },
+          { title: "X (Ω)", dataIndex: "reactance_ohm", width: 82, render: (v: number | null) => (v != null ? v.toFixed(3) : "—") },
+          { title: "變壓器數", dataIndex: "transformer_count" },
+          { title: "負載率", dataIndex: "load_ratio_percent", sorter: (a, b) => (effRatio(a) ?? 0) - (effRatio(b) ?? 0), render: (_v, r) => <LoadRatioTag ratio={effRatio(r)} /> },
+          { title: "連接負載點", dataIndex: "connected_building_count" },
         ]}
       />
       <div style={{ color: "#bbb", fontSize: 11, marginTop: 6, lineHeight: 1.5 }}>
@@ -179,12 +179,12 @@ function Specs() {
         columns={[
           { title: "編號", dataIndex: "tag", width: 70 },
           { title: "建築物", dataIndex: "building" },
-          { title: "容量(kVA)", dataIndex: "capacity_kva", align: "right", sorter: (a, b) => (a.capacity_kva ?? 0) - (b.capacity_kva ?? 0) },
+          { title: "容量(kVA)", dataIndex: "capacity_kva", sorter: (a, b) => (a.capacity_kva ?? 0) - (b.capacity_kva ?? 0) },
           { title: "型式", dataIndex: "trafo_type", render: (t) => (t ? <Tag>{t}</Tag> : "—") },
           { title: "二次側額定", dataIndex: "lv_v", render: (v) => (v ? `${v} V` : "—") },
           { title: "二次側實測", dataIndex: "lv_actual_v", render: (v) => (v ? `${v} V` : "—") },
-          { title: "功因", dataIndex: "power_factor", align: "right", render: (v) => v ?? "—" },
-          { title: "負載率", dataIndex: "load_ratio_percent", align: "right", sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: pct },
+          { title: "功因", dataIndex: "power_factor", render: (v) => v ?? "—" },
+          { title: "負載率", dataIndex: "load_ratio_percent", sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: pct },
         ]}
       />
       </div>
@@ -271,13 +271,13 @@ function Replacement() {
         pagination={{ pageSize: fh.pageSize }}
         onRow={(r) => ({ onClick: () => setDetail(r), style: { cursor: "pointer" } })}
         columns={[
-          { title: "序", render: (_v, _r, i) => i + 1, width: 48, align: "center" },
+          { title: "序", render: (_v, _r, i) => i + 1, width: 48 },
           { title: "編號", dataIndex: "tag", width: 70 },
           { title: "建築物", dataIndex: "building", ellipsis: true },
-          { title: "容量", dataIndex: "capacity_kva", align: "right", width: 76, render: (v) => (v ? `${v} kVA` : "—") },
-          { title: "屆齡", dataIndex: "age_years", align: "right", width: 64, sorter: (a, b) => (a.age_years ?? 0) - (b.age_years ?? 0), render: (v) => (v != null ? `${v} 年` : "—") },
-          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", width: 72, sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: (v) => (v != null ? `${v}%` : "—") },
-          { title: "溫度", dataIndex: "temperature_c", align: "right", width: 64, render: (v) => (v != null ? `${v}°` : "—") },
+          { title: "容量", dataIndex: "capacity_kva", width: 76, render: (v) => (v ? `${v} kVA` : "—") },
+          { title: "屆齡", dataIndex: "age_years", width: 64, sorter: (a, b) => (a.age_years ?? 0) - (b.age_years ?? 0), render: (v) => (v != null ? `${v} 年` : "—") },
+          { title: "負載率", dataIndex: "load_ratio_percent", width: 72, sorter: (a, b) => (a.load_ratio_percent ?? 0) - (b.load_ratio_percent ?? 0), render: (v) => (v != null ? `${v}%` : "—") },
+          { title: "溫度", dataIndex: "temperature_c", width: 64, render: (v) => (v != null ? `${v}°` : "—") },
           {
             title: "風險分數", dataIndex: "risk_score", width: 180,
             defaultSortOrder: "descend", sorter: (a, b) => a.risk_score - b.risk_score,
@@ -396,16 +396,16 @@ function Economics() {
         rowKey="tag" loading={loading} dataSource={data?.items ?? []} size="small"
         pagination={{ pageSize: fh.pageSize }}
         columns={[
-          { title: "回收序", render: (_v, _r, i) => i + 1, width: 64, align: "center" },
+          { title: "回收序", render: (_v, _r, i) => i + 1, width: 64 },
           { title: "編號", dataIndex: "tag", width: 70 },
           { title: "建築物", dataIndex: "building", ellipsis: true },
-          { title: "容量", dataIndex: "capacity_kva", align: "right", width: 76, render: (v) => (v ? `${v} kVA` : "—") },
-          { title: "負載率", dataIndex: "load_ratio_percent", align: "center", width: 72, render: (v) => (v != null ? `${v}%` : "—") },
-          { title: "風險", dataIndex: "risk_level", align: "center", width: 60, render: (v: string) => <Tag color={RISK_COLOR[v]} style={{ margin: 0 }}>{v}</Tag> },
-          { title: "換新成本", dataIndex: "capex_nt", align: "right", width: 110, sorter: (a, b) => a.capex_nt - b.capex_nt, render: (v) => ntd(v) },
-          { title: "年省電費", dataIndex: "annual_saving_nt", align: "right", width: 110, sorter: (a, b) => a.annual_saving_nt - b.annual_saving_nt, render: (v) => <span style={{ color: "#3f8600" }}>{ntd(v)}</span> },
+          { title: "容量", dataIndex: "capacity_kva", width: 76, render: (v) => (v ? `${v} kVA` : "—") },
+          { title: "負載率", dataIndex: "load_ratio_percent", width: 72, render: (v) => (v != null ? `${v}%` : "—") },
+          { title: "風險", dataIndex: "risk_level", width: 60, render: (v: string) => <Tag color={RISK_COLOR[v]} style={{ margin: 0 }}>{v}</Tag> },
+          { title: "換新成本", dataIndex: "capex_nt", width: 110, sorter: (a, b) => a.capex_nt - b.capex_nt, render: (v) => ntd(v) },
+          { title: "年省電費", dataIndex: "annual_saving_nt", width: 110, sorter: (a, b) => a.annual_saving_nt - b.annual_saving_nt, render: (v) => <span style={{ color: "#3f8600" }}>{ntd(v)}</span> },
           {
-            title: "回收年限", dataIndex: "payback_years", width: 120, align: "right",
+            title: "回收年限", dataIndex: "payback_years", width: 120,
             defaultSortOrder: "ascend",
             sorter: (a, b) => (a.payback_years ?? 9e9) - (b.payback_years ?? 9e9),
             render: (v: number | null) => <b style={{ color: paybackColor(v) }}>{v == null ? "—(僅風險)" : `${v} 年`}</b>,
