@@ -70,7 +70,6 @@ export const BUILDING_POS: Record<string, Pt[]> = {
 // 以校園總覽地圖寬約 880px 估算徽章大小;at=徽章中心、anchor=建物上最近的點(保留備用,目前不畫引線)、vertical=直式膠囊。
 // 未列在此者退回建物外框右上角。
 export const MG_BADGE_POS: Record<string, { at: Pt; anchor: Pt; vertical?: boolean }> = {
-  C: { at: [383.9, 275.8], anchor: [391.9, 295.1] },
   D: { at: [383.9, 391.8], anchor: [391.9, 356.7], vertical: true },
   Z: { at: [500.3, 438.3], anchor: [503.9, 415.8] },   // 依使用者指定放 Z 棟正下方 (草地,避開西淮館英文字)
 };
