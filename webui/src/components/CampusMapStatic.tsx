@@ -451,7 +451,8 @@ export default function CampusMapStatic({
       {!editable && markers.map((m) => {
         const bd = mgBadges.get(m.letter);
         const pts = POS[m.letter];
-        if (!bd || !pts) return null;
+        // 僅共用變壓器、本身沒有設備的棟 (C 棟) 不在地圖上標徽章 (使用者要求);滑鼠名牌仍有小圖示
+        if (!bd || !pts || bd.served) return null;
         const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
         const kw = bd.served ? 0 : mgOutput(bd.derIds);
         const live = kw > 0.05;
