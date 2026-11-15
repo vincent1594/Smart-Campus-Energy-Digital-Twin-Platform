@@ -1,7 +1,7 @@
 // 校園地圖(照片底 + SVG 多邊形疊圖)。各棟為「不規則多邊形」,發光描邊依負載率,中心透明。
 // 顯示:focusLetter/highlight 連動、dark 深色發光、showConnectors 受電站→棟連線。
 // 編輯(editable):拖頂點移動、雙擊多邊形邊加頂點、雙擊頂點刪除;onPolyChange 回拋。
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { BUILDING_HOLES, BUILDING_POS, MAP_H, MAP_IMAGE, MAP_W, type Pt, centroid, ratioColor, shapePath } from "../lib/campusPositions";
 import { PLAN_COLOR, type PlanBuilding } from "../lib/planBuildings";
 
@@ -64,6 +64,7 @@ export default function CampusMapStatic({
   const hasFocus = !!focusLetter || (highlight?.size ?? 0) > 0;
   const accent = dark ? "#00e5ff" : "#1677ff";
   const [hover, setHover] = useState<string | null>(null);   // 滑鼠移入/鍵盤聚焦的建物 → 顯示浮動名牌
+  const uid = useId().replace(/:/g, "");   // 同頁多張地圖時 clipPath id 不互撞
 
   // 編輯模式畫布視圖:s=縮放倍率、tx/ty=平移(外層容器 px)。非編輯模式恆為 1×。
   const [view, setView] = useState({ s: 1, tx: 0, ty: 0 });
@@ -236,8 +237,14 @@ export default function CampusMapStatic({
               <stop offset="100%" stopColor={col} stopOpacity={dark ? 0.52 : 0.64} />
             </radialGradient>
           ))}
-          {/* 羽化邊緣,讓聚光燈挖洞柔順 */}
-          <filter id="cmsSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="8" /></filter>
+          {/* 各棟裁切範圍 = 建物形狀(含中庭洞):描邊/光暈只畫在建物內側,點擊範圍也不會溢出到邊線外 */}
+          {!editable && markers.filter((m) => POS[m.letter]).map((m) => (
+            <clipPath key={"cl" + m.letter} id={`${uid}c${m.letter}`}>
+              <path d={dOf(m.letter)} clipRule="evenodd" />
+            </clipPath>
+          ))}
+          {/* 聚光燈挖洞輕微羽化(只柔化 1~2 單位,暗幕不吃進建物邊緣) */}
+          <filter id="cmsSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.2" /></filter>
           {/* 聚光燈遮罩:白=暗幕生效,黑=挖洞(該棟保持明亮) */}
           <mask id="cmsSpot">
             <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="#fff" />
@@ -265,8 +272,10 @@ export default function CampusMapStatic({
         )}
         {/* 焦點棟描邊呼吸光暈:柔和脈動,引導視線(不影響點擊) */}
         {!editable && focusLetter && POS[focusLetter] && (
-          <path className="cms-focus-glow" d={dOf(focusLetter)} fillRule="evenodd"
-            fill="none" stroke={accent} strokeWidth={3} strokeLinejoin="round" filter="url(#cmsGlow)" pointerEvents="none" />
+          <g clipPath={`url(#${uid}c${focusLetter})`} pointerEvents="none">
+            <path className="cms-focus-glow" d={dOf(focusLetter)} fillRule="evenodd"
+              fill="none" stroke={accent} strokeWidth={6} strokeLinejoin="round" filter="url(#cmsGlow)" />
+          </g>
         )}
 
         {/* 各棟:多邊形(預設依負載率淡色填,無框無字);編輯模式才顯示框與頂點 */}
@@ -314,6 +323,7 @@ export default function CampusMapStatic({
                   : {
                       className: `cms-bld${sysStroke ? " cms-bld--sys" : ""}${isFocus ? " cms-bld--focus" : ""}`,
                       style: browseStyle,
+                      clipPath: `url(#${uid}c${m.letter})`,
                       tabIndex: 0, role: "button", "aria-label": label,
                       onPointerEnter: () => setHover(m.letter),
                       onPointerLeave: () => setHover((h) => (h === m.letter ? null : h)),

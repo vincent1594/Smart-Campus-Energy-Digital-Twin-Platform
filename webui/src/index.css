@@ -44,19 +44,22 @@ body {
 
 /* 地圖建物(瀏覽模式):玻璃質感填色 + 淡同色細邊;滑過浮光、按下微縮,像可按的按鈕而非貼膠布。
    --edge / --glow 由元件依負載率或選取狀態帶入。 */
+/* 地圖建物:元素以 clip-path 裁在建物形狀內 → 描邊只露出內側一半(故寬度設為視覺寬的 2 倍)、
+   光暈為內發光,點擊範圍 = 建物形狀本身,邊線與按鍵完全重合。不用 transform 縮放,避免按下時偏離建物邊。 */
 .cms-bld {
-  stroke: var(--edge); stroke-opacity: .3; stroke-width: 2; stroke-linejoin: round;
-  outline: none; transform-box: fill-box; transform-origin: center;
-  transition: stroke-opacity .22s ease, stroke-width .22s ease, filter .22s ease, transform .16s ease;
+  stroke: var(--edge); stroke-opacity: .3; stroke-width: 4; stroke-linejoin: round;
+  pointer-events: fill;   /* 只認填色區,描邊不擴大點擊範圍 */
+  outline: none;
+  transition: stroke-opacity .22s ease, stroke-width .22s ease, filter .22s ease;
   animation: cmsBldIn .55s ease-out both;
 }
-.cms-bld--sys { stroke-opacity: .9; stroke-width: 3; }          /* 全校園總覽:系統識別外框 */
-.cms-bld--focus { stroke-opacity: .85; stroke-width: 3; }
+.cms-bld--sys { stroke-opacity: .9; stroke-width: 6; }          /* 全校園總覽:系統識別外框 */
+.cms-bld--focus { stroke-opacity: .85; stroke-width: 6; }
 .cms-bld:hover, .cms-bld:focus-visible {
-  stroke-opacity: 1; stroke-width: 3.5;
+  stroke-opacity: 1; stroke-width: 7;
   filter: drop-shadow(0 0 6px var(--glow)) saturate(1.3) brightness(1.05);
 }
-.cms-bld:active { transform: scale(.985); transition-duration: .08s; }
+.cms-bld:active { filter: drop-shadow(0 0 3px var(--glow)) saturate(1.4) brightness(.94); transition-duration: .08s; }
 @keyframes cmsBldIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* 建物浮動名牌:輕彈入 */
