@@ -1,4 +1,5 @@
-import { Alert, Card, Spin, Table, Tag } from "antd";
+import { Alert, Card, Spin, Tag } from "antd";
+import Table from "../components/ResizableTable";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";

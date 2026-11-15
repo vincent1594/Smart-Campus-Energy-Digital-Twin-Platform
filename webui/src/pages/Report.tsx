@@ -1,5 +1,6 @@
 import { DownloadOutlined, EyeOutlined } from "@ant-design/icons";
-import { Button, Card, List, Modal, Table, Tabs, Tag, message } from "antd";
+import { Button, Card, List, Modal, Tabs, Tag, message } from "antd";
+import Table from "../components/ResizableTable";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { api, getNetwork, setNetwork } from "../api/client";

@@ -1,4 +1,5 @@
-import { Button, Card, Descriptions, Drawer, Input, InputNumber, List, Progress, Segmented, Statistic, Table, Tabs, Tag, message } from "antd";
+import { Button, Card, Descriptions, Drawer, Input, InputNumber, List, Progress, Segmented, Statistic, Tabs, Tag, message } from "antd";
+import Table from "../components/ResizableTable";
 import { useEffect, useMemo, useState } from "react";
 import { api, getNetwork, setNetwork } from "../api/client";
 import type { FeederDetail, ReplacementEconomics, ReplacementEconomicsReport, TransformerDetail, TransformerRisk, TransformerSpec, VcbDetail } from "../api/types";
