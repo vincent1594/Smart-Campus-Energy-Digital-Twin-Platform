@@ -13,14 +13,23 @@ TPC 11.4kV
    |
    |---- Z_BUS 11.4kV
    |       |
-   |       |-- TR_Z_MAIN 200kVA
+   |       |-- TR_Z_MAIN 200kVA        ※ 竣工圖原盤名 J棟GCB2盤 (J棟開關105年遷至X棟)
    |             11.4kV → 220V
    |               |
    |               └-- Z_LV_BUS 220V
    |                      |
+   |                      |-- LOAD_Z
    |                      |
+   |                      |== 微電網 (竣工 2025-10-31, 竣工圖 ESS-2.1) ==
    |                      |
-   |                      └-- LOAD_Z
+   |                      |-- TR_MG_Z 50kVA (新增)
+   |                      |      220V → 380V-220V
+   |                      |        |
+   |                      |        |-- PCS_Z 25kW ── BESS_Z 105kWh
+   |                      |        |
+   |                      |        └-- PV_Z solar   29.4kWp
+   |                      |
+   |                      └-- GEN_Z LPG 發電機 14kW (3P3W 220V, 備用)
    |
    | 60mm² ×3
    | 118m*1.2

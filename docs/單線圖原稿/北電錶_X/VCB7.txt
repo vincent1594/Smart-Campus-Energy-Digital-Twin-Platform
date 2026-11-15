@@ -15,14 +15,34 @@ TPC 11.4kV
    |
    └---- CD_BUS 11.4kV
            |
-           |-- TR_CD 300kVA
+           |-- TR_CD 300kVA        ※ 竣工圖原盤名 J棟BS3盤 (J棟開關105年遷至X棟)
                  11.4kV → 220V
                    |
-                   └-- P_LV_BUS 220V
+                   └-- CD_LV_BUS 220V
                           |
                           |-- LOAD_C
                           |
-                          └- LOAD_D        
+                          |-- LOAD_D
+                          |
+                          |== 微電網 (竣工 2025-10-31, 竣工圖 ESS-2.1) ==
+                          |
+                          |-- TR_ESS_CD 200kVA (新增)
+                          |      220V → 380V
+                          |        |
+                          |        |-- PCS_D1 100kW ── BESS_D1 215kWh
+                          |        |
+                          |        └-- PCS_D2 100kW ── BESS_D2 215kWh
+                          |
+                          |-- TR_PV_CD 75kVA (新增)
+                          |      220V → 380V-220V
+                          |        |
+                          |        |-- PV_D1 solar 30kW   37.62kWp
+                          |        |
+                          |        └-- PV_D2 solar 30kW   36.63kWp
+                          |
+                          └-- PV_D3 碩天solar 6kW×6   23.76kWp (D102)
+
+   微電網合計: PV 98.01kWp ; ESS 200kW / 430kWh
            
 
 
