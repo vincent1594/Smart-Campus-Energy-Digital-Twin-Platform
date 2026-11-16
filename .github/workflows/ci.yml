@@ -10,13 +10,13 @@ jobs:
     name: 後端 (API + 潮流回歸)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt pytest httpx
-      - run: pytest tests -q
+      - run: python -m pytest tests -q
 
   frontend:
     name: 前端 (型別檢查 + build)
@@ -25,8 +25,8 @@ jobs:
       run:
         working-directory: webui
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: npm
