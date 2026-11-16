@@ -16,7 +16,7 @@
 │   ├── north/                 # 北電錶 (X棟受電,12 VCB)
 │   │   ├── provider.py        # 對外介面:FEEDERS / build_net() / run_power_flow()
 │   │   ├── data/              # 📊 數據層
-│   │   │   ├── network_structure.py   # 拓撲 (源自 docs/單線圖原稿/北電錶_X/整合.txt)
+│   │   │   ├── network_structure.py   # 拓撲 (源自 docs/SLD/北電錶_X/整合.txt)
 │   │   │   ├── load_data.py           # DEFAULT_BUILDING_LOADS (各台平均負載 + 功因)
 │   │   │   ├── parameters.py          # 系統參數、損耗表、電壓規範、情境 SCENARIOS
 │   │   │   ├── ems_loads.py           # EMS 實測各饋線負載分配 (含 VCB3 各棟實測校正)
@@ -39,7 +39,7 @@
 │   └── src/  (pages/ components/ api/ auth/ focus/ scenario/ theme/ lib/)
 │
 ├── tools/build_forecast_day.py  # 重建前端日曲線靜態檔 webui/public/forecast-day.json
-└── docs/單線圖原稿/          # 記事本 ASCII 單線圖 (拓撲原始依據,含 C/D、Z 微電網;網站不讀)
+└── docs/SLD/          # 記事本 ASCII 單線圖 (拓撲原始依據,含 C/D、Z 微電網;網站不讀)
 ```
 
 ---
@@ -105,7 +105,7 @@ Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 ## 微電網 (C/D、Z 棟)
 
 依技師用印竣工圖 ESS-2.1(2025-10-31 竣工)建模,設備資料單一來源為 `networks/north/data/der.py`,
-拓撲草稿見 `docs/單線圖原稿/北電錶_X/VCB7.txt`、`VCB2.txt`。
+拓撲草稿見 `docs/SLD/北電錶_X/VCB7.txt`、`VCB2.txt`。
 
 | 站別 | 掛接 | 太陽能 | 儲能 | 發電機 |
 |------|------|--------|------|--------|
@@ -153,7 +153,7 @@ Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 | 改電壓規範 | 改 `VOLTAGE_LIMIT_MIN/MAX` |
 | 改變壓器損耗 | 改 `TRANSFORMER_LOSS_TABLE` |
 | 改負載/功因 | 改 `networks/north/data/load_data.py` |
-| 改電網拓撲 | 改 `networks/<north\|south>/data/network_structure.py`(唯一一份),並同步 `docs/單線圖原稿/` |
+| 改電網拓撲 | 改 `networks/<north\|south>/data/network_structure.py`(唯一一份),並同步 `docs/SLD/` |
 | 改微電網設備 | 改 `networks/north/data/der.py`(網站、地圖徽章、供電路徑自動跟著變) |
 
 ---
