@@ -2,7 +2,7 @@
 微電網分散式電源 (DER):太陽能 / 儲能 / 發電機 —— 依技師用印竣工圖建模。
 
 來源:南臺科技大學-ESS-ALL_(技師用印).pdf 系統單線圖 ESS-2.1(大同智能,竣工 2025-10-31)。
-拓撲草稿:docs/SLD/北電錶_X/VCB7.txt (C/D 棟)、VCB2.txt (Z 棟)。
+拓撲草稿:docs/SLD/north_X/VCB7.txt (C/D 棟)、VCB2.txt (Z 棟)。
 
 建模方式 (network_builder):
   - 設備直接掛在所屬變壓器的 220V 低壓母線 (lv_bus)。中間的介接變壓器 (200/75/50kVA)

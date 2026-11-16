@@ -16,7 +16,7 @@
 │   ├── north/                 # 北電錶 (X棟受電,12 VCB)
 │   │   ├── provider.py        # 對外介面:FEEDERS / build_net() / run_power_flow()
 │   │   ├── data/              # 📊 數據層
-│   │   │   ├── network_structure.py   # 拓撲 (源自 docs/SLD/北電錶_X/整合.txt)
+│   │   │   ├── network_structure.py   # 拓撲 (源自 docs/SLD/north_X/整合.txt)
 │   │   │   ├── load_data.py           # DEFAULT_BUILDING_LOADS (各台平均負載 + 功因)
 │   │   │   ├── parameters.py          # 系統參數、損耗表、電壓規範、情境 SCENARIOS
 │   │   │   ├── ems_loads.py           # EMS 實測各饋線負載分配 (含 VCB3 各棟實測校正)
@@ -105,7 +105,7 @@ Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 ## 微電網 (C/D、Z 棟)
 
 依技師用印竣工圖 ESS-2.1(2025-10-31 竣工)建模,設備資料單一來源為 `networks/north/data/der.py`,
-拓撲草稿見 `docs/SLD/北電錶_X/VCB7.txt`、`VCB2.txt`。
+拓撲草稿見 `docs/SLD/north_X/VCB7.txt`、`VCB2.txt`。
 
 | 站別 | 掛接 | 太陽能 | 儲能 | 發電機 |
 |------|------|--------|------|--------|
