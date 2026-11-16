@@ -23,3 +23,7 @@ webapi/data/*.db
 
 # 單線圖原稿(拓撲參考,後端不需要)
 docs/
+
+# CI 專用,不進映像
+tests/
+.github/
