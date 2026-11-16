@@ -1,5 +1,7 @@
 # 校園 11.4kV 配電系統分析系統 + 數位孿生平台
 
+[![CI](https://github.com/vincent1594/Smart-Campus-Energy-Digital-Twin-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/vincent1594/Smart-Campus-Energy-Digital-Twin-Platform/actions/workflows/ci.yml)
+
 使用 **PandaPower** 對校園(北校區)11.4kV 配電系統建模並進行多情境潮流分析,並在其上包覆一層 **FastAPI + React** 數位孿生平台供營繕組查詢/模擬。採分層、模組化設計,負載與變壓器參數取自校園實際變壓器細部資料與 EMS 實測。
 
 ---
@@ -39,6 +41,8 @@
 │   └── src/  (pages/ components/ api/ auth/ focus/ scenario/ theme/ lib/)
 │
 ├── tools/build_forecast_day.py  # 重建前端日曲線靜態檔 webui/public/forecast-day.json
+├── tests/test_smoke.py        # 🧪 CI 測試:API 煙霧測試 + 潮流回歸 (不進部署映像)
+├── .github/workflows/ci.yml   # GitHub Actions CI 設定
 └── docs/SLD/          # 記事本 ASCII 單線圖 (拓撲原始依據,含 C/D、Z 微電網;網站不讀)
 ```
 
@@ -155,6 +159,8 @@ Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 | 改負載/功因 | 改 `networks/north/data/load_data.py` |
 | 改電網拓撲 | 改 `networks/<north\|south>/data/network_structure.py`(唯一一份),並同步 `docs/SLD/` |
 | 改微電網設備 | 改 `networks/north/data/der.py`(網站、地圖徽章、供電路徑自動跟著變) |
+| 跑測試 | `python -m pytest tests -q`(與 CI 相同) |
+| 刻意改模型後更新基準 | 改 `tests/test_smoke.py` 的 `BASELINE` 數值 |
 
 ---
 
@@ -221,6 +227,23 @@ npm run dev          # http://localhost:5173 (dev 透過 vite proxy 轉 127.0.0.
 
 ---
 
+## 持續整合 (CI)
+
+每次 push 到 `main` 或開 PR,GitHub Actions 會在乾淨的 Ubuntu 環境從零安裝並驗證整個專案,結果顯示在 commit 旁(✓ 通過 / ✗ 失敗)與上方徽章。目的:**在部署前抓出「這次修改把東西弄壞了」**,而不是上線後才發現。
+
+| Job | 檢查內容 | 擋下的問題 |
+|------|------|------|
+| 後端 (API + 潮流回歸) | 後端啟動;南北網 `dashboard` / `powerflow` / `buildings` / `topology` 回 200 | 語法錯、漏寫 `requirements.txt`、import 失敗 |
+| | 潮流收斂、電壓 0.90–1.10 pu、損失 < 10% 負載、變壓器負載率 < 150% | 改壞拓撲/參數導致不收斂或物理不合理 |
+| | 總負載、系統損失、最大變壓器負載率與基準相差 ≤ 2% | 沒報錯但數字悄悄變了 (套件版本漂移、誤改資料) |
+| 前端 (型別檢查 + build) | `npm ci` → `npm run build`(含 `tsc`) | TypeScript 型別錯、import 打錯導致網站 build 失敗 |
+
+- 本機先跑:`python -m pytest tests -q`(需 `pip install pytest httpx`)
+- **刻意**修改模型使數字合理變動時,CI 回歸測試會失敗 → 確認新數值正確後更新 `tests/test_smoke.py` 的 `BASELINE`
+- `tests/`、`.github/` 已列入 `.dockerignore`,不進部署映像
+
+---
+
 ## 後續工作 (Roadmap)
 
 **研究模型**
@@ -233,6 +256,7 @@ npm run dev          # http://localhost:5173 (dev 透過 vite proxy 轉 127.0.0.
 - [ ] 規劃模擬:儲能充放電 / 發電機啟停控制
 - [ ] 停電孤島供電標示與續航時間(待確認 D 棟自動孤島範圍)
 - [ ] 即時監控(需接 EMS 即時資料)
+- [x] CI:GitHub Actions 自動測試 (API + 潮流回歸 + 前端 build)
 
 ---
 
@@ -240,8 +264,9 @@ npm run dev          # http://localhost:5173 (dev 透過 vite proxy 轉 127.0.0.
 
 - **計算引擎**: PandaPower 3.x｜**數據處理**: Pandas, NumPy, NetworkX｜**預測**: XGBoost, scikit-learn
 - **平台後端**: FastAPI + Uvicorn｜**前端**: React + Vite + TypeScript, Ant Design, React Flow, ECharts
+- **測試 / CI**: pytest + FastAPI TestClient｜GitHub Actions
 - **語言**: Python 3.12 / TypeScript
 
 ---
 
-**最後更新**: 2026-11-15 ｜ **版本**: 0.8.0 (數位孿生平台 + C/D、Z 微電網)
+**最後更新**: 2026-11-16 ｜ **版本**: 0.8.0 (數位孿生平台 + C/D、Z 微電網)
