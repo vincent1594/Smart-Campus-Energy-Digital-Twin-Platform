@@ -1,6 +1,6 @@
 """
 Campus 11.4kV Distribution Network Structure Definition
-從整合.txt解析的網路拓撲結構
+從integrated.txt解析的網路拓撲結構
 """
 
 # 主網路參數

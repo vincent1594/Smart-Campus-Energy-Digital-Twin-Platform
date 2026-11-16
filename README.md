@@ -16,7 +16,7 @@
 │   ├── north/                 # 北電錶 (X棟受電,12 VCB)
 │   │   ├── provider.py        # 對外介面:FEEDERS / build_net() / run_power_flow()
 │   │   ├── data/              # 📊 數據層
-│   │   │   ├── network_structure.py   # 拓撲 (源自 docs/SLD/north_X/整合.txt)
+│   │   │   ├── network_structure.py   # 拓撲 (源自 docs/SLD/north_X/integrated.txt)
 │   │   │   ├── load_data.py           # DEFAULT_BUILDING_LOADS (各台平均負載 + 功因)
 │   │   │   ├── parameters.py          # 系統參數、損耗表、電壓規範、情境 SCENARIOS
 │   │   │   ├── ems_loads.py           # EMS 實測各饋線負載分配 (含 VCB3 各棟實測校正)
