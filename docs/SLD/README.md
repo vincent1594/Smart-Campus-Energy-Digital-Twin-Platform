@@ -4,8 +4,8 @@
 
 | 資料夾 | 內容 | 轉成的程式 |
 |---|---|---|
-| `北電錶_X/` | `VCB1~12.txt` 各饋線 + `整合.txt`(12 VCB 完整校園 11.4kV 單線圖) | `networks/north/data/network_structure.py` 的 `FEEDERS` |
-| `南電錶_H1/` | `VCB1~6.txt` 各饋線 | `networks/south/data/network_structure.py` |
+| `north_X/` | `VCB1~12.txt` 各饋線 + `整合.txt`(12 VCB 完整校園 11.4kV 單線圖) | `networks/north/data/network_structure.py` 的 `FEEDERS` |
+| `south_H1/` | `VCB1~6.txt` 各饋線 | `networks/south/data/network_structure.py` |
 
 > **為何保留在 repo**:V2 要擴充**太陽能 (PV)、儲能 (ESS)、發電機**,須依這些原稿決定新設備接在哪條 VCB / 哪個母線,
 > 再改 `network_structure.py`。網站本身不讀它們,但它們是拓撲的唯一原始依據。
