@@ -1,6 +1,6 @@
 # 校園 11.4kV 配電系統分析系統 + 數位孿生平台
 
-[![CI](https://github.com/vincent1594/Smart-Campus-Energy-Digital-Twin-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/vincent1594/Smart-Campus-Energy-Digital-Twin-Platform/actions/workflows/ci.yml)
+[![CI](https://github.com/vincent1594/SmartCampusEnergyDigitalTwinPlatform/actions/workflows/ci.yml/badge.svg)](https://github.com/vincent1594/SmartCampusEnergyDigitalTwinPlatform/actions/workflows/ci.yml)
 
 使用 **PandaPower** 對校園(北校區)11.4kV 配電系統建模並進行多情境潮流分析,並在其上包覆一層 **FastAPI + React** 數位孿生平台供營繕組查詢/模擬。採分層、模組化設計,負載與變壓器參數取自校園實際變壓器細部資料與 EMS 實測。
 
