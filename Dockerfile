@@ -17,7 +17,7 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
-# 再複製 repo(含 data/EMS/models 的 Excel/CSV/pkl —— 真相來源,不外掛 volume)
+# 再複製 repo(含 data/、dataset/、models/ 的 Excel/CSV/pkl —— 真相來源,不外掛 volume)
 COPY . .
 
 EXPOSE 8126
