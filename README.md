@@ -9,7 +9,7 @@
 ## 專案結構
 
 ```
-論文實驗X電錶/
+X meter/
 ├── requirements.txt  runtime.txt
 ├── Dockerfile  docker-compose.yml  DEPLOY.md   # Docker 自架部署 (web+api+db)
 │

@@ -8,6 +8,8 @@
 #
 # 本機開發:省略 .env 也可,密碼/port 走預設值。
 
+name: x   # 固定專案名 (容器/volume x_pgdata),不隨資料夾名稱變動
+
 services:
   # 持久化:訪客統計 / 業務設定 / 使用者回饋(對齊正式環境的 Neon Postgres)
   db:
