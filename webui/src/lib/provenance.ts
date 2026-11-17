@@ -118,7 +118,7 @@ export const ROADMAP: RoadmapItem[] = [
   { title: "登入權限(展示版,兩組帳號)", status: "done", note: "管理者 admin / 總務處使用者 ga;前端驗證,非真實安全" },
   { title: "擴充 EMS 月份(9–10月總量 / 7–8月暑假)", status: "planned", note: "9–10 僅總量需另建總量模型;補暑假才能預測整年" },
   { title: "功因罰款防線", status: "planned" },
-  { title: "南電錶建模(全校覆蓋)", status: "planned" },
+  { title: "南電錶建模(全校覆蓋)", status: "done", note: "拓樸已建 6 VCB / 14 台 / 11,000 kVA;負載待對 EMS 實測校正" },
   { title: "即時 EMS 串接", status: "planned" },
   { title: "告警 LINE 推播", status: "planned" },
   { title: "V2 太陽能 + 儲能(綠能管理)", status: "planned" },

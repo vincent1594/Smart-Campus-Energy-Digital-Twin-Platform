@@ -57,7 +57,7 @@ const TIPS: string[] = [
 
 const INTRO_HTML =
   "<b>校園配電數位分身平台</b> —— 把學校的高壓配電(台電進線 → 受電站 → VCB → 饋線 → 變壓器 → 各棟)做成可互動的模型," +
-  "給營繕組/總務組看<b>電力現況、省電費、設備汰換規劃</b>。涵蓋範圍目前為<b>北電錶區</b>;多數數值為規劃估算,各數字來源與可信度詳見<b>「驗證中心」</b>。";
+  "給營繕組/總務組看<b>電力現況、省電費、設備汰換規劃</b>。涵蓋<b>北電錶(X 棟受電)與南電錶(H1 棟受電)</b>兩區,南區開發中、負載尚未校正;需量/時間電價/用電強度/歷史目前僅北電錶有 EMS 實測;多數數值為規劃估算,各數字來源與可信度詳見<b>「驗證中心」</b>。";
 
 // 用瀏覽器內建列印 → 另存為 PDF(品質好、零相依);內容用同一份資料生成
 function exportPdf() {
@@ -79,11 +79,11 @@ function exportPdf() {
     .foot{color:#aaa;font-size:11px;margin-top:18px}
   </style></head><body>
     <h1>校園配電數位分身平台 · 使用說明</h1>
-    <div class="sub">V1 · 北電錶區</div>
+    <div class="sub">V1 · 北電錶 + 南電錶</div>
     <div class="intro">${INTRO_HTML}</div>
     <h2>功能導覽</h2>${feat}
     <h2>操作技巧</h2><ul>${tips}</ul>
-    <div class="foot">平台為 V1 版,部分數值以業界預設值估算、模型涵蓋北電錶區;校正進度與待辦見「驗證中心」。</div>
+    <div class="foot">平台為 V1 版,部分數值以業界預設值估算、模型涵蓋南北電錶(南區開發中);校正進度與待辦見「驗證中心」。</div>
   </body></html>`;
   const w = window.open("", "_blank", "width=900,height=720");
   if (!w) return;
@@ -103,7 +103,7 @@ export default function UsageGuide() {
       {/* 簡介(精簡) */}
       <div style={{ background: "#f0f7ff", border: "1px solid #d6e8ff", borderRadius: 6, padding: "7px 12px", marginBottom: 10, fontSize: 12, color: "#444", lineHeight: 1.55 }}>
         <b>校園配電數位分身平台</b> —— 把學校高壓配電(台電 → 受電站 → VCB → 饋線 → 變壓器 → 各棟)做成可互動模型,
-        給營繕組/總務組看<b>電力現況、省電費、設備汰換</b>。涵蓋<b>北電錶區</b>;多數為規劃估算,來源/可信度見<b>「驗證中心」</b>。
+        給營繕組/總務組看<b>電力現況、省電費、設備汰換</b>。涵蓋<b>南北電錶兩區</b>(南區開發中);多數為規劃估算,來源/可信度見<b>「驗證中心」</b>。
       </div>
 
       {/* 功能導覽:多欄卡片 */}
@@ -131,7 +131,7 @@ export default function UsageGuide() {
       </div>
 
       <div style={{ color: "#bbb", fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>
-        平台為 V1 版,部分數值以業界預設值估算、模型涵蓋北電錶區;校正進度與待辦見「驗證中心」。
+        平台為 V1 版,部分數值以業界預設值估算、模型涵蓋南北電錶(南區開發中);校正進度與待辦見「驗證中心」。
       </div>
     </div>
   );

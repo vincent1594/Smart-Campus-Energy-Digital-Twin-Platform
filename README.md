@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/vincent1594/SmartCampusEnergyDigitalTwinPlatform/actions/workflows/ci.yml/badge.svg)](https://github.com/vincent1594/SmartCampusEnergyDigitalTwinPlatform/actions/workflows/ci.yml)
 
-使用 **PandaPower** 對校園(北校區)11.4kV 配電系統建模並進行多情境潮流分析,並在其上包覆一層 **FastAPI + React** 數位孿生平台供營繕組查詢/模擬。採分層、模組化設計,負載與變壓器參數取自校園實際變壓器細部資料與 EMS 實測。
+使用 **PandaPower** 對校園 11.4kV 配電系統建模(**北電錶** X 棟受電 12 VCB + **南電錶** H1 棟受電 6 VCB,兩網獨立建模、平台可切換/合併總覽)並進行多情境潮流分析,並在其上包覆一層 **FastAPI + React** 數位孿生平台供營繕組查詢/模擬。採分層、模組化設計,負載與變壓器參數取自校園實際變壓器細部資料與 EMS 實測。
 
 ---
 
@@ -138,12 +138,23 @@ Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 
 ## 系統規模
 
+**北電錶 (X 棟受電)**
+
 - 12 條 VCB 饋線(VCB12 為純電容補償饋線,已建模為 CB_BUS + 600kVAr@13.8kV 並聯電容)
 - 39 台變壓器(28 油式 / 11 乾式;含 2 台乾式停用備援)
 - 40 個負載接入點
 - 台電進線主纜 250mm²×3 顯式建模(長度未知,以假設值計算)
 - R 棟並聯於 K_BUS 下游(電纜 + 600kVA + 150kVAr 電容)
 - 微電網 8 台設備:太陽能 4、儲能 3、LPG 發電機 1(見上節)
+
+**南電錶 (H1 棟 MVCB 受電)**
+
+- 6 條 VCB 饋線(VCB5 為獨立電容饋線)
+- 14 台變壓器,合計 11,000 kVA
+- 14 個負載接入點:E 圖書資訊館、H1/H6 宿舍、U 優活館、O 高齡福祉館(即北電錶模型未含的建物)
+- 負載為依變壓器實測運轉值估算,尚無 EMS 逐時資料 → 需量/歷史/預測功能暫不開放
+
+南北合計 51 台變壓器,與校方 Excel 規格表 52 台僅差 1 台(北電 N 棟少計)。
 
 ---
 
@@ -153,10 +164,10 @@ Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 |------|------|
 | 重訓 XGBoost | `python -m networks.north.analysis.xgb_forecast` |
 | 重建日曲線靜態檔 | `python -m tools.build_forecast_day`(改模型/負載/拓撲後必跑;`--check` 只檢查) |
-| 改情境/負載目標 | 編輯 `networks/north/data/parameters.py` 的 `SCENARIOS` |
+| 改情境/負載目標 | 編輯 `networks/<north\|south>/data/parameters.py` 的 `SCENARIOS` |
 | 改電壓規範 | 改 `VOLTAGE_LIMIT_MIN/MAX` |
 | 改變壓器損耗 | 改 `TRANSFORMER_LOSS_TABLE` |
-| 改負載/功因 | 改 `networks/north/data/load_data.py` |
+| 改負載/功因 | 改 `networks/<north\|south>/data/load_data.py` |
 | 改電網拓撲 | 改 `networks/<north\|south>/data/network_structure.py`(唯一一份),並同步 `docs/SLD/` |
 | 改微電網設備 | 改 `networks/north/data/der.py`(網站、地圖徽章、供電路徑自動跟著變) |
 | 跑測試 | `python -m pytest tests -q`(與 CI 相同) |
@@ -174,7 +185,8 @@ net = build_network_s1_baseline()
 net, results = run_s1_baseline_powerflow(net=net)   # results["system_stats"] 等
 ```
 
-> 注意:情境由環境變數 `BAYESGRID_SCENARIO` 決定(北網預設 S0)。
+> 南網同理,改 import `networks.south...`;或經 `networks.registry.get_provider("south")` 取得統一介面。
+> 注意:情境由環境變數 `BAYESGRID_SCENARIO` 決定(北網預設 S0、南網預設 S2)。
 
 ---
 
@@ -269,4 +281,4 @@ npm run dev          # http://localhost:5173 (dev 透過 vite proxy 轉 127.0.0.
 
 ---
 
-**最後更新**: 2026-11-16 ｜ **版本**: 0.8.0 (數位孿生平台 + C/D、Z 微電網)
+**最後更新**: 2026-11-17 ｜ **版本**: v1.0.0 (南北電錶整合 + 數位孿生平台 + C/D、Z 微電網)
