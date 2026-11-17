@@ -4,7 +4,7 @@ EMS 實測負載分配 (S0)
 直接採用 EMS 各 VCB 饋線「實測逐時功率」,按各台變壓器容量分配到負載點。
 實測值本為系統同時值,無須分散係數。pf 沿用各棟運轉值 (load_data)。
 
-資料來源: EMS/11205-06(北).xls  (2023/05-06 逐時, HTML 格式)
+資料來源: dataset/11205-06(北).xlsx  (2023/05-06 逐時, HTML 格式)
 EMS 饋線欄 VCB1~VCB12 直接對應模型 FEEDERS 同名饋線。
 """
 
@@ -15,7 +15,7 @@ from pathlib import Path
 from .network_structure import FEEDERS
 
 # EMS 檔 (11205-06 北):以 glob 定位,對副檔名 (.xls / .xlsx) 變動免疫
-_EMS_DIR = Path(__file__).resolve().parent.parent / "EMS"
+_EMS_DIR = Path(__file__).resolve().parent.parent / "dataset"
 _cands = sorted(glob.glob(str(_EMS_DIR / "11205*")))
 EMS_FILE = Path(_cands[0]) if _cands else (_EMS_DIR / "11205-06(北).xlsx")
 DEFAULT_TIMESTAMP = "2023-06-08 14:00"   # 全期系統尖峰

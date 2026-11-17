@@ -26,7 +26,7 @@
 │   │   │   └── area_loads.py  pv.py  academic_calendar.py
 │   │   ├── models/            # 🔨 建模層:network_builder.py + XGBoost 模型 (*.pkl)
 │   │   ├── analysis/          # 📈 分析層:power_flow (潮流) / xgb_forecast (饋線負載預測)
-│   │   └── EMS/               # EMS 實測逐時功率 (11203-04、11205-06 各饋線)
+│   │   └── dataset/           # EMS 實測逐時功率 (11203-04、11205-06 各饋線)
 │   └── south/                 # 南電錶 (H1 MVCB 受電,6 VCB;負載暫為佔位)
 │       └── provider.py  data/  models/  analysis/   (負載暫為估算,尚無 EMS)
 │
@@ -95,7 +95,7 @@ python -m networks.north.analysis.xgb_forecast
 | `transformer` (預設) | 各台平均負載 × 分散係數 | `k = 目標總量 / Σ各台平均負載` |
 
 ```
-PV 還原:EMS/預測為「淨台電值」→ gross = 饋線淨值 + Σ該饋線PV → 按權重拆 gross → 再扣各棟 PV
+PV 還原:EMS 實測/預測為「淨台電值」→ gross = 饋線淨值 + Σ該饋線PV → 按權重拆 gross → 再扣各棟 PV
 Q_i = P_i × tan(arccos(pf_i))        ← pf 為各台運轉功因
 ```
 
