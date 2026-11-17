@@ -1,4 +1,4 @@
-# 校園 11.4kV 配電系統分析系統 + 數位孿生平台
+# 校園 11.4kV 配電分析系統 + 數位孿生平台
 
 [![CI](https://github.com/vincent1594/SmartCampusEnergyDigitalTwinPlatform/actions/workflows/ci.yml/badge.svg)](https://github.com/vincent1594/SmartCampusEnergyDigitalTwinPlatform/actions/workflows/ci.yml)
 
