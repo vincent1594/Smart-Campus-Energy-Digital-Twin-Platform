@@ -30,7 +30,7 @@
 ```bash
 # 1) 取得整個專案（不能只拿 docker-compose.yml — 它要 build 原始碼）
 git clone <本 repo 的 GitHub 網址>
-cd "X meter"         # 或 clone 下來的資料夾名
+cd "X H1 meter"         # 或 clone 下來的資料夾名
 
 # 2) 設定環境變數（密碼、port）
 cp .env.example .env

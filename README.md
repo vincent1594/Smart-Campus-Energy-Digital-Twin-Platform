@@ -9,7 +9,7 @@
 ## 專案結構
 
 ```
-X meter/
+X H1 meter/
 ├── requirements.txt  runtime.txt
 ├── Dockerfile  docker-compose.yml  DEPLOY.md   # Docker 自架部署 (web+api+db)
 │
