@@ -4,10 +4,10 @@
 
 | 資料夾 | 內容 | 轉成的程式 |
 |---|---|---|
-| `north_X/` | `VCB1~12.txt` 各饋線 + `integrated.txt`(12 VCB 完整校園 11.4kV 單線圖) | `networks/north/data/network_structure.py` 的 `FEEDERS` |
+| `north_X/` | `VCB1~12.txt` 各饋線 + `integrated.txt`(北電錶 12 VCB 完整 11.4kV 單線圖) | `networks/north/data/network_structure.py` 的 `FEEDERS` |
 | `south_H1/` | `VCB1~6.txt` 各饋線 | `networks/south/data/network_structure.py` |
 
-> **為何保留在 repo**:V2 要擴充**太陽能 (PV)、儲能 (ESS)、發電機**,須依這些原稿決定新設備接在哪條 VCB / 哪個母線,
+> **為何保留在 repo**:新增設備(如 V2 擴充**太陽能 (PV)、儲能 (ESS)、發電機**;C/D、Z 棟微電網已依此建模)須依這些原稿決定接在哪條 VCB / 哪個母線,
 > 再改 `network_structure.py`。網站本身不讀它們,但它們是拓撲的唯一原始依據。
 >
 > 改電網拓撲請改上表的 `network_structure.py`,並**回頭同步這裡的原稿**(新增 PV/ESS/發電機也畫進來),
